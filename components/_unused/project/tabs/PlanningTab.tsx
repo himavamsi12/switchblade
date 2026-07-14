@@ -1,5 +1,5 @@
 import type { PlanningData } from "@/types";
-import { ProgressBar } from "@/components/ui/ProgressBar";
+import { ProgressBar } from "@/components/_unused/ui/ProgressBar";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Circle, AlertTriangle, ChevronRight } from "lucide-react";
 

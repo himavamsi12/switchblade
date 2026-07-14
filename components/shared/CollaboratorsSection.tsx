@@ -1,8 +1,8 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import { SparkleMark } from "@/components/SparkleMark";
-import { SweepText } from "@/components/SweepText";
+import { SparkleMark } from "@/components/shared/SparkleMark";
+import { SweepText } from "@/components/shared/SweepText";
 
 const CARDS = [
   { num: "(04)", title: "Shared\nStorytelling",   icon: "/collaborate/icon-shared-storytelling.svg", w: 33, h: 34, gridClass: "md:col-start-1 md:row-start-1" },

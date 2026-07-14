@@ -1,7 +1,7 @@
 import type { Project } from "@/types";
-import { Avatar } from "@/components/ui/Avatar";
-import { ProgressBar } from "@/components/ui/ProgressBar";
-import { SeverityBadge } from "@/components/ui/Badge";
+import { Avatar } from "@/components/_unused/ui/Avatar";
+import { ProgressBar } from "@/components/_unused/ui/ProgressBar";
+import { SeverityBadge } from "@/components/_unused/ui/Badge";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Circle, AlertTriangle, Calendar, Users, Target, type LucideIcon } from "lucide-react";
 

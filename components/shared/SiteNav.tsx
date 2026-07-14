@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { SparkleMark } from "@/components/SparkleMark";
+import { SparkleMark } from "@/components/shared/SparkleMark";
 
 const LINKS = [
   { href: "/", label: "Home" },

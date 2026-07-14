@@ -2,8 +2,8 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { SparkleMark } from "@/components/SparkleMark";
-import { SiteFooter } from "@/components/SiteFooter";
+import { SparkleMark } from "@/components/shared/SparkleMark";
+import { SiteFooter } from "@/components/shared/SiteFooter";
 
 const PHOTOS = [
   { id: "a", seed: "winter-portrait/420/540", pos: { left: "7%",  top: "7%"  }, w: 205, rotate: -2, aspect: "4/5"  },

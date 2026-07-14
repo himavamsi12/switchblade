@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { SweepText } from "@/components/SweepText";
+import { SweepText } from "@/components/shared/SweepText";
 
 const STORY_LEFT = [
   "There’s a book I was reading, The Creative Act by Rick Rubin. He writes about how good ideas exist around us like signals in the air and the human antenna catches them. When you think of something and see it come to life later through someone else’s hands, you wonder.",

@@ -1,20 +1,20 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { ParagraphReveal } from "@/components/ParagraphReveal";
-import { UniquenessReveal } from "@/components/UniquenessReveal";
-import { RadiatesSection } from "@/components/RadiatesSection";
-import { OriginsSection } from "@/components/OriginsSection";
-import { BrandJourney } from "@/components/BrandJourney";
-import { ClassicsGlobeSection } from "@/components/ClassicsGlobeSection";
-import { CollaboratorsSection } from "@/components/CollaboratorsSection";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteNav } from "@/components/SiteNav";
-import { SweepText } from "@/components/SweepText";
+import { ParagraphReveal } from "@/components/shared/ParagraphReveal";
+import { UniquenessReveal } from "@/components/shared/UniquenessReveal";
+import { RadiatesSection } from "@/components/home/RadiatesSection";
+import { OriginsSection } from "@/components/home/OriginsSection";
+import { BrandJourney } from "@/components/home/BrandJourney";
+import { ClassicsGlobeSection } from "@/components/home/ClassicsGlobeSection";
+import { CollaboratorsSection } from "@/components/shared/CollaboratorsSection";
+import { SiteFooter } from "@/components/shared/SiteFooter";
+import { SiteNav } from "@/components/shared/SiteNav";
+import { SweepText } from "@/components/shared/SweepText";
 import dynamic from "next/dynamic";
 import type React from "react";
 
 const Star3D = dynamic(
-  () => import("@/components/Star3D").then(m => m.Star3D),
+  () => import("@/components/shared/Star3D").then(m => m.Star3D),
   { ssr: false, loading: () => null }
 );
 

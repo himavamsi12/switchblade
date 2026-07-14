@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { PROJECTS, STATS } from "@/data/mock";
-import { StatusBadge, PriorityBadge } from "@/components/ui/Badge";
-import { ProgressBar } from "@/components/ui/ProgressBar";
-import { AvatarGroup } from "@/components/ui/Avatar";
+import { StatusBadge, PriorityBadge } from "@/components/_unused/ui/Badge";
+import { ProgressBar } from "@/components/_unused/ui/ProgressBar";
+import { AvatarGroup } from "@/components/_unused/ui/Avatar";
 import {
   AlertTriangle, CheckCircle2, Clock, TrendingUp,
   FolderOpen, Mail, ChevronRight, ArrowUpRight, Calendar, type LucideIcon

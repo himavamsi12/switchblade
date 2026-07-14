@@ -1,4 +1,4 @@
-import { Footer } from "@/components/Footer";
+import { Footer } from "@/components/concept/Footer";
 
 export default function Concept3Layout({ children }: { children: React.ReactNode }) {
   return (

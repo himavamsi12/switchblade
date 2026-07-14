@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono, Averia_Serif_Libre, Inter, Archivo } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-import { CustomCursor } from "@/components/CustomCursor";
+import { CustomCursor } from "@/components/shared/CustomCursor";
 
 const averiaSerif = Averia_Serif_Libre({
   subsets: ["latin"],

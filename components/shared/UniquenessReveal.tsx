@@ -1,5 +1,5 @@
 "use client";
-import { SweepText } from "@/components/SweepText";
+import { SweepText } from "@/components/shared/SweepText";
 
 const ANNO: React.CSSProperties = {
   fontFamily:    "var(--font-ibm-mono)",

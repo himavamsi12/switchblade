@@ -4,13 +4,13 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 import { Clock, ArrowUp } from "lucide-react";
-import { SparkleMark } from "@/components/SparkleMark";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteNav } from "@/components/SiteNav";
-import { SweepText } from "@/components/SweepText";
+import { SparkleMark } from "@/components/shared/SparkleMark";
+import { SiteFooter } from "@/components/shared/SiteFooter";
+import { SiteNav } from "@/components/shared/SiteNav";
+import { SweepText } from "@/components/shared/SweepText";
 
 const Star3D = dynamic(
-  () => import("@/components/Star3D").then(m => m.Star3D),
+  () => import("@/components/shared/Star3D").then(m => m.Star3D),
   { ssr: false, loading: () => null }
 );
 

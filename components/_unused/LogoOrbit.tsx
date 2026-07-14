@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 
 const JourneyStar3D = dynamic(
-  () => import("@/components/JourneyStar3D").then((m) => m.JourneyStar3D),
+  () => import("@/components/home/JourneyStar3D").then((m) => m.JourneyStar3D),
   { ssr: false, loading: () => null }
 );
 

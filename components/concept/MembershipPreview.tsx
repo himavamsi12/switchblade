@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { SweepText } from "@/components/SweepText";
+import { SweepText } from "@/components/shared/SweepText";
 
 export function MembershipPreview() {
   const sectionRef   = useRef<HTMLElement>(null);

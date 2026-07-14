@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef } from "react";
 import type * as THREE from "three";
-import { SweepText } from "@/components/SweepText";
-import { SparkleMark } from "@/components/SparkleMark";
+import { SweepText } from "@/components/shared/SweepText";
+import { SparkleMark } from "@/components/shared/SparkleMark";
 
 interface GlobeCanvasProps {
   onFormTrigger: (fn: () => void) => void;

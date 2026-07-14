@@ -1,5 +1,5 @@
 import type { ClientProfile } from "@/types";
-import { MentalityBadge } from "@/components/ui/Badge";
+import { MentalityBadge } from "@/components/_unused/ui/Badge";
 import { cn } from "@/lib/utils";
 import { Mail, Phone, MessageCircle, Zap, AlertTriangle, Heart } from "lucide-react";
 

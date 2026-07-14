@@ -1,9 +1,9 @@
 "use client";
 import Image from "next/image";
-import { StarLogo } from "@/components/StarLogo";
-import { ScrollReveal, StaggerReveal, StaggerItem } from "@/components/ScrollReveal";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SweepText } from "@/components/SweepText";
+import { StarLogo } from "@/components/content/StarLogo";
+import { ScrollReveal, StaggerReveal, StaggerItem } from "@/components/content/ScrollReveal";
+import { SiteFooter } from "@/components/shared/SiteFooter";
+import { SweepText } from "@/components/shared/SweepText";
 
 export default function StoryPage() {
   return (

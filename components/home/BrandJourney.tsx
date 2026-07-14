@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { SweepText } from "@/components/SweepText";
+import { SweepText } from "@/components/shared/SweepText";
 
 const JourneyStar3D = dynamic(
-  () => import("@/components/JourneyStar3D").then((m) => m.JourneyStar3D),
+  () => import("@/components/home/JourneyStar3D").then((m) => m.JourneyStar3D),
   { ssr: false, loading: () => null }
 );
 

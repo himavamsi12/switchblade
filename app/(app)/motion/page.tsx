@@ -1,4 +1,4 @@
-import { StarPulse } from "@/components/StarPulse";
+import { StarPulse } from "@/components/motion/StarPulse";
 
 export default function MotionPreview() {
   return (

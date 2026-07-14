@@ -2,18 +2,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import { SparkleMark } from "@/components/SparkleMark";
-import { StoryCarousel } from "@/components/StoryCarousel";
-import { ParagraphReveal } from "@/components/ParagraphReveal";
-import { UniquenessReveal } from "@/components/UniquenessReveal";
-import { OnePlaceForAll } from "@/components/OnePlaceForAll";
-import { MembershipPreview } from "@/components/MembershipPreview";
-import { CollaboratorsSection } from "@/components/CollaboratorsSection";
+import { SparkleMark } from "@/components/shared/SparkleMark";
+import { StoryCarousel } from "@/components/concept/StoryCarousel";
+import { ParagraphReveal } from "@/components/shared/ParagraphReveal";
+import { UniquenessReveal } from "@/components/shared/UniquenessReveal";
+import { OnePlaceForAll } from "@/components/concept/OnePlaceForAll";
+import { MembershipPreview } from "@/components/concept/MembershipPreview";
+import { CollaboratorsSection } from "@/components/shared/CollaboratorsSection";
 import dynamic from "next/dynamic";
 import type React from "react";
 
 const Star3D = dynamic(
-  () => import("@/components/Star3D").then(m => m.Star3D),
+  () => import("@/components/shared/Star3D").then(m => m.Star3D),
   { ssr: false, loading: () => null }
 );
 

@@ -1,5 +1,5 @@
 import type { Escalation } from "@/types";
-import { SeverityBadge } from "@/components/ui/Badge";
+import { SeverityBadge } from "@/components/_unused/ui/Badge";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 

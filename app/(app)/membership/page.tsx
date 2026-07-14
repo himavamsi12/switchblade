@@ -2,10 +2,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { StarLogo } from "@/components/StarLogo";
-import { SiteFooter } from "@/components/SiteFooter";
-import { ScrollReveal, StaggerReveal, StaggerItem } from "@/components/ScrollReveal";
-import { SweepText } from "@/components/SweepText";
+import { StarLogo } from "@/components/content/StarLogo";
+import { SiteFooter } from "@/components/shared/SiteFooter";
+import { ScrollReveal, StaggerReveal, StaggerItem } from "@/components/content/ScrollReveal";
+import { SweepText } from "@/components/shared/SweepText";
 
 export default function MembershipPage() {
   const [form, setForm]         = useState({ name: "", email: "", source: "" });
