@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+:root {
+  --cream:   #F2EDE4;
+  --cream-2: #EAE4DA;
+  --ink:     #0D0D0D;
+  --ink-2:   #5C5C5C;
+  --blue:    #0A1AFF;
+  --border:  rgba(13,13,13,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { cursor: none; scroll-behavior: smooth; }
+a, button { cursor: none; }
+
+body {
+  background-color: #ffffff;
+  color: var(--ink);
+  /* var(--font-barlow), not a literal 'Barlow' string: the variable is what next/font actually
+     binds to a loaded @font-face (Google Barlow before, now the local TBJ One More Demo file) —
+     a hardcoded 'Barlow' name stops matching anything the moment the underlying font changes,
+     silently falling through to Inter for every element that relies on this inherited body
+     font-family instead of setting fontFamily: var(--font-barlow) explicitly. */
+  font-family: var(--font-barlow), 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── Merigrove-style display type ──
+   Ultra-bold, uppercase, massive scale */
+.t-hero {
+  font-size: clamp(52px, 12vw, 180px);
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.t-feature {
+  font-size: clamp(64px, 14vw, 210px);
+  font-weight: 900;
+  line-height: 0.85;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.t-heading {
+  font-size: clamp(28px, 4vw, 56px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.t-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.t-body {
+  font-size: clamp(14px, 1vw, 16px);
+  line-height: 1.75;
+  font-weight: 400;
+}
+
+/* ── Site container ── */
+.site-px { padding-inline: clamp(20px, 5vw, 72px); }
+
+/* ── Decorative parentheses ── */
+.deco-paren {
+  font-size: clamp(120px, 20vw, 260px);
+  font-weight: 300;
+  line-height: 1;
+  color: var(--ink);
+  user-select: none;
+}
+
+/* ── Animations ── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 35s linear infinite; }
+
+/* 3D star float — inner wrapper only, doesn't conflict with GSAP on outer div */
+@keyframes starFloat {
+  0%,  100% { transform: translateY(0px)   rotate(0deg); }
+  30%        { transform: translateY(-18px) rotate(-1.5deg); }
+  70%        { transform: translateY(-10px) rotate(1deg); }
+}
+.star-float {
+  width: 100%;
+  height: 100%;
+  animation: starFloat 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 20s linear infinite; }
+
+@keyframes bj-fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.bj-fadein { animation: bj-fadein 0.45s ease both; }
+
+/* ── Pulse / echo motion (reference-video style) ── */
+@keyframes star-ripple {
+  0%   { transform: translate(-50%, -50%) scale(0.85); opacity: 0.55; }
+  100% { transform: translate(-50%, -50%) scale(2.7);  opacity: 0; }
+}
+@keyframes star-pulse {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 16px rgba(180,210,255,0.35)); }
+  50%      { transform: scale(1.06); filter: drop-shadow(0 0 36px rgba(180,210,255,0.65)); }
+}
+@keyframes gradient-pan {
+  0%   { background-position:   0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position:   0% 50%; }
+}
+
+/* 3D Y-axis spin for the brand-journey SVG marks (matches the rotating 3D star) */
+@keyframes journey-spinY {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
+.journey-spin {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  animation: journey-spinY 9s linear infinite;
+  will-change: transform;
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Sweep text reveal (gradient wipe clipped to glyphs) */
+.sweep-text {
+  --sweep: -30%;
+  display: block;
+  background-image: linear-gradient(
+    to right,
+    var(--sweep-fg) 0%,
+    var(--sweep-fg) calc(var(--sweep) + 0%),
+    var(--sweep-a1) calc(var(--sweep) + 8%),
+    var(--sweep-a2) calc(var(--sweep) + 15%),
+    transparent calc(var(--sweep) + 22%),
+    transparent 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sweep-text {
+    background-image: none;
+    -webkit-text-fill-color: var(--sweep-fg);
+    color: var(--sweep-fg);
+  }
+}
+
+/* ClassicsExperience renders its own cursor — hide the sitewide one while it's mounted */
+body.classics-exp-active .global-cursor { display: none; }
+
+/* Touch devices have no real mouse, but some mobile browsers fire a synthetic mousemove at the
+   tapped point after a touchend (for compatibility with mouse-only sites) — CustomCursor reacts
+   to that single event and gets stuck rendered at that spot forever, since no further mousemove
+   ever follows on a touch device. There's no cursor to replace here anyway, so just hide it.
+   Keyed off viewport width, not just `hover: none` — a narrowed desktop browser window still has
+   a real mouse (hover: hover) even at phone-sized widths, and testing via a resized window rather
+   than an actual phone was exactly why the hover-only check didn't hide it. */
+@media (hover: none), (max-width: 767px) {
+  .global-cursor { display: none; }
+}
