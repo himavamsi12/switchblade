@@ -32,11 +32,24 @@ export function CollaboratorsSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="site-px" style={{ background: "#FFFFFF", overflow: "hidden", padding: "clamp(64px,9vw,120px) 0" }}>
+    <section ref={sectionRef} className="site-px" style={{
+      background: "#FFFFFF", overflow: "hidden",
+      // paddingBlock (top/bottom only), not the `padding` shorthand — that used to set
+      // padding-left/right to a literal 0 as well, which silently overrode the site-px
+      // className's own padding-inline (an inline style always wins over a class for the same
+      // property, pseudo-class or not), leaving the card grid flush against the screen edges on
+      // mobile with no left/right breathing room at all.
+      paddingBlock: "clamp(64px,9vw,120px)",
+    }}>
       <h2 style={{
         fontFamily:    "var(--font-barlow)",
         fontWeight:    900,
-        fontSize:      "clamp(44px,7.5vw,100px)",
+        // Floor lowered from 38px and vw bumped from 6.5 to 7 — same overflow the /collaborate
+        // page's own "Let's Collaborate" heading had: "Collaborate" (11 characters, one
+        // unbreakable word, and now with the section's horizontal padding actually applying —
+        // see the paddingBlock fix above — less available width than before) was getting clipped
+        // past the edge on phone viewports at the old floor.
+        fontSize:      "clamp(34px,7vw,64px)",
         letterSpacing: "-0.03em",
         lineHeight:    0.9,
         textTransform: "uppercase",
@@ -107,7 +120,7 @@ export function CollaboratorsSection() {
         <a
           href="/collaborate#pitch"
           className="flex items-center gap-3 rounded-lg text-white font-medium hover:opacity-85 transition-opacity"
-          style={{ background: "#FF802B", fontSize: 14, padding: "8px 8px 8px 16px" }}
+          style={{ background: "#FF802B", fontSize: 14, padding: "8px 8px 8px 16px", fontFamily: "var(--font-archivo)", }}
         >
           Request for collaboration
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, background: "#fff", borderRadius: 6 }}>

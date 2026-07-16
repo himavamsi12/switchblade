@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 const NAV_LINKS = [
   { label: "Home",          href: "/" },
@@ -11,17 +12,63 @@ const NAV_LINKS = [
 ];
 
 export function SiteFooter() {
+  const wordmarkWrapRef = useRef<HTMLDivElement>(null);
+  const wordmarkRef     = useRef<HTMLParagraphElement>(null);
+
+  // Plain font-size (even tuned per-vw) can only approximate "SWITCHBLADE" spanning edge-to-edge
+  // — actual glyph widths don't scale in perfect lockstep with the container across every
+  // viewport width, so it always leaves a gap on one side or overflows on the other at some
+  // breakpoint. Measuring the rendered text's natural width and correcting with a horizontal-only
+  // scaleX guarantees it always exactly fills the wrapper's width, regardless of viewport size —
+  // scaleX only stretches width, so the letter height still tracks the responsive font-size below
+  // untouched (no vertical distortion).
+  useEffect(() => {
+    const wrapper  = wordmarkWrapRef.current;
+    const wordmark = wordmarkRef.current;
+    if (!wrapper || !wordmark) return;
+
+    const fit = () => {
+      wordmark.style.transform = "scaleX(1)";
+      // clientWidth includes the wrapper's own left/right site-px padding, which the text sits
+      // inside of — using it unadjusted overscales past the actual available space and pushes
+      // the wordmark past the right edge (clipped by the site's global overflow-x: hidden).
+      const style        = getComputedStyle(wrapper);
+      const availWidth    = wrapper.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const textWidth    = wordmark.scrollWidth;
+      if (textWidth > 0) {
+        wordmark.style.transform = `scaleX(${availWidth / textWidth})`;
+      }
+    };
+
+    fit();
+    // The very first `fit()` call can run before the custom Barlow-replacement local font
+    // (loaded via next/font/local) has finished swapping in — `scrollWidth` at that point still
+    // reflects the fallback font's (narrower) glyph metrics, so the computed scale undershoots
+    // and leaves a gap on the right once the real font paints in. Refitting once fonts.ready
+    // resolves catches that swap.
+    let cancelled = false;
+    document.fonts?.ready.then(() => { if (!cancelled) fit(); });
+
+    const ro = new ResizeObserver(fit);
+    ro.observe(wrapper);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, []);
+
   return (
-    <footer className="site-px" style={{
-      background: "linear-gradient(180deg, #FFFFFF 3.2%, #FFFFFF 5.4%, #E8EEF9 12.7%, #A8BCE6 26.3%, #7E9ADB 38.8%, #5174CC 55%, #2E51C0 75.8%, #143BB2 96%)",
-      overflow:   "hidden",
-      position:   "relative",
-      paddingTop: "clamp(64px,9vw,120px)",
-    }}>
+    <footer
+      // Mobile floor bumped to 80px (max-md, below Tailwind's 768px breakpoint): the
+      // clamp(64px,9vw,120px) this used everywhere gave phones only ~64-70px of top space before
+      // the "You got this" line — desktop (md: and up) keeps the original clamp untouched.
+      className="site-px max-md:pt-20 md:pt-[clamp(64px,9vw,120px)]"
+      style={{
+        background: "linear-gradient(180deg, #FFFFFF 2.2%, #E8EEF9 7.7%, #A8BCE6 26.3%, #7E9ADB 38.8%, #5174CC 55%, #2E51C0 75.8%, #143BB2 96%)",
+        overflow:   "hidden",
+        position:   "relative",
+      }}>
 
       <div className="flex items-start justify-between flex-wrap" style={{ gap: 32, marginBottom: "clamp(48px,7vw,96px)" }}>
         <p style={{
-          fontFamily:    "var(--font-barlow)",
+          fontFamily:    "var(--font-archivo)",
           fontWeight:    900,
           fontSize:      "clamp(18px,1.8vw,24px)",
           lineHeight:    1.25,
@@ -32,9 +79,9 @@ export function SiteFooter() {
           You got this.<br />Keep going. <br />Never give up
         </p>
 
-        <div style={{ textAlign: "right" }}>
+        <div style={{ textAlign: "left" }}>
           <p style={{
-            fontFamily:    "var(--font-ibm-mono)",
+            fontFamily:    "var(--font-archivo)",
             fontWeight:    700,
             fontSize:      12,
             letterSpacing: "0.06em",
@@ -47,7 +94,7 @@ export function SiteFooter() {
           <a
             href="mailto:hello@switchblade.com"
             style={{
-              fontFamily:     "var(--font-barlow)",
+              fontFamily:     "var(--font-archivo)",
               fontWeight:     700,
               fontSize:       "clamp(18px,1.8vw,24px)",
               letterSpacing:  "0.06em",
@@ -59,7 +106,7 @@ export function SiteFooter() {
             onMouseEnter={e => ((e.currentTarget as HTMLElement).style.opacity = "0.7")}
             onMouseLeave={e => ((e.currentTarget as HTMLElement).style.opacity = "1")}
           >
-            HELLO@SWITCHBLADE.COM
+            HELLO@WEARESWITCHBLADE.COM
           </a>
         </div>
       </div>
@@ -121,29 +168,33 @@ export function SiteFooter() {
         </div>
       </div>
 
-      <p
-        className="site-px"
-        style={{
-          fontFamily:    "var(--font-barlow)",
-          fontWeight:    900,
-          // Floor lowered from 48px: at 12vw that used to hit its floor on any viewport
-          // narrower than ~400px, forcing "SWITCHBLADE" to a fixed 48px in a single
-          // `nowrap` line that no longer fit a phone-width viewport and got clipped by
-          // the site's global `overflow-x: hidden`. 28px still reads as a watermark at
-          // phone widths while actually fitting.
-          fontSize:      "clamp(28px,12vw,180px)",
-          letterSpacing: "-0.02em",
-          textTransform: "uppercase",
-          color:         "#ffffff",
-          whiteSpace:    "nowrap",
-          textAlign:     "center",
-          lineHeight:    1,
-          userSelect:    "none",
-          pointerEvents: "none",
-        }}
-      >
-        SWITCHBLADE
-      </p>
+      <div ref={wordmarkWrapRef} style={{ overflow: "hidden" }}>
+        <p
+          ref={wordmarkRef}
+          style={{
+            fontFamily:    "var(--font-barlow)",
+            fontWeight:    800,
+            // Floor lowered from 48px: at 12vw that used to hit its floor on any viewport
+            // narrower than ~400px, forcing "SWITCHBLADE" to a fixed 48px in a single
+            // `nowrap` line that no longer fit a phone-width viewport and got clipped by
+            // the site's global `overflow-x: hidden`. 28px still reads as a watermark at
+            // phone widths while actually fitting. The scaleX fit-to-width above (see
+            // useEffect) then stretches/compresses this exactly to the wrapper's width.
+            fontSize:      "clamp(28px,12vw,138px)",
+            letterSpacing: "-0.02em",
+            textTransform: "uppercase",
+            color:         "#ffffff",
+            whiteSpace:    "nowrap",
+            display:       "inline-block",
+            transformOrigin: "left center",
+            lineHeight:    1,
+            userSelect:    "none",
+            pointerEvents: "none",
+          }}
+        >
+          SWITCHBLADE
+        </p>
+      </div>
 
       <div style={{
         display:        "flex",

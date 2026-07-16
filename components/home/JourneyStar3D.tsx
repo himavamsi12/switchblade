@@ -80,12 +80,30 @@ function GlbModel({ mode, align, speed }: { mode: StarMode; align: StarAlign; sp
 }
 
 export function JourneyStar3D({ mode, align = "center", className = "", speed = 0.55 }: { mode: StarMode; align?: StarAlign; className?: string; speed?: number }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     nudgeCanvasResize();
+
+    // BrandJourney animates this component's own wrapper width via a CSS transition (sliding
+    // between the "active"/"side" card sizes) rather than remounting it — nudgeCanvasResize's
+    // two fixed-delay dispatches (on mount, then 100ms/400ms after) only correct the canvas's
+    // render buffer at two sparse checkpoints, not throughout that ~550ms transition, so the
+    // model briefly rendered at a stale (small) size before snapping to fit once a checkpoint
+    // caught up. A ResizeObserver on this wrapper fires on every actual size change instead —
+    // real time, every frame of the transition — so the Three.js canvas stays in sync
+    // continuously instead of catching up in two visible jumps.
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   return (
-    <div className={className} style={{ width: "100%", height: "100%" }}>
+    <div ref={wrapRef} className={className} style={{ width: "100%", height: "100%" }}>
       <Canvas camera={{ position: [0, 0, 5], fov: 42 }} gl={{ antialias: true, alpha: true }} dpr={[1, 1.75]}>
         <ambientLight intensity={0.4} />
         <directionalLight position={[4, 8, 4]} intensity={2.4} color="#FFFFFF" />

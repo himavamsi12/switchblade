@@ -8,10 +8,28 @@ import { SparkleMark } from "@/components/shared/SparkleMark";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/classics", label: "Classics" },
-  { href: "/membership", label: "Shop" },
+  { href: "/#origins-section", label: "Shop" },
 ] as const;
 
 export type SiteNavVariant = "dark" | "light";
+
+// Read by OriginsSection — Shop needs to land on the homepage, auto-open the "Read More" story,
+// scroll to the Cosmos paragraph, and highlight it. Two separate signals, because Shop can be
+// clicked in two different situations that need different handling:
+// - From another page (Classics, Collaborate): Link does a full navigation, so OriginsSection
+//   mounts fresh. sessionStorage survives that hard reload the same way a URL hash does, unlike
+//   React state, which the reload would just reset — checked once on mount.
+// - Already on the homepage: Next.js's <Link> does a client-side hash-scroll WITHOUT a full
+//   reload, so OriginsSection never remounts and a mount-only check would silently never fire.
+//   The custom event covers this — OriginsSection listens for it live the whole time it's
+//   mounted, no reload required.
+export const SHOP_HIGHLIGHT_KEY = "sb-shop-highlight-cosmos";
+export const SHOP_HIGHLIGHT_EVENT = "sb:shop-highlight-cosmos";
+
+function triggerShopHighlight() {
+  sessionStorage.setItem(SHOP_HIGHLIGHT_KEY, "1");
+  window.dispatchEvent(new Event(SHOP_HIGHLIGHT_EVENT));
+}
 
 /**
  * Standard site navbar — shared across Home, Classics, and Collaborate so all three render
@@ -39,7 +57,12 @@ export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
   // white content underneath.
   useEffect(() => {
     if (light) return;
-    const onScroll = () => setScrolled(window.scrollY > 0);
+    // Threshold of 4px rather than a bare > 0: some mobile browsers report a tiny non-zero
+    // scrollY on initial paint (address-bar collapse/URL-bar quirks), which flipped this solid
+    // even at rest — visibly wrong on pages like Collaborate whose hero's top color (#0C40BE)
+    // doesn't match this bar's solid scrolled color (#1130A2), instead of the intended
+    // transparent-over-hero look at the top of the page.
+    const onScroll = () => setScrolled(window.scrollY > 4);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -59,7 +82,7 @@ export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
           clear all of that so the shared nav isn't buried under Classics-page-only UI. Homepage
           and Collaborate have nothing near that z-index, so this is a no-op there. */}
       <div
-        className={"fixed top-0 inset-x-0 z-[1200] site-px flex items-center justify-between" + (light ? " border-b border-black/8" : "")}
+        className={"absolute top-0 inset-x-0 z-[1200] site-px flex items-center justify-between" + (light ? " border-b border-black/8" : "")}
         style={{
           height: 72,
           background: light ? "#ffffff" : scrolled ? "#1130A2" : "transparent",
@@ -83,6 +106,7 @@ export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
             <Link
               key={l.href}
               href={l.href}
+              onClick={l.label === "Shop" ? triggerShopHighlight : undefined}
               className={isActive(l.href) ? activeLinkColor : linkColor}
               style={{ fontSize: 14, cursor: light ? "pointer" : undefined }}
             >
@@ -126,10 +150,16 @@ export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
 
         <Link
           href="/collaborate"
-          className="flex items-center gap-2 rounded-lg text-white font-medium hover:opacity-85 transition-opacity"
-          style={{ background: "#FF802B", fontSize: 14, padding: "6px 6px 6px 16px" }}
+          className="flex items-center gap-2 rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-4"
+          style={{ background: "#FF802B", fontSize: 14, paddingTop: 6, paddingRight: 6, paddingBottom: 6, cursor: light ? "pointer" : undefined }}
         >
-          Collab
+          {/* "Collab" label hidden below sm: at phone widths, this button's full width plus the
+              absolutely-centered logo/wordmark next to it don't both fit — they visibly overlap.
+              Icon-only keeps the CTA present without the collision; sm: and up has room for both.
+              Left padding moves to the pl-* classes above so it can shrink to match (6px, same as
+              the button's other padding) when the label is hidden, instead of leaving the 16px
+              gap meant for text next to a now-empty space. */}
+          <span className="hidden sm:inline">Collab</span>
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, background: "#fff", borderRadius: 6 }}>
             <SparkleMark className="h-[16px] w-auto shrink-0 text-[#0F0E0C]" />
           </span>
@@ -138,55 +168,66 @@ export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
 
       <AnimatePresence>
         {menuOpen && (
-          <>
-            {/* Backdrop: tapping outside the panel closes it, same as tapping the hamburger again. */}
-            <motion.div
-              key="site-nav-mobile-menu-backdrop"
-              className="md:hidden fixed inset-0 z-[1190]"
-              onClick={() => setMenuOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: shouldReduceMotion ? 0.01 : 0.2 }}
-              style={{ background: "rgba(0,0,0,0.35)" }}
-            />
-            {/* Left-side drawer: slides in along x (GPU-composited transform), not a top dropdown. */}
-            <motion.div
-              key="site-nav-mobile-menu"
-              className="md:hidden fixed inset-y-0 left-0 z-[1200]"
-              initial={{ x: shouldReduceMotion ? 0 : "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: shouldReduceMotion ? 0 : "-100%" }}
-              transition={{ duration: shouldReduceMotion ? 0.01 : 0.3, ease: [0.22, 1, 0.36, 1] }}
-              style={{
-                background: light ? "#ffffff" : "#0F1E7A",
-                width: "clamp(240px, 72vw, 320px)",
-                paddingTop: 88,
-                paddingLeft: 24,
-                paddingRight: 24,
-                fontFamily: "var(--font-archivo)",
-              }}
-            >
-              <div className="flex flex-col">
-                {LINKS.map((l, i) => (
+          // Full-screen takeover instead of a small side drawer: covers the whole viewport so
+          // the links can be the same scale as the site's own display headings (--font-barlow,
+          // giant uppercase) rather than a generic list of small text links in a narrow panel.
+          <motion.div
+            key="site-nav-mobile-menu"
+            className="md:hidden fixed inset-0 z-[1190] flex flex-col"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: shouldReduceMotion ? 0.01 : 0.25, ease: [0.22, 1, 0.36, 1] }}
+            style={{ background: light ? "#ffffff" : "#0F1E7A" }}
+          >
+            {/* Empty row matching the navbar's own height, so the real hamburger button (still
+                mounted underneath, now showing its X state) lines up exactly over this spot —
+                no second close button needed. */}
+            <div className="site-px" style={{ height: 72, flexShrink: 0 }} />
+
+            <div className="flex-1 flex flex-col justify-center site-px" style={{ marginTop: "-10vh" }}>
+              {LINKS.map((l, i) => (
+                <motion.div
+                  key={l.href}
+                  initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 28 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}
+                  transition={{
+                    duration: shouldReduceMotion ? 0.01 : 0.45,
+                    delay: shouldReduceMotion ? 0 : 0.08 + i * 0.07,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  style={{ overflow: "hidden" }}
+                >
                   <Link
-                    key={l.href}
                     href={l.href}
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      if (l.label === "Shop") triggerShopHighlight();
+                    }}
                     className={
+                      "block uppercase transition-opacity hover:opacity-70" +
                       (isActive(l.href)
-                        ? (light ? "text-[#0456DD] font-medium" : "text-white font-medium")
-                        : (light ? "text-[#090909] font-normal" : "text-white/80 font-normal")) +
-                      (i < LINKS.length - 1 ? (light ? " border-b border-black/10" : " border-b border-white/10") : "")
+                        ? (light ? " text-[#0456DD]" : " text-[#FF802B]")
+                        : (light ? " text-[#090909]" : " text-white"))
                     }
-                    style={{ fontSize: 16, padding: "14px 0" }}
+                    style={{
+                      fontFamily: "var(--font-barlow)", fontWeight: 800,
+                      fontSize: "clamp(32px,10vw,56px)", lineHeight: 1.15, letterSpacing: "-0.02em",
+                    }}
                   >
                     {l.label}
                   </Link>
-                ))}
-              </div>
-            </motion.div>
-          </>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* No separate Collab CTA here — the header row (hamburger/logo/Collab) stays
+                mounted above this overlay (z-[1200] vs this overlay's z-[1190]) the whole time
+                it's open, so its Collab button is already visible; repeating it here would just
+                be a duplicate. */}
+            <div style={{ height: 24, flexShrink: 0 }} />
+          </motion.div>
         )}
       </AnimatePresence>
     </>

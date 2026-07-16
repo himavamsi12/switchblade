@@ -38,7 +38,10 @@ export function UniquenessReveal() {
             // glyphs relative to its em box, so that same tight line-height clipped the tops of
             // the letters against the line box (visible as a flat-sheared cut across S/W/T/H/etc
             // at this component's giant scale). 0.92 gives the glyphs enough vertical room.
-            style={{ fontSize: "clamp(60px, 15vw, 106px)", letterSpacing: "-0.04em", lineHeight: 0.92 }}
+            // Floor/slope lowered from 60px/15vw: that sizing let "SWITCHBLADE" (11 characters,
+            // bold) grow wider than a phone viewport itself, overflowing past both edges of this
+            // container's overflow-hidden instead of just reading as a big display word.
+            style={{ fontSize: "clamp(40px, 10vw, 106px)", letterSpacing: "-0.04em", lineHeight: 0.92 }}
           >
             <SweepText tone="dark" color="#0D0D0D">
               SWITCHBLADE

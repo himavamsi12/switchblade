@@ -23,7 +23,14 @@ body {
      font-family instead of setting fontFamily: var(--font-barlow) explicitly. */
   font-family: var(--font-barlow), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* clip, not hidden: they visually do the same thing here (cut off horizontal overflow), but
+     `hidden` turns body into a potential scroll container, and Chrome on Android disables the
+     pull-to-refresh gesture site-wide when body/html has that — which is exactly what "can't
+     hard-drag refresh on mobile" reports were. `clip` clips without creating a scroll container,
+     so the native gesture keeps working. The `hidden` line stays first as a fallback for old
+     browsers that don't know `clip` (the cascade takes the last understood value). */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* ── Merigrove-style display type ──

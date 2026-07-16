@@ -182,6 +182,21 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
   const detailBodyRef  = useRef<HTMLDivElement>(null);
   const detailPrevRef  = useRef<HTMLButtonElement>(null);
   const detailNextRef  = useRef<HTMLButtonElement>(null);
+  const detailInnerRef = useRef<HTMLDivElement>(null);
+  const detailCardRef  = useRef<HTMLDivElement>(null);
+  // Mobile-only peek cards (see classics-experience.css .detail__card--ghost) — real, full
+  // cards showing the prev/next project, not a decorative sliver, so the swipe reveals actual
+  // content sliding in rather than a placeholder that gets replaced after the fact.
+  const detailGhostPrevRef = useRef<HTMLDivElement>(null);
+  const detailGhostPrevImgRef = useRef<HTMLImageElement>(null);
+  const detailGhostPrevTitleRef = useRef<HTMLHeadingElement>(null);
+  const detailGhostPrevBadgeRef = useRef<HTMLSpanElement>(null);
+  const detailGhostPrevBodyRef = useRef<HTMLDivElement>(null);
+  const detailGhostNextRef = useRef<HTMLDivElement>(null);
+  const detailGhostNextImgRef = useRef<HTMLImageElement>(null);
+  const detailGhostNextTitleRef = useRef<HTMLHeadingElement>(null);
+  const detailGhostNextBadgeRef = useRef<HTMLSpanElement>(null);
+  const detailGhostNextBodyRef = useRef<HTMLDivElement>(null);
   const detailThumbsRef     = useRef<HTMLDivElement>(null);
   const detailThumbTrackRef = useRef<HTMLDivElement>(null);
   const detailThumbPrevRef  = useRef<HTMLButtonElement>(null);
@@ -196,6 +211,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
   const dockRef   = useRef<HTMLDivElement>(null);
   const expSegRef = useRef<HTMLDivElement>(null);
+  const randomImageBtnRef = useRef<HTMLButtonElement>(null);
 
   const openContactRef = useRef<() => void>(() => {});
   useImperativeHandle(ref, () => ({ openContact: () => openContactRef.current() }), []);
@@ -320,7 +336,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshStandardMaterial({ color: new THREE.Color("#cdd9ef"), metalness: 1, roughness: 0.1, envMapIntensity: 2.0, side: THREE.DoubleSide }); });
         const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z) || 1;
-        m.scale.setScalar(3.4 / maxDim);
+        m.scale.setScalar(4.6 / maxDim);
         const ctr = new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3());
         m.position.sub(ctr);
         grp.add(m);
@@ -503,6 +519,44 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
+      // Mobile gets its own layout entirely, not just a scaled-down version of desktop's. The
+      // desktop scatter (3 random-width columns + random rotation) relies on having a wide
+      // canvas for those random offsets to land without touching each other — compressed onto a
+      // phone-width screen, the same randomness has nowhere near enough room, so cards collided
+      // and read as one merged mess. Mobile instead lays every image out one per row, in strict
+      // document order, alternating left/right — no randomness, no overlap possible by
+      // construction, since each row gets its own fixed vertical slot.
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        const rowH = 210;
+        let top = 190;
+        allProjects.forEach((p, i) => {
+          const alignRight = i % 2 === 1;
+          const w = Math.min(180, Math.round(window.innerWidth * 0.48));
+          const card = document.createElement("button");
+          card.className = "pg-card";
+          card.style.top = top + "px";
+          card.style.width = w + "px";
+          if (alignRight) card.style.right = "6%"; else card.style.left = "6%";
+          // .pg-card__title's default CSS anchors it to the card's RIGHT edge (right:2px) —
+          // fine for desktop's scattered cards, but on mobile's left-positioned cards that put
+          // the title floating away from the image's own left edge instead of sitting flush
+          // above it. Right-positioned cards keep the default (their right edge already lines
+          // up); left-positioned cards get the title anchored to their left edge instead.
+          const titleStyle = alignRight ? "" : ' style="right:auto;left:2px;text-align:left;"';
+          card.innerHTML = `<img class="pg-card__img" src="${p.img}" alt="${p.title}">
+            <span class="pg-card__cta">CLICK TO SEE</span>
+            <span class="pg-card__title"${titleStyle}>/${p.title.toUpperCase()}</span>`;
+          const onClick = () => { if (!detailOpen) openDetail(p, card); };
+          card.addEventListener("click", onClick);
+          pgCardCleanups.push(() => card.removeEventListener("click", onClick));
+          stage.appendChild(card);
+          top += rowH;
+        });
+        stage.style.height = top + 160 + "px";
+        return;
+      }
+
       const cols = 3, colW = 100 / cols, rowH = 360;
       let maxBottom = 0;
       allProjects.forEach((p, i) => {
@@ -639,6 +693,17 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     contactEl?.addEventListener("click", onContactBackdropClick);
     const contactCloseBtn = contactEl?.querySelector<HTMLButtonElement>(".contact__close");
     contactCloseBtn?.addEventListener("click", onContactClose);
+
+    // Reuses the same openDetail FLIP-animation path a panel click uses — the detail view
+    // "grows" from this button's own position instead of a project thumbnail's, so the popup
+    // still animates in consistently rather than just appearing.
+    const randomImageBtn = randomImageBtnRef.current;
+    const onRandomImageClick = () => {
+      if (detailOpen || !randomImageBtn || allProjects.length === 0) return;
+      const proj = allProjects[Math.floor(Math.random() * allProjects.length)];
+      openDetail(proj, randomImageBtn);
+    };
+    randomImageBtn?.addEventListener("click", onRandomImageClick);
     const contactForm = contactEl?.querySelector<HTMLFormElement>(".contact__form");
     contactForm?.addEventListener("submit", onContactFormSubmit as EventListener);
 
@@ -647,6 +712,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     let currentProjectIndex = 0;
     let currentGalleryImages: string[] = [];
     let currentThumbIndex = 0;
+    let autoplayTimer: number | null = null;
     const _v3 = new THREE.Vector3();
 
     function rectFromMesh(mesh: PanelMesh) {
@@ -688,6 +754,41 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       track.children[idx]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
     }
 
+    // Auto-advances multi-image galleries one image at a time while the detail view is open —
+    // restarted (not just left running) after every manual navigation (thumb click, prev/next,
+    // swipe) so the next auto-advance is always a full interval away from whatever the visitor
+    // just did, instead of firing awkwardly right on top of it.
+    function stopAutoplay() {
+      if (autoplayTimer !== null) { window.clearInterval(autoplayTimer); autoplayTimer = null; }
+    }
+    function startAutoplay() {
+      stopAutoplay();
+      if (currentGalleryImages.length <= 1) return;
+      autoplayTimer = window.setInterval(() => {
+        selectThumb((currentThumbIndex + 1) % currentGalleryImages.length);
+      }, 3200);
+    }
+
+    // Mobile-only peek cards (see .detail__card--ghost in classics-experience.css) — populates
+    // the two real, full ghost cards flanking the active one with the actual prev/next project's
+    // content, so the swipe reveals genuine cards instead of a placeholder. Cheap to call
+    // unconditionally (openDetail/showAdjacentProject/the swipe commit all already know
+    // currentProjectIndex at the point they call this); the elements are display:none on desktop
+    // so populating them there is inert.
+    function updateGhosts() {
+      if (allProjects.length === 0) return;
+      const prevProj = allProjects[(currentProjectIndex - 1 + allProjects.length) % allProjects.length];
+      const nextProj = allProjects[(currentProjectIndex + 1) % allProjects.length];
+      if (detailGhostPrevImgRef.current) detailGhostPrevImgRef.current.src = prevProj.img;
+      if (detailGhostPrevTitleRef.current) detailGhostPrevTitleRef.current.textContent = "/" + prevProj.title.toUpperCase();
+      if (detailGhostPrevBadgeRef.current) detailGhostPrevBadgeRef.current.textContent = prevProj.cat.toUpperCase();
+      if (detailGhostPrevBodyRef.current) detailGhostPrevBodyRef.current.innerHTML = detailBodyHtml(prevProj.body);
+      if (detailGhostNextImgRef.current) detailGhostNextImgRef.current.src = nextProj.img;
+      if (detailGhostNextTitleRef.current) detailGhostNextTitleRef.current.textContent = "/" + nextProj.title.toUpperCase();
+      if (detailGhostNextBadgeRef.current) detailGhostNextBadgeRef.current.textContent = nextProj.cat.toUpperCase();
+      if (detailGhostNextBodyRef.current) detailGhostNextBodyRef.current.innerHTML = detailBodyHtml(nextProj.body);
+    }
+
     function renderThumbs(proj: Project) {
       const wrap = detailThumbsRef.current;
       const track = detailThumbTrackRef.current;
@@ -697,6 +798,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       track.innerHTML = "";
       if (currentGalleryImages.length <= 1) {
         wrap.classList.remove("is-visible");
+        stopAutoplay();
         return;
       }
       wrap.classList.add("is-visible");
@@ -709,9 +811,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         im.src = src;
         im.alt = "";
         btn.appendChild(im);
-        btn.addEventListener("click", () => selectThumb(i));
+        btn.addEventListener("click", () => { selectThumb(i); startAutoplay(); });
         track.appendChild(btn);
       });
+      startAutoplay();
     }
 
     function openDetail(proj: Project, src: PanelMesh | HTMLElement) {
@@ -725,6 +828,15 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       detailBadgeRef.current.textContent = proj.cat.toUpperCase();
       detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
       renderThumbs(proj);
+      updateGhosts();
+      // Safety reset — guards against opening a fresh detail view while the 3-card group from a
+      // PREVIOUS mobile swipe session was left mid-transform for any reason (e.g. the popup was
+      // closed mid-drag).
+      [detailGhostPrevRef.current, detailCardRef.current, detailGhostNextRef.current].forEach(el => {
+        if (!el) return;
+        el.style.transition = "none";
+        el.style.transform = "translateX(0)";
+      });
       detailRef.current?.classList.add("is-open");
       detailRef.current?.setAttribute("aria-hidden", "false");
       canvas.classList.add("is-detail");
@@ -749,6 +861,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     function closeDetail() {
       if (!detailOpen || detailClosing || !currentSource) return;
       detailClosing = true;
+      stopAutoplay();
       detailRef.current?.classList.add("is-closing");
       canvas.classList.remove("is-detail");
 
@@ -790,6 +903,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         detailBadgeRef.current!.textContent = proj.cat.toUpperCase();
         detailBodyRef.current!.innerHTML = detailBodyHtml(proj.body);
         renderThumbs(proj);
+        updateGhosts();
         img.style.opacity = "1";
       }, 150);
     }
@@ -800,12 +914,146 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     detailPrevEl?.addEventListener("click", onDetailPrev);
     detailNextEl?.addEventListener("click", onDetailNext);
 
-    const onThumbPrev = () => selectThumb((currentThumbIndex - 1 + currentGalleryImages.length) % currentGalleryImages.length);
-    const onThumbNext = () => selectThumb((currentThumbIndex + 1) % currentGalleryImages.length);
+    // Card-swipe project navigation (mobile only — the nav arrows are hidden below 820px in
+    // favor of this, see classics-experience.css). Drags all 3 cards (ghost-prev, active,
+    // ghost-next — real DOM elements, not placeholders) together as one rigid row, so the swipe
+    // reveals the ACTUAL neighboring project sliding into view, not a generic peek that gets
+    // replaced afterward. Segmented from the existing per-image gallery swipe below by
+    // touch-start target: starting on .detail__media (the photo itself) is left entirely to that
+    // gallery swipe, so dragging the photo still browses a multi-image gallery without this also
+    // dragging the whole row. Starting anywhere else on a card (padding, title, body text) drags
+    // the row and switches PROJECTS instead.
+    //
+    // Fixed roles, not DOM reordering: detailCardEl is ALWAYS the interactive one (owns
+    // thumbs/gallery-swipe/autoplay), ghost-prev/ghost-next are ALWAYS the flanking previews.
+    // After a committed swipe, the "seamless" illusion comes from timing, not from moving which
+    // element plays which role: right as the group finishes sliding by exactly one card-width,
+    // the ghost that just arrived at center already shows the correct (new) content (it was
+    // populated by updateGhosts() from the START), so rewriting the real active card underneath
+    // it — currently sitting off-center — to match, then instantly snapping the whole group's
+    // transform back to 0, swaps which physical element renders the center pixels without the
+    // rendered PICTURE ever changing. Same trick for the row's other two slots: the outgoing
+    // active card settles exactly into the ghost-prev slot showing its own (still correct, still
+    // unchanged) old content, and ghost-prev/ghost-next are simply repopulated via updateGhosts()
+    // from the new currentProjectIndex before the snap, so every slot is already correct at the
+    // instant the group resets.
+    let cardTouchX = 0, cardTouchY = 0, cardTouchTracking = false, cardDragging = false;
+    const CARD_SWIPE_THRESHOLD = 60;
+    const detailCardEl = detailCardRef.current;
+    const detailInnerEl = detailInnerRef.current;
+    const groupEls = () => [detailGhostPrevRef.current, detailCardRef.current, detailGhostNextRef.current];
+    const setGroupTransform = (x: number, withTransition: boolean) => {
+      groupEls().forEach(el => {
+        if (!el) return;
+        el.style.transition = withTransition ? "transform .3s cubic-bezier(.22,1,.36,1)" : "none";
+        el.style.transform = `translateX(${x}px)`;
+      });
+    };
+    const onCardTouchStart = (e: TouchEvent) => {
+      if (window.innerWidth > 820 || (e.target as HTMLElement).closest(".detail__media")) return;
+      cardTouchX = e.touches[0].clientX;
+      cardTouchY = e.touches[0].clientY;
+      cardTouchTracking = true;
+      cardDragging = false;
+    };
+    const onCardTouchMove = (e: TouchEvent) => {
+      if (!cardTouchTracking) return;
+      const dx = e.touches[0].clientX - cardTouchX;
+      const dy = e.touches[0].clientY - cardTouchY;
+      if (!cardDragging) {
+        // Undecided yet whether this is a horizontal card-swipe or a vertical page scroll —
+        // wait for enough movement to tell, then commit for the rest of this touch.
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        if (Math.abs(dy) > Math.abs(dx)) { cardTouchTracking = false; return; }
+        cardDragging = true;
+      }
+      setGroupTransform(dx, false);
+    };
+    const onCardTouchEnd = (e: TouchEvent) => {
+      if (!cardTouchTracking) return;
+      cardTouchTracking = false;
+      if (!cardDragging || !detailCardEl) return;
+      cardDragging = false;
+      const dx = e.changedTouches[0].clientX - cardTouchX;
+      const step = detailCardEl.getBoundingClientRect().width + 12; // 12 = .detail__inner's gap
+      if (Math.abs(dx) > CARD_SWIPE_THRESHOLD) {
+        const dir: 1 | -1 = dx < 0 ? 1 : -1;
+        setGroupTransform(-dir * step, true);
+        setTimeout(() => {
+          currentProjectIndex = (currentProjectIndex + dir + allProjects.length) % allProjects.length;
+          const proj = allProjects[currentProjectIndex];
+          if (detailImgRef.current) detailImgRef.current.src = proj.img;
+          if (detailTitleRef.current) detailTitleRef.current.textContent = "/" + proj.title.toUpperCase();
+          if (detailBadgeRef.current) detailBadgeRef.current.textContent = proj.cat.toUpperCase();
+          if (detailBodyRef.current) detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
+          renderThumbs(proj);
+          updateGhosts();
+          setGroupTransform(0, false);
+        }, 300);
+      } else {
+        setGroupTransform(0, true);
+      }
+    };
+    detailInnerEl?.addEventListener("touchstart", onCardTouchStart, { passive: true });
+    detailInnerEl?.addEventListener("touchmove", onCardTouchMove, { passive: true });
+    detailInnerEl?.addEventListener("touchend", onCardTouchEnd, { passive: true });
+
+    // Swipe-down-to-close (mobile only) — attached to the whole modal (not just the card row)
+    // so it also catches swipes starting on the backdrop/ghost peeks, not just the active card.
+    // Independent of the horizontal card-swipe above: that one already bails out the instant a
+    // gesture reads as more vertical than horizontal, so there's no conflict — this tracker
+    // picks up exactly the gestures the other one ignores.
+    let vSwipeX = 0, vSwipeY = 0, vSwipeTracking = false;
+    const CLOSE_SWIPE_THRESHOLD = 90;
+    const onDetailVSwipeStart = (e: TouchEvent) => {
+      if (window.innerWidth > 820) return;
+      vSwipeX = e.touches[0].clientX;
+      vSwipeY = e.touches[0].clientY;
+      vSwipeTracking = true;
+    };
+    const onDetailVSwipeEnd = (e: TouchEvent) => {
+      if (!vSwipeTracking) return;
+      vSwipeTracking = false;
+      const dx = e.changedTouches[0].clientX - vSwipeX;
+      const dy = e.changedTouches[0].clientY - vSwipeY;
+      // Downward only (dy > 0, not just |dy|) and clearly more vertical than horizontal — a
+      // diagonal flick during a horizontal card-swipe shouldn't also close the popup.
+      if (dy > CLOSE_SWIPE_THRESHOLD && dy > Math.abs(dx)) closeDetail();
+    };
+    const detailElForVSwipe = detailRef.current;
+    detailElForVSwipe?.addEventListener("touchstart", onDetailVSwipeStart, { passive: true });
+    detailElForVSwipe?.addEventListener("touchend", onDetailVSwipeEnd, { passive: true });
+
+    const onThumbPrev = () => { selectThumb((currentThumbIndex - 1 + currentGalleryImages.length) % currentGalleryImages.length); startAutoplay(); };
+    const onThumbNext = () => { selectThumb((currentThumbIndex + 1) % currentGalleryImages.length); startAutoplay(); };
     const detailThumbPrevEl = detailThumbPrevRef.current;
     const detailThumbNextEl = detailThumbNextRef.current;
     detailThumbPrevEl?.addEventListener("click", onThumbPrev);
     detailThumbNextEl?.addEventListener("click", onThumbNext);
+
+    // Swipe-through-gallery on touch devices — separate from the desktop prev/next arrows, this
+    // lets a finger-drag on the image itself step through a multi-image gallery (not between
+    // different projects, which is what the outer detail__nav arrows already do).
+    let galleryTouchX = 0, galleryTouchY = 0, galleryTouchActive = false;
+    const detailImgEl = detailImgRef.current;
+    const onGalleryTouchStart = (e: TouchEvent) => {
+      if (currentGalleryImages.length <= 1) return;
+      galleryTouchX = e.touches[0].clientX;
+      galleryTouchY = e.touches[0].clientY;
+      galleryTouchActive = true;
+    };
+    const onGalleryTouchEnd = (e: TouchEvent) => {
+      if (!galleryTouchActive) return;
+      galleryTouchActive = false;
+      const dx = e.changedTouches[0].clientX - galleryTouchX;
+      const dy = e.changedTouches[0].clientY - galleryTouchY;
+      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx < 0) selectThumb((currentThumbIndex + 1) % currentGalleryImages.length);
+      else selectThumb((currentThumbIndex - 1 + currentGalleryImages.length) % currentGalleryImages.length);
+      startAutoplay();
+    };
+    detailImgEl?.addEventListener("touchstart", onGalleryTouchStart, { passive: true });
+    detailImgEl?.addEventListener("touchend", onGalleryTouchEnd, { passive: true });
 
     const onCanvasClick = (ev: MouseEvent) => {
       if (detailOpen || playgroundOn) return;
@@ -828,7 +1076,21 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     };
     window.addEventListener("keydown", onKeydown);
     const detailEl = detailRef.current;
-    const onDetailBackdropClick = (e: MouseEvent) => { if (e.target === detailEl) closeDetail(); };
+    // Was `e.target === detailEl` — only matched a tap that landed on the outer modal's own box
+    // directly, never on any descendant. On mobile the 3-card row (see the swipe carousel below)
+    // spans the full 100vw width via .detail__inner, so there was no gap left where a tap could
+    // ever hit detailEl itself — "tap empty space to close" was effectively dead. The ghost peek
+    // cards look empty (blank corners) but are still real .detail__card elements sitting inside
+    // .detail__inner, so a tap there resolved to .detail__inner as e.target (ghosts have
+    // pointer-events:none), never detailEl — same dead-end. Broadened to: close on ANY tap that
+    // isn't on the real (non-ghost) active card or the desktop nav buttons — i.e. backdrop, the
+    // ghost peeks, and .detail__inner's own empty space all close it now, matching what visually
+    // reads as "empty" to someone tapping there.
+    const onDetailBackdropClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest(".detail__card:not(.detail__card--ghost)") || target.closest(".detail__nav")) return;
+      closeDetail();
+    };
     detailEl?.addEventListener("click", onDetailBackdropClick);
 
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -960,14 +1222,23 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       canvas.removeEventListener("click", onCanvasClick);
       detailPrevEl?.removeEventListener("click", onDetailPrev);
       detailNextEl?.removeEventListener("click", onDetailNext);
+      detailInnerEl?.removeEventListener("touchstart", onCardTouchStart);
+      detailInnerEl?.removeEventListener("touchmove", onCardTouchMove);
+      detailInnerEl?.removeEventListener("touchend", onCardTouchEnd);
+      detailElForVSwipe?.removeEventListener("touchstart", onDetailVSwipeStart);
+      detailElForVSwipe?.removeEventListener("touchend", onDetailVSwipeEnd);
       detailThumbPrevEl?.removeEventListener("click", onThumbPrev);
       detailThumbNextEl?.removeEventListener("click", onThumbNext);
+      detailImgEl?.removeEventListener("touchstart", onGalleryTouchStart);
+      detailImgEl?.removeEventListener("touchend", onGalleryTouchEnd);
+      stopAutoplay();
       canvas.removeEventListener("webglcontextlost", onContextLost);
       canvas.removeEventListener("webglcontextrestored", onContextRestored);
       sortBtnEl?.removeEventListener("click", onSortBtnClick);
       contactEl?.removeEventListener("click", onContactBackdropClick);
       contactCloseBtn?.removeEventListener("click", onContactClose);
       contactForm?.removeEventListener("submit", onContactFormSubmit as EventListener);
+      randomImageBtn?.removeEventListener("click", onRandomImageClick);
       tagCleanups.forEach(fn => fn());
       sortItemCleanups.forEach(fn => fn());
       segCleanups.forEach(fn => fn());
@@ -1036,11 +1307,31 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
       <div className="detail" ref={detailRef} aria-hidden="true">
         <div className="detail__esc">[ESC] to close</div>
-        <div className="detail__inner">
+        <div className="detail__inner" ref={detailInnerRef}>
           <button type="button" className="detail__nav" ref={detailPrevRef} aria-label="Previous">
             <img src="/classics/icons/left-arrow.svg" alt="" width={20} height={18} />
           </button>
-          <div className="detail__card">
+
+          {/* Mobile-only peek card, real content (not a decorative sliver) — see
+              .detail__card--ghost in classics-experience.css (display:none on desktop) and
+              updateGhosts()/the swipe handlers below. pointer-events:none: it's not
+              interactive, purely a visual preview of what a swipe reveals. */}
+          <div className="detail__card detail__card--ghost" ref={detailGhostPrevRef} aria-hidden="true">
+            <div className="detail__mediaCol">
+              <div className="detail__media">
+                <img className="detail__img" ref={detailGhostPrevImgRef} alt="" />
+              </div>
+            </div>
+            <div className="detail__content">
+              <h2 className="detail__title" ref={detailGhostPrevTitleRef} />
+              <div>
+                <span className="detail__badge" ref={detailGhostPrevBadgeRef} />
+                <div className="detail__body" ref={detailGhostPrevBodyRef} />
+              </div>
+            </div>
+          </div>
+
+          <div className="detail__card" ref={detailCardRef}>
             <div className="detail__mediaCol">
               <div className="detail__media">
                 <img className="detail__img" ref={detailImgRef} alt="" />
@@ -1063,6 +1354,22 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               </div>
             </div>
           </div>
+
+          <div className="detail__card detail__card--ghost" ref={detailGhostNextRef} aria-hidden="true">
+            <div className="detail__mediaCol">
+              <div className="detail__media">
+                <img className="detail__img" ref={detailGhostNextImgRef} alt="" />
+              </div>
+            </div>
+            <div className="detail__content">
+              <h2 className="detail__title" ref={detailGhostNextTitleRef} />
+              <div>
+                <span className="detail__badge" ref={detailGhostNextBadgeRef} />
+                <div className="detail__body" ref={detailGhostNextBodyRef} />
+              </div>
+            </div>
+          </div>
+
           <button type="button" className="detail__nav" ref={detailNextRef} aria-label="Next">
             <img src="/classics/icons/right-arrow.svg" alt="" width={20} height={18} />
           </button>
@@ -1111,12 +1418,21 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       <div className="sb-dock" ref={dockRef} aria-hidden="true">
         <span className="sb-dock__exp">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="3" stroke="#111" strokeWidth="1.6" /></svg>
-          Experience Shift
+          <span className="sb-dock__exp-label">Experience Shift</span>
         </span>
         <div className="sb-seg" ref={expSegRef}>
           <button className="sb-seg__btn is-active" data-exp="random">Random</button>
           <button className="sb-seg__btn" data-exp="playground">Playground</button>
         </div>
+        <button
+          ref={randomImageBtnRef}
+          type="button"
+          className="sb-dock__random"
+          aria-label="Show a random image"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#111" strokeWidth="1.6" /><circle cx="8.5" cy="8.5" r="1.4" fill="#111" /><circle cx="15.5" cy="8.5" r="1.4" fill="#111" /><circle cx="8.5" cy="15.5" r="1.4" fill="#111" /><circle cx="15.5" cy="15.5" r="1.4" fill="#111" /><circle cx="12" cy="12" r="1.4" fill="#111" /></svg>
+          <span className="sb-dock__random-label">Surprise Me</span>
+        </button>
       </div>
     </div>
   );

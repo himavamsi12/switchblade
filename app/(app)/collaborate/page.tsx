@@ -15,22 +15,24 @@ const Star3D = dynamic(
 );
 
 const VISION_TESTS = [
-  { num: "(03)", q: "Does this make both parties bEtter?", icon: "/collaborate/vision-icon-03.svg", border: "#0456DD" },
+  { num: "(03)", q: "Does this make both partners better?", icon: "/collaborate/vision-icon-03.svg", border: "#0456DD" },
   { num: "(04)", q: "Does this help people get inspired?", icon: "/collaborate/vision-icon-04.svg", border: "#C7D1E2" },
 ] as const;
 
 const STANDARD = [
-  { num: "(01)", tag: "Quality",  title: "/Craft first",       desc: "We partner for the work, never teh reach. The Object has to be undeniable on its own" },
-  { num: "(02)", tag: "Winning",  title: "/Mutual Elevation",  desc: "Every collaboration must take both names better - not just bigger. Greater than the sum" },
-  { num: "(03)", tag: "Interest", title: "/Cultural fit",      desc: "Shared interests make it fun to work together and explore. Different interests makes it exciting" },
-  { num: "(04)", tag: "Rooted",   title: "/Built to Last",     desc: "Considered objects over fast drops. We make fewer, better things - together" },
+  { num: "(01)", tag: "Quality",  title: "Craft first",       desc: "We partner for the work, never teh reach. The Object has to be undeniable on its own" },
+  { num: "(02)", tag: "Winning",  title: "Mutual Elevation",  desc: "Every collaboration must take both names better - not just bigger. Greater than the sum" },
+  { num: "(03)", tag: "Interest", title: "Cultural fit",      desc: "Shared interests make it fun to work together and explore. Different interests makes it exciting" },
+  { num: "(04)", tag: "Rooted",   title: "Built to Last",     desc: "Considered objects over fast drops. We make fewer, better things - together" },
 ] as const;
 
 const CASES = [
-  { kind: "/Sound & ART", title: "Shared - Archive Capsule",   desc: "A release across sound, image and motion - one story, many media",        chip: "#2755C5" },
-  { kind: "/Object",      title: "One Made-TO-Last Object",    desc: "A single considered product, engineered to outlast trend",                 chip: "#0F0E0C" },
-  { kind: "/Apparel",     title: "Shared - Archive Capsule",   desc: "Limited garments drawn from two design languages, made as one",             chip: "#2755C5" },
+  { kind: "Sound & ART", title: "Shared - Archive Capsule",   desc: "A release across sound, image and motion - one story, many media",        chip: "#2755C5" },
+  { kind: "Object",      title: "One Made-TO-Last Object",    desc: "A single considered product, engineered to outlast trend",                 chip: "#0F0E0C" },
+  { kind: "Apparel",     title: "Shared - Archive Capsule",   desc: "Limited garments drawn from two design languages, made as one",             chip: "#2755C5" },
 ] as const;
+
+const SCENARIO_TEXT = "wins only in one scenario: when what we build together helps people to stay and get inspired";
 
 const PX = "clamp(20px,5vw,80px)";
 const SECTION = "clamp(80px,10vw,160px)";
@@ -41,9 +43,9 @@ function Tag({ children, tone = "dark", pill = false }: { children: React.ReactN
       className="rise"
       style={{
         display: "inline-flex", alignItems: "center", alignSelf: "flex-start", border: `1px solid ${pill ? "#D8D8D8" : tone === "dark" ? "#363636" : "#A3A3A3"}`,
-        borderRadius: pill ? 999 : 6, padding: pill ? "5px 10px" : "4px 6px",
+        borderRadius: pill ? 6 : 6, padding: pill ? "5px 10px" : "4px 6px",
         boxShadow: pill ? "0 2px 4px rgba(0,0,0,0.06)" : "none",
-        fontFamily: "var(--font-ibm-mono)", fontWeight: pill ? 600 : 700,
+        fontFamily: "var(--font-archivo)", fontWeight: pill ? 600 : 700,
         fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: tone === "dark" ? "#363636" : "#444",
       }}
     >
@@ -83,6 +85,28 @@ export default function CollaboratePage() {
             scrollTrigger: { trigger: grp, start: "top 82%" } });
         if (tw.scrollTrigger) triggers.push(tw.scrollTrigger);
       });
+
+      // Color-only scroll scrub for the "wins only in one scenario..." text, word by word —
+      // deliberately NOT a reveal (no opacity/position change, that's what .rise above already
+      // does for the whole paragraph on entry). Animating the words as ONE span changed every
+      // word's color together, all at once, the instant scroll crossed the trigger — reading as
+      // an "immediate" flip rather than a gradual change. A timeline with each word's color tween
+      // staggered across it, scrubbed by a single ScrollTrigger spanning the whole paragraph,
+      // makes each word grey→darken in sequence as you scroll instead of all together.
+      const scenarioWords = gsap.utils.toArray<HTMLElement>(".scenario-dim-word");
+      if (scenarioWords.length) {
+        gsap.set(scenarioWords, { color: "#B5B5B5" });
+        const wordTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: scenarioWords[0].closest("p"),
+            start: "top 75%",
+            end: "top 15%",
+            scrub: true,
+          },
+        });
+        wordTl.to(scenarioWords, { color: "#0D0D0D", ease: "none", stagger: 1 }, 0);
+        if (wordTl.scrollTrigger) triggers.push(wordTl.scrollTrigger);
+      }
 
       gsap.utils.toArray<HTMLElement>(".vision-cards").forEach((grp) => {
         const items = grp.querySelectorAll(".vision-card");
@@ -154,11 +178,19 @@ export default function CollaboratePage() {
 
       {/* ── Hero ── */}
       <section
-        className="relative flex flex-col justify-end overflow-hidden"
+        // Mobile gets its own, more compressed gradient stops than desktop's. This section is
+        // `minHeight` + flow content (not the homepage Hero's fixed `h-screen` with absolutely
+        // positioned content), so on mobile its heavy stacked content (heading + description +
+        // buttons) pushes its ACTUAL height well past one screen. Desktop's stops (white only
+        // reached at 100%) are fine there since the box stays close to 100vh, but on mobile that
+        // same 100%-white stop lands far below the fold — the visible portion never finishes
+        // transitioning to white, reading as the gradient "stopping" mid-blue. Reaching white by
+        // 55% instead keeps the transition complete within roughly one screen's worth of height
+        // regardless of how tall the box actually grows, matching the homepage Hero's look.
+        className="relative flex flex-col justify-end overflow-hidden bg-[linear-gradient(180deg,#0C40BE_0%,#0456DD_15%,#7C97E8_30%,#F4F6FC_45%,#FFFFFF_55%)] md:bg-[linear-gradient(180deg,#0C40BE_0%,#0456DD_28%,#7C97E8_55%,#F4F6FC_82%,#FFFFFF_100%)]"
         style={{
           minHeight: "100vh",
           padding: `112px ${PX} clamp(56px,7vw,96px)`,
-          background: "linear-gradient(180deg,#0C40BE 0%,#0456DD 28%,#7C97E8 55%,#F4F6FC 82%,#FFFFFF 100%)",
         }}
       >
         {/* `maxWidth: 14ch` used to force this onto two lines, but `ch` is measured from the
@@ -170,7 +202,10 @@ export default function CollaboratePage() {
         <h1
           style={{
             fontFamily: "var(--font-barlow)", fontWeight: 900,
-            fontSize: "clamp(44px,7.5vw,110px)", lineHeight: 0.92, letterSpacing: "-0.02em",
+            // Floor lowered from 44px: at that size "Collaborations" (one unbreakable word, 14
+            // characters) rendered wider than a phone viewport's available width, overflowing
+            // and getting clipped by this section's own overflow-hidden (the cut-off "S"/"TIONS").
+            fontSize: "clamp(30px,7.5vw,64px)", lineHeight: 0.92, letterSpacing: "-0.02em",
             textTransform: "uppercase", marginBottom: "clamp(40px,6vw,60px)",
           }}
         >
@@ -188,7 +223,7 @@ export default function CollaboratePage() {
 
           <div className="hero-rise flex flex-col items-start gap-[18px]" style={{ maxWidth: 560, flex: "1 1 420px" }}>
             <p style={{
-              fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(15px,1.5vw,18px)",
+              fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(15px,1.5vw,16px)",
               lineHeight: 1.4, color: "#363636", textTransform: "uppercase",
             }}>
               A major part of <span style={{ color: "#0456DD" }}>Switchblade&apos;s vision</span> is to explore categories and get comfortable with something not yet done. This calls for people/brands to come together and make something together which has not been done yet and explore new boundaries
@@ -221,14 +256,18 @@ export default function CollaboratePage() {
       <section style={{ background: "#FFFFFF", padding: `${SECTION} ${PX}` }}>
         <div className="mx-auto flex flex-col items-center text-center" style={{ maxWidth: 900 }}>
           <div className="rise" style={{ display: "inline-flex", border: "1px solid #363636", borderRadius: 6, padding: "4px 6px", marginBottom: 12 }}>
-            <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "#363636" }}>Vision</span>
+            <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase", color: "#363636" }}>Vision</span>
           </div>
           <h2 className="uppercase" style={{
-            fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(32px,5vw,72px)",
+            fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(32px,5vw,64px)",
             lineHeight: 1, letterSpacing: "-0.02em", width: "100%"
           }}>
-            <SweepText tone="dark" color="#0F0E0C" style={{ display: "inline-block" }}>Every collaboration must pass a </SweepText>
-            <SweepText tone="dark" color="#0456DD" delay={150} style={{ display: "inline-block" }}>single test</SweepText>
+            {/* Non-breaking space (not a plain " ") between "a" and "single": the reference
+                keeps "single" glued to "must pass a" on the same line and only wraps "test"
+                alone onto the next line — a plain space there lets the browser break exactly
+                between "a" and "single" instead, which is the wrong split. */}
+            <SweepText tone="dark" color="#0F0E0C" style={{ display: "inline" }}>{"Every collaboration must pass a "}</SweepText>
+            <SweepText tone="dark" color="#0456DD" delay={150} style={{ display: "inline" }}>single test</SweepText>
           </h2>
         </div>
 
@@ -236,7 +275,10 @@ export default function CollaboratePage() {
           {VISION_TESTS.map((v, i) => (
             <div key={v.num} className="vision-card flex flex-col items-start" style={{
               position: "relative",
-              width: 224, height: 143, padding: "14px 14.835px",
+              // Bumped up from the original fixed 224x143 — clamp keeps it from overshooting on
+              // very wide screens while giving noticeably more room than the old fixed size
+              // everywhere else. Height follows the same ~1.566:1 ratio as the original 224/143.
+              width: "clamp(224px,26vw,320px)", height: "clamp(143px,17vw,205px)", padding: "18px 19px",
               marginTop: i % 2 === 1 ? "clamp(24px,3.5vw,56px)" : 0, boxSizing: "border-box",
             }}>
               <div style={{
@@ -247,12 +289,14 @@ export default function CollaboratePage() {
                 WebkitMaskImage: "linear-gradient(to bottom, black 0%, transparent 82%)",
                 maskImage: "linear-gradient(to bottom, black 0%, transparent 82%)",
               }} />
-              <div className="flex flex-col justify-between" style={{ height: "98.28px", width: "100%", boxSizing: "border-box" }}>
-                <div className="flex flex-col gap-[2.5px] uppercase" style={{ color: "#0F0E0C" }}>
-                  <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 7.5 }}>{v.num}</span>
-                  <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 15 }}>{v.q}</span>
+              {/* Was a fixed 98.28px (≈68.7% of the old fixed 143px height) — a percentage keeps
+                  the same proportion now that the card's own height is responsive via clamp. */}
+              <div className="flex flex-col justify-between" style={{ height: "69%", width: "100%", boxSizing: "border-box" }}>
+                <div className="flex flex-col gap-[3px] uppercase" style={{ color: "#0F0E0C" }}>
+                  <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(7.5px,0.85vw,10px)" }}>{v.num}</span>
+                  <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(15px,1.7vw,20px)" }}>{v.q}</span>
                 </div>
-                <Image src={v.icon} alt="" width={30} height={30} />
+                <Image src={v.icon} alt="" width={38} height={38} />
               </div>
             </div>
           ))}
@@ -272,7 +316,12 @@ export default function CollaboratePage() {
             depending on this font's actual glyph widths vs. its "0" glyph. Explicit break instead
             of relying on ch-unit wrapping. */}
         <h2 style={{
-          fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(40px,7vw,96px)",
+          fontFamily: "var(--font-barlow)", fontWeight: 900,
+          // Floor lowered from 40px: same overflow as the Hero heading above — "Collaboration"
+          // (13 characters, one unbreakable word) still didn't fit a phone viewport at 40px and
+          // got clipped by this section's lack of horizontal room (no overflow-hidden here even,
+          // so it just bled into/past the edge instead).
+          fontSize: "clamp(30px,7vw,74px)",
           lineHeight: 0.92, letterSpacing: "-0.02em", textTransform: "uppercase",
           marginBottom: "clamp(48px,6vw,88px)",
         }}>
@@ -281,14 +330,21 @@ export default function CollaboratePage() {
 
         <div className="rise-group grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: "clamp(16px,2vw,28px)" }}>
           {STANDARD.map((s) => (
-            <div key={s.num} className="rise-item" style={{ background: "#fff", padding: "23px 22px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 322 }}>
+            <div key={s.num} className="rise-item" style={{ background: "#fff", padding: "23px 22px", display: "flex", flexDirection: "column", minHeight: 220 }}>
               <div className="flex items-start justify-between">
-                <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 600, fontSize: 16, letterSpacing: "0.04em", textTransform: "uppercase", color: "#0456DD" }}>{s.num}</span>
+                <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 14, letterSpacing: "0.04em", textTransform: "uppercase", color: "#0456DD" }}>{s.num}</span>
                 <Tag tone="light">{s.tag}</Tag>
               </div>
+              {/* Fixed spacer instead of `justify-content: space-between` on the card: with
+                  space-between, the title/desc block's own height (which varies card to card
+                  depending on how many lines its description wraps to) determines how far it
+                  sits from the top, since space-between only pins it flush to the bottom — a
+                  shorter block reads as starting lower than a taller one. A fixed-height spacer
+                  pins every card's title to the same top offset regardless of description length. */}
+              <div style={{ height: "clamp(48px,7vw,72px)" }} />
               <div className="flex flex-col gap-4">
-                <h3 style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 600, fontSize: 24, textTransform: "uppercase", color: "#0F0E0C" }}>{s.title}</h3>
-                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, lineHeight: 1.2, letterSpacing: "-0.015em", color: "#444" }}>{s.desc}</p>
+                <h3 style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 24, textTransform: "uppercase", color: "#0F0E0C" }}>{s.title}</h3>
+                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, lineHeight: 1.35, letterSpacing: "-0.015em", color: "#444" }}>{s.desc}</p>
               </div>
             </div>
           ))}
@@ -299,10 +355,10 @@ export default function CollaboratePage() {
       <section style={{ background: "#FFFFFF", padding: `${SECTION} ${PX}`, overflow: "hidden" }}>
         <div className="flex flex-col items-center text-center" style={{ marginBottom: "clamp(56px,7vw,96px)" }}>
           <div className="rise" style={{ display: "inline-flex", border: "1px solid #D3D3D3", borderRadius: 6, padding: "4px 6px", marginBottom: 8 }}>
-            <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "#444" }}>Introducing</span>
+            <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase", color: "#444" }}>Introducing</span>
           </div>
           <h2 className="uppercase" style={{
-            fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(34px,6vw,88px)",
+            fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(34px,6vw,74px)",
             lineHeight: 0.92, letterSpacing: "-0.02em", maxWidth: "22ch",
           }}>
             <SweepText tone="dark" color="#0F0E0C">Where Craft meets Philosophy</SweepText>
@@ -325,7 +381,7 @@ export default function CollaboratePage() {
               </div>
               <div className="flex flex-col gap-3 uppercase" style={{ paddingBottom: 24 }}>
                 <h3 style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 24, lineHeight: 1.1, letterSpacing: "-0.02em", color: "#0F0E0C" }}>{c.title}</h3>
-                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16, lineHeight: 1.1, letterSpacing: "-0.02em", color: "#444", textTransform: "none" }}>{c.desc}</p>
+                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16, lineHeight: 1.3, letterSpacing: "-0.02em", color: "#444", textTransform: "none" }}>{c.desc}</p>
               </div>
             </article>
           ))}
@@ -340,24 +396,46 @@ export default function CollaboratePage() {
           to more lines and the star's tall aspect-ratio box alone needs ~370-450px. Dropping the
           fixed `height` and keeping only `minHeight` lets the section grow to fit its content
           instead of truncating it, on every viewport. */}
-      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ background: "#FFFFFF", padding: "clamp(40px,5vw,80px) 0", minHeight: "clamp(360px,42vw,600px)" }}>
+      {/* minHeight lowered from clamp(360px,42vw,600px) — that floor, combined with this
+          section's flex justify-content:center, was what was actually forcing the extra
+          top/bottom space (filled with invisible centering slack), NOT the padding above.
+          Lowering it is safe against the clipping bug described above: that was caused by a
+          hard `height` CAP fighting minHeight, not by minHeight's own value — a floor only sets
+          a MINIMUM, so content taller than it (the enlarged star) still grows past it exactly
+          like before. */}
+      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ background: "#FFFFFF", padding: "clamp(12px,1.5vw,24px) 0", minHeight: "clamp(280px,30vw,460px)" }}>
         <p className="rise text-center" style={{
           fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(22px,2.6vw,36px)",
           lineHeight: 1.3, letterSpacing: "-0.02em", color: "#0D0D0D", maxWidth: 700,
         }}>
-          <span style={{ color: "#0456DD" }}>Switchblade</span> wins only in one scenario: when what we build together helps people to stay and get inspired
+          <span style={{ color: "#0456DD" }}>Switchblade</span>{" "}
+          {SCENARIO_TEXT.split(" ").map((word, i) => (
+            <span key={i} className="scenario-dim-word">
+              {word}{i < SCENARIO_TEXT.split(" ").length - 1 ? " " : ""}
+            </span>
+          ))}
         </p>
-        <div className="rise shrink-0" style={{ width: "clamp(250px,10vw,300px)", aspectRatio: "129.133/193.7", marginTop: "clamp(24px,3vw,40px)" }}>
-          <Star3D className="w-full h-full" scale={16.2} cameraZ={28} />
+        <div className="rise shrink-0" style={{ width: "clamp(320px,14vw,420px)", aspectRatio: "129.133/193.7", marginTop: "clamp(24px,3vw,24px)" }}>
+          <Star3D className="w-full h-full" scale={18.2} cameraZ={28} />
         </div>
       </section>
 
       {/* ── Let's collaborate ── */}
-      <section id="pitch" style={{ background: "#FFFFFF", padding: `${SECTION} ${PX}`, scrollMarginTop: 62 }}>
-        <div className="grid gap-16" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))" }}>
+      <section id="pitch" style={{
+        background: "#FFFFFF", paddingLeft: PX, paddingRight: PX,
+        // Top padding reduced from SECTION (clamp(80px,10vw,160px), matching bottom) — this
+        // section sat with too much dead space above "Let's Collaborate" before reaching it.
+        paddingTop: "clamp(40px,5vw,80px)", paddingBottom: SECTION,
+        scrollMarginTop: 62,
+      }}>
+        <div className="grid gap-16 grid-cols-1 lg:grid-cols-[1.35fr_1fr]">
           <div>
             <h2 className="uppercase" style={{
-              fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(40px,7vw,96px)",
+              fontFamily: "var(--font-barlow)", fontWeight: 900,
+              // Floor lowered from 40px: same overflow as the other headings on this page —
+              // "Collaborate" (11 characters, one unbreakable word) still didn't fit a phone
+              // viewport at 40px and got clipped past the edge.
+              fontSize: "clamp(30px,7vw,74px)",
               lineHeight: 0.92, letterSpacing: "-0.02em", marginBottom: "clamp(20px,2.5vw,32px)",
             }}>
               <SweepText tone="dark" color="#0F0E0C">Let&rsquo;s<br />Collaborate</SweepText>
@@ -373,7 +451,7 @@ export default function CollaboratePage() {
 
             <div className="rise flex items-center flex-wrap gap-4" style={{
               border: "1px solid #D9D9D9", borderRadius: 6, padding: "24px 24px 24px 17px",
-              marginTop: "clamp(10px,6vw,20px)",
+              marginTop: "clamp(10px,6vw,20px)", width: "fit-content", maxWidth: "100%",
             }}>
               <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, color: "#929292" }}>
                 Not ready to pitch? Stay in the orbit -

@@ -290,21 +290,25 @@ export function ClassicsGlobeSection() {
         <GlobeCanvas onFormTrigger={fn => { formGlobe.current = fn; }} />
       </div>
 
-      <div style={{
+      {/* These three white-wash layers are sized as percentages tuned for desktop's wide/short
+          aspect ratio — on mobile's much taller portrait viewport, the same percentages leave
+          gaps between the top/bottom bands and the center ellipse where the raw photo grid
+          shows through behind the heading text (unreadable). max-md: variants below give mobile
+          taller bands and a bigger ellipse so the coverage actually reaches the text there;
+          background/height moved from inline style into classNames since inline style can't be
+          overridden by a responsive class (it always wins regardless of breakpoint). */}
+      <div className="max-md:h-[32%] md:h-[22%] max-md:bg-[linear-gradient(to_bottom,#ffffff_0%,rgba(255,255,255,0)_100%)] md:bg-[linear-gradient(to_bottom,#ffffff_0%,rgba(255,255,255,0)_100%)]" style={{
         position: "absolute", top: 0, left: 0, right: 0,
-        height: "22%", zIndex: 8, pointerEvents: "none",
-        background: "linear-gradient(to bottom, #ffffff 0%, rgba(255,255,255,0) 100%)",
+        zIndex: 8, pointerEvents: "none",
       }} />
 
-      <div style={{
+      <div className="max-md:h-[32%] md:h-[22%] max-md:bg-[linear-gradient(to_top,#ffffff_0%,rgba(255,255,255,0)_100%)] md:bg-[linear-gradient(to_top,#ffffff_0%,rgba(255,255,255,0)_100%)]" style={{
         position: "absolute", bottom: 0, left: 0, right: 0,
-        height: "22%", zIndex: 8, pointerEvents: "none",
-        background: "linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0) 100%)",
+        zIndex: 8, pointerEvents: "none",
       }} />
 
-      <div style={{
+      <div className="max-md:bg-[radial-gradient(ellipse_74%_58%_at_50%_50%,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.9)_45%,rgba(255,255,255,0)_82%)] md:bg-[radial-gradient(ellipse_46%_42%_at_50%_50%,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.85)_45%,rgba(255,255,255,0)_78%)]" style={{
         position: "absolute", inset: 0, zIndex: 9, pointerEvents: "none",
-        background: "radial-gradient(ellipse 46% 42% at 50% 50%, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.85) 45%, rgba(255,255,255,0) 78%)",
       }} />
 
       <div
@@ -325,9 +329,10 @@ export function ClassicsGlobeSection() {
           ref={introRef}
           style={{
             display:       "inline-flex",
-            fontFamily:    "var(--font-ibm-mono)",
+            background:    "white",
+            fontFamily:    "var(--font-archivo)",
             fontWeight:    700,
-            fontSize:      "clamp(10px, 0.9vw, 13px)",
+            fontSize:      "clamp(10px, 0.9vw, 14px)",
             letterSpacing: "0.28em",
             textTransform: "uppercase",
             color:         "#444",
@@ -345,8 +350,8 @@ export function ClassicsGlobeSection() {
         <h2
           style={{
             fontFamily:    "var(--font-barlow)",
-            fontWeight:    900,
-            fontSize:      "clamp(40px, 7vw, 96px)",
+            fontWeight:    800,
+            fontSize:      "clamp(40px, 7vw, 74px)",
             lineHeight:    1,
             letterSpacing: "-0.02em",
             textTransform: "uppercase",
@@ -360,9 +365,9 @@ export function ClassicsGlobeSection() {
           ref={descRef}
           style={{
             fontFamily:    "var(--font-archivo)",
-            fontWeight:    500,
-            fontSize:      "clamp(20px, 2.4vw, 30px)",
-            lineHeight:    1.3,
+            fontWeight:    400,
+            fontSize:      "clamp(20px, 2.4vw, 18px)",
+            lineHeight:    1.1,
             letterSpacing: "-0.01em",
             color:         "#333",
             maxWidth:      "560px",

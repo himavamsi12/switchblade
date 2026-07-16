@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { SweepText } from "@/components/shared/SweepText";
+import { SHOP_HIGHLIGHT_EVENT, SHOP_HIGHLIGHT_KEY } from "@/components/shared/SiteNav";
 
 const STORY_LEFT = [
   "There’s a book I was reading, The Creative Act by Rick Rubin. He writes about how good ideas exist around us like signals in the air and the human antenna catches them. When you think of something and see it come to life later through someone else’s hands, you wonder.",
@@ -16,6 +17,34 @@ const STORY_RIGHT = [
   "And if anything about this gives you the courage to begin something you love — something you’ve been carrying too long without acting on — that would be the highest thing this brand could ever achieve.\nMore than any product. More than any collaboration. More than anything.\nThis journey begins now — not fully formed, but fully committed.\nThe vision will take shape across three phases: Cosmos, Classic, and Evolution.\nEach phase is a chapter of 1 to 2 years — of change, growth, and exploration.",
   "We begin with Cosmos. The first products are being built. Apparel comes first.\nTo follow the inspiration and the ongoing research behind what’s being made — explore Switchblade Classics.\nLove you Mom & Dad!",
 ];
+
+// The two paragraphs after the first AGE-11 tag ("Not in a drawer..." through the second
+// AGE-11 tag's trailing "....................."). On desktop these stay inline in the preview,
+// visible without clicking anything. On mobile they're hidden there (see the two usages below)
+// and instead only appear once "Read More" is clicked, at the top of StoryFull — reused as one
+// component so the text/images aren't duplicated between the two spots.
+function StoryContinuation() {
+  return (
+    <>
+      . Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
+      <br />That&rsquo;s reason number one to establish Switchblade.
+      <br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
+      <p style={{ marginTop: "1.4em" }}>
+        I want to be honest from the start  that&rsquo;s the only way I know how to do this.
+        <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.
+        <br />And I owe transparency about something - when I drew this logo at{" "}
+        <Image
+          src="/age-11-tag.png"
+          alt="Age 11"
+          width={182}
+          height={127}
+          style={{ display: "inline-block", verticalAlign: "middle", height: "3.6em", width: "auto" }}
+        />
+        ,.....................
+      </p>
+    </>
+  );
+}
 
 function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
   return (
@@ -38,7 +67,7 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
 
       <div
         className="grid grid-cols-1 md:[grid-template-columns:0.8fr_1fr]"
-        style={{ gap: "clamp(40px,6vw,96px)", alignItems: "stretch" }}
+        style={{ gap: "clamp(56px,8vw,128px)", alignItems: "stretch" }}
       >
       <div style={{ position: "relative", minHeight: "280px", overflow: "hidden" }}>
         <Image src="/founder-childhood.png" alt="Sanjam, founder of Switchblade, as a child" fill className="object-cover" sizes="530px" />
@@ -66,11 +95,13 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
               height={127}
               style={{ display: "inline-block", verticalAlign: "middle", height: "3.6em", width: "auto" }}
             />
-            . Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
-            <br />That&rsquo;s reason number one to establish Switchblade.
-            <br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
+            <span className="hidden md:inline">
+              . Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
+              <br />That&rsquo;s reason number one to establish Switchblade.
+              <br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
+            </span>
           </p>
-          <p style={{ marginTop: "1.4em" }}>
+          <p className="hidden md:block" style={{ marginTop: "1.4em" }}>
             I want to be honest from the start  that&rsquo;s the only way I know how to do this.
             <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.
             <br />And I owe transparency about something - when I drew this logo at{" "}
@@ -81,7 +112,7 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
               height={127}
               style={{ display: "inline-block", verticalAlign: "middle", height: "3.6em", width: "auto" }}
             />
-            ,.....................
+            
           </p>
         </div>
 
@@ -99,7 +130,7 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
   );
 }
 
-function StoryFull() {
+function StoryFull({ highlightCosmos, cosmosRef, onClose }: { highlightCosmos: boolean; cosmosRef: React.RefObject<HTMLParagraphElement | null>; onClose: () => void }) {
   return (
     <motion.div
       key="full"
@@ -108,65 +139,219 @@ function StoryFull() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: "clamp(28px,4vw,64px)" }}>
+      {/* Mobile-only backdrop behind the popup sheet below — tapping it closes the story, same as
+          the sheet's own close button. Desktop never renders this (md:hidden). */}
+      <div className="md:hidden fixed inset-0" style={{ background: "rgba(13,13,13,0.55)", zIndex: 1300 }} onClick={onClose} />
+
+      {/* Mobile: fixed bottom-sheet with a hard maxHeight and its own scroll, so the full story
+          doesn't just keep growing the page — desktop collapses this wrapper entirely
+          (display:contents via md:contents) back to the plain in-flow layout it had before. */}
+      <div className="md:contents fixed inset-x-0 bottom-0 flex flex-col" style={{ zIndex: 1301, maxHeight: "82vh", background: "#fff", borderRadius: "20px 20px 0 0" }}>
+        <div className="flex md:hidden justify-end" style={{ padding: "14px 16px 0", flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ width: 32, height: 32, borderRadius: 999, background: "#F2F2F2", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15 }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="md:contents" style={{ overflowY: "auto" }}>
+          {/* Mobile-only: StoryPreview hides this same continuation text (see the hidden md:inline
+              span and hidden md:block paragraph there) so the collapsed preview ends right after the
+              first Age-11 tag on small screens — it reappears here instead, once Read More is opened. */}
+          <div className="block md:hidden" style={{ fontFamily: "var(--font-archivo)", fontWeight: 400, fontSize: "clamp(15px,1.15vw,18px)", lineHeight: 1.2, color: "#0D0D0D", padding: "8px 20px 0", marginBottom: "clamp(28px,4vw,64px)" }}>
+            <StoryContinuation />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 max-md:px-5 max-md:pb-7" style={{ gap: "clamp(28px,4vw,64px)" }}>
         {[STORY_LEFT, STORY_RIGHT].map((col, colIdx) => (
           <div key={colIdx} style={{ fontFamily: "var(--font-archivo)", fontWeight: 400, fontSize: "clamp(14px,1.05vw,17px)", lineHeight: 1.5, color: "#0D0D0D" }}>
             {col.map((para, i) => (
               <motion.p
                 key={i}
+                ref={colIdx === 1 && i === STORY_RIGHT.length - 1 ? cosmosRef : undefined}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: (colIdx * col.length + i) * 0.05, ease: [0.22, 1, 0.36, 1] }}
                 style={{ marginBottom: "1.3em", whiteSpace: "pre-line" }}
               >
-                {para}
+                {/* Only the "We begin with Cosmos..." paragraph (STORY_RIGHT's last entry) can
+                    get a highlight — everything except its final "Love you Mom & Dad!" line,
+                    split off the shared array string rather than hardcoding the text a second
+                    time. Stays plain black by default; only turns blue when reached via the
+                    Shop link's auto-open-and-scroll flow (see OriginsSection). */}
+                {colIdx === 1 && i === STORY_RIGHT.length - 1 ? (() => {
+                  const lines = para.split("\n");
+                  const signOff = lines[lines.length - 1];
+                  const highlighted = lines.slice(0, -1).join("\n");
+                  return (
+                    <>
+                      <span
+                        style={{
+                          backgroundColor: highlightCosmos ? "rgba(4,86,221,0.22)" : "rgba(4,86,221,0)",
+                          // box-decoration-break keeps the "highlighter" padding consistent on
+                          // every wrapped line of this multi-line span, instead of only the
+                          // first/last line getting the extra breathing room.
+                          boxDecorationBreak: "clone",
+                          WebkitBoxDecorationBreak: "clone",
+                          padding: "0.05em 0.15em",
+                          borderRadius: 3,
+                          transition: "background-color 0.6s ease",
+                        }}
+                      >
+                        {highlighted}
+                      </span>
+                      {"\n"}{signOff}
+                    </>
+                  );
+                })() : para}
               </motion.p>
             ))}
           </div>
         ))}
-      </div>
+          </div>
 
-      <p style={{ fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: "clamp(18px,1.6vw,24px)", marginTop: "clamp(20px,2.5vw,32px)", color: "#0D0D0D" }}>
-        - Sanjam
-      </p>
+          <p className="max-md:px-5 max-md:pb-7" style={{ fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: "clamp(18px,1.6vw,24px)", marginTop: "clamp(20px,2.5vw,32px)", color: "#0D0D0D" }}>
+            - Sanjam
+          </p>
+        </div>
+      </div>
     </motion.div>
   );
 }
 
 export function OriginsSection() {
   const [storyOpen, setStoryOpen] = useState(false);
+  const [highlightCosmos, setHighlightCosmos] = useState(false);
+  const cosmosRef = useRef<HTMLParagraphElement>(null);
+
+  // Mobile only: StoryFull's popup content is position:fixed (the bottom sheet), which means it
+  // takes up ZERO space in normal document flow — so the instant AnimatePresence swaps
+  // StoryPreview (which DOES occupy real in-flow height) out for it, that space collapses and
+  // the page reflows, snapping whatever comes next (BrandJourney, including its 3D star) up into
+  // view with no scrolling involved. That's what read as "jumping to Brand Journey" instead of a
+  // smooth popup open. Locking scroll for the duration freezes the page underneath entirely, so
+  // there's nothing to reflow while the sheet is open. Desktop is unaffected — StoryFull renders
+  // in-flow there (md:contents), so there's no space collapse to guard against, and this would
+  // otherwise block the page scrolling normally while it's expanded inline.
+  //
+  // overflow:hidden on body, NOT the position:fixed+top-offset trick some other lock
+  // implementations use: that trick makes window.scrollY read as 0 the instant it's applied
+  // (confirmed live) — the page LOOKS frozen at the right spot via the CSS offset, but the
+  // reported scroll position genuinely changes to 0 underneath it. This homepage has GSAP
+  // ScrollTrigger instances permanently mounted and reading real scroll position the whole time
+  // (RadiatesSection's star travel/dock-into-the-O logic in page.tsx, always active regardless of
+  // what section is in view) — they immediately saw "scrollY 0" and snapped the always-mounted,
+  // fixed-position global star to its top-of-page resting state, which then rendered on top of
+  // the still-visually-frozen (but not actually scroll-position-synced) Origins/BrandJourney
+  // content behind it — exactly the overlapping "glitch" reported. Plain overflow:hidden blocks
+  // further scrolling WITHOUT touching the current scrollY value at all (confirmed live: it
+  // stayed exactly where it was), so nothing reads a false position and nothing desyncs.
+  useLayoutEffect(() => {
+    if (!storyOpen || window.innerWidth >= 768) return;
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = prevOverflow;
+    };
+  }, [storyOpen]);
+
+  // Auto-open the full story (the highlighted text otherwise only exists once "Read More" has
+  // been clicked), then once that content has actually rendered, scroll the Cosmos paragraph
+  // into view and turn its highlight on. Shop (SiteNav) triggers this two different ways,
+  // because it can be clicked from two different situations:
+  useEffect(() => {
+    const run = () => {
+      setStoryOpen(true);
+      const id = window.setTimeout(() => {
+        cosmosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightCosmos(true);
+      }, 350);
+      return id;
+    };
+
+    // 1. Clicked from another page: Link does a full navigation, so this component mounts
+    //    fresh — sessionStorage (set right before that navigation) survives the reload, checked
+    //    once here on mount.
+    let timeoutId: number | undefined;
+    if (sessionStorage.getItem(SHOP_HIGHLIGHT_KEY) === "1") {
+      sessionStorage.removeItem(SHOP_HIGHLIGHT_KEY);
+      timeoutId = run();
+    }
+
+    // 2. Clicked while already on the homepage: Next.js's <Link> does a client-side hash-scroll
+    //    WITHOUT a full reload, so this component never remounts and the mount-only check above
+    //    would silently never fire. Listening for the live event instead means it fires
+    //    regardless of whether a reload happened, as long as this component is still mounted.
+    const onEvent = () => { timeoutId = run(); };
+    window.addEventListener(SHOP_HIGHLIGHT_EVENT, onEvent);
+
+    return () => {
+      window.removeEventListener(SHOP_HIGHLIGHT_EVENT, onEvent);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   return (
-    <section id="origins-section" className="site-px" style={{ background: "#ffffff", paddingTop: "clamp(56px,9vw,110px)", paddingBottom: "clamp(96px,9vw,160px)" }}>
-      <div className="flex items-end justify-center flex-wrap" style={{ gap: "clamp(16px,2vw,28px)", marginBottom: "clamp(24px,3.5vw,44px)" }}>
+    <section
+      id="origins-section"
+      // Top and bottom padding both pulled back down to 160px on mobile only — 320px read as too
+      // much dead space both before this section's own heading and before "The Brand Journey"
+      // heading below it. Desktop is untouched, still clamp(180px,14vw,320px) both sides.
+      className="site-px max-md:pt-[160px] max-md:pb-[160px] md:pt-[clamp(180px,14vw,320px)] md:pb-[clamp(180px,14vw,320px)]"
+      style={{ background: "#ffffff" }}
+    >
+      <div className="flex items-end justify-center flex-wrap" style={{ gap: "clamp(8px,1vw,14px)", marginBottom: "clamp(48px,5vw,72px)" }}>
         <h2 style={{
           position: "relative",
           fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(40px,7vw,96px)",
           lineHeight: 0.92, letterSpacing: "-0.02em", textTransform: "uppercase",
         }}>
-          <SweepText tone="dark" color="#0D0D0D">The Origins</SweepText>
+          {/* The "O" of "Origins" gets its own id so page.tsx's star-tracking effect can measure
+              its live on-screen position and dock the (fixed-position) star inside it. Kept as a
+              plain inline span (no display:inline-block/block) — SweepText's gradient-wipe
+              reveal works via background-clip:text on the parent, which only clips through
+              normal inline content; a block-level child breaks out of that and just inherits
+              color:transparent with no gradient of its own, rendering as literally invisible
+              text (exactly what happened the first time this was tried). */}
+          <SweepText tone="dark" color="#0D0D0D">
+            The <span id="origins-o-letter">O</span>rigins
+          </SweepText>
         </h2>
         <p style={{
-          fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: "clamp(13px,1.1vw,16px)",
+          fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: "clamp(10px,1.1vw,16px)",
           lineHeight: 1.3, letterSpacing: "-0.01em", textTransform: "uppercase", color: "#0D0D0D",
           marginBottom: "clamp(6px,1vw,14px)",
         }}>
-          [A Story Before<br />The Brand]
+          {/* Two lines on desktop (matches the reference), one line on mobile — the <br>'s
+              display is toggled instead of using a plain whiteSpace:nowrap/normal split, since a
+              hidden <br> simply stops forcing the break rather than fighting it. Forcing this
+              onto one long nowrap line unconditionally (an earlier mobile-only fix applied too
+              broadly) also made this row wide enough to force the whole heading row to wrap on
+              desktop, which is what made "The Origins" read as flush-left instead of centered —
+              a full-width wrapped line centers with no visible margin either side. */}
+          [A Story Before <br className="hidden md:block" />The Brand]
         </p>
       </div>
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {storyOpen
-          ? <StoryFull key="full" />
+          ? <StoryFull key="full" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={() => setStoryOpen(false)} />
           : <StoryPreview key="preview" onReadMore={() => setStoryOpen(true)} />}
       </AnimatePresence>
 
-      {/* Placed after the full story text (below the "- Sanjam" sign-off) rather than up by the
-          heading — it used to sit absolutely-positioned there, which overlapped the heading's
-          subtitle once that row wrapped on mobile. Here it's just a normal block after the
-          content, so it can't overlap anything regardless of viewport width. */}
+      {/* Desktop only — on mobile, StoryFull renders its own close button pinned to its popup
+          sheet instead (see the md:hidden button inside StoryFull). Placed after the full story
+          text (below the "- Sanjam" sign-off) rather than up by the heading — it used to sit
+          absolutely-positioned there, which overlapped the heading's subtitle once that row
+          wrapped on mobile. Here it's just a normal block after the content, so it can't overlap
+          anything regardless of viewport width. */}
       {storyOpen && (
-        <div className="flex justify-center" style={{ marginTop: "clamp(24px,3vw,36px)" }}>
+        <div className="hidden md:flex justify-center" style={{ marginTop: "clamp(24px,3vw,36px)" }}>
           <button
             type="button"
             onClick={() => setStoryOpen(false)}

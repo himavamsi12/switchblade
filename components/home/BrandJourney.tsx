@@ -66,12 +66,19 @@ export function BrandJourney() {
   return (
     <section className="site-px" style={{
       background: "#ffffff", padding: "clamp(16px,4vw,32px)",
-      height: "100dvh", boxSizing: "border-box", overflow: "hidden",
+      // 100svh ("small" viewport height), not 100dvh — dvh grows live as the mobile address bar
+      // collapses mid-scroll, and since the browser animates that collapse over ~300ms, this
+      // section's height (and everything positioned relative to it below) visibly jumps/reflows
+      // while the user is still scrolling, reading as the cards briefly overlapping the heading
+      // above. svh stays pinned to the smallest possible viewport (address bar always assumed
+      // visible), so it never changes mid-scroll — the one-time tradeoff is slightly less height
+      // once the bar actually hides, not a live jump.
+      height: "100svh", boxSizing: "border-box", overflow: "hidden",
       display: "flex", flexDirection: "column", justifyContent: "space-between",
     }}>
-      <div className="flex items-start justify-between" style={{ flex: "0 0 auto" }}>
+      <div className="flex items-start justify-between max-md:mb-16" style={{ flex: "0 0 auto" }}>
         <h2 style={{
-          fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(30px,4.5vw,68px)",
+          fontFamily: "var(--font-barlow)", fontWeight: 800, fontSize: "clamp(30px,4.5vw,64px)",paddingBottom: "",
           lineHeight: 0.92, letterSpacing: "-0.02em", textTransform: "uppercase",
         }}>
           <SweepText tone="dark" color="#0D0D0D">
@@ -160,52 +167,48 @@ export function BrandJourney() {
           })}
 
           {/* The 3D canvases size themselves off getBoundingClientRect(), which reflects every
-              ancestor's CSS transform — so a canvas nested inside the scaled-down card above
-              always measures itself at the shrunk size, then gets shrunk AGAIN by the card's
-              own scale on top of that, rendering the model tiny and stuck in a corner.
-              These are 3 fixed-size, never-transformed slots (previous/active/next) at the same
-              resting positions the card chrome slides to — width here is real, not scale, so
-              measurement is always correct. Only WHICH phase's model renders in each slot
-              changes, via a crossfade, so the "movement" reads as the model traveling with its
-              card even though the canvas box itself never moves or resizes. */}
-          {(["previous", "active", "next"] as const).map((slot) => {
-            const slotIndex = active + (slot === "previous" ? -1 : slot === "next" ? 1 : 0);
-            const slotPhase = PHASES[slotIndex];
-            if (!slotPhase) return null;
-            const isActiveSlot = slot === "active";
-            const onRightSide = slot === "next";
-            const SIDE_W = "clamp(120px,14vw,200px)";
+              ancestor's CSS transform — so a canvas nested inside a SCALED-down ancestor always
+              measures itself at the shrunk size, then gets shrunk AGAIN by that scale on top of
+              that, rendering the model tiny and stuck in a corner. That's why this can't just
+              share the card chrome's transform (which uses `scale()` for its side positions)
+              directly.
+              This used to render 3 fixed, never-transformed slots (previous/active/next) that
+              only crossfaded opacity on click — so the card visibly slid but its star just faded
+              in place, never actually traveling with it. Now every phase mounts once, persists,
+              and its own wrapper animates `transform: translateX(...)` (translation only, never
+              scale — safe for the canvas measurement) plus a real `width` change (not a scale)
+              between the active/side sizes, using the exact same offset math and transition
+              timing as the card chrome above, so the model now visibly travels together with its
+              card instead of just crossfading in place. */}
+          {PHASES.map((p, i) => {
+            const offset = i - active;
+            const role = offset === 0 ? "active" : offset === 1 ? "next" : offset === -1 ? "previous" : "hidden";
+            const isActive = role === "active";
+            const onRightSide = offset > 0;
+            const CANVAS_W_ACTIVE = "clamp(220px,26vw,380px)";
+            const CANVAS_W_SIDE = "clamp(120px,14vw,200px)";
             const gap = "calc(clamp(110px,13vw,190px) + clamp(64px,8vw,130px))";
-            const shift = `calc(${gap} + ${SIDE_W} / 2)`;
+            const shift = `calc(${gap} + ${CANVAS_W_SIDE} / 2)`;
             return (
               <div
-                key={slot}
+                key={p.key}
                 style={{
                   position: "absolute",
                   top: "50%",
                   left: "50%",
-                  transform: isActiveSlot
+                  transform: isActive
                     ? "translate(-50%,-50%)"
                     : `translate(-50%,-50%) translateX(${onRightSide ? shift : `calc(-1 * (${shift}))`})`,
-                  width: isActiveSlot ? "clamp(220px,26vw,380px)" : SIDE_W,
+                  width: isActive ? CANVAS_W_ACTIVE : CANVAS_W_SIDE,
                   maxHeight: "100%",
                   aspectRatio: "364/452",
-                  zIndex: isActiveSlot ? 1 : 0,
+                  opacity: role === "hidden" ? 0 : isActive ? 1 : 0.5,
+                  zIndex: isActive ? 1 : 0,
                   pointerEvents: "none",
+                  transition: "opacity 0.45s ease, transform 0.55s cubic-bezier(0.22,1,0.36,1), width 0.55s cubic-bezier(0.22,1,0.36,1)",
                 }}
               >
-                <AnimatePresence>
-                  <motion.div
-                    key={slotPhase.key}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: isActiveSlot ? 1 : 0.5 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ position: "absolute", inset: 0 }}
-                  >
-                    <JourneyStar3D mode={slotPhase.mode} className="w-full h-full" speed={isActiveSlot ? 0.55 : 0} />
-                  </motion.div>
-                </AnimatePresence>
+                <JourneyStar3D mode={p.mode} className="w-full h-full" speed={isActive ? 0.55 : 0} />
               </div>
             );
           })}
@@ -217,13 +220,35 @@ export function BrandJourney() {
           onClick={goPrev}
           disabled={active === 0}
           aria-label="Previous phase"
+          // active: (real :active, not media-gated) alongside hover: — Tailwind v4 wraps hover:
+          // in @media (hover: hover) to avoid iOS/Android's "sticky hover after tap" bug, which
+          // means it silently never applies at all on touch devices (they report hover:none).
+          // active: covers touch (fires on touchstart→touchend) so tapping still gets the same
+          // black-background/white-icon feedback a mouse hover gives on desktop.
+          // bg-white is a CLASS, not inline style, on purpose — an inline `background` (even a
+          // static, non-conditional one) always wins over a stylesheet :hover/:active rule for
+          // that same property regardless of specificity, which is exactly what was silently
+          // blocking both of them here.
+          className={active === 0 ? "group/prev relative bg-white" : "group/prev relative bg-white hover:bg-[#0D0D0D] active:bg-[#0D0D0D] transition-colors duration-200"}
           style={{
             display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 48,
-            border: "1px solid rgba(13,13,13,0.15)", borderRadius: 10, background: "#fff",
+            border: "1px solid rgba(13,13,13,0.15)", borderRadius: 10,
             cursor: active === 0 ? "default" : "pointer", opacity: active === 0 ? 0.35 : 1,
           }}
         >
-          <Image src="/classics/icons/left-arrow.svg" alt="" width={18} height={16} />
+          <Image
+            src="/classics/icons/left-arrow.svg" alt="" width={18} height={16}
+            className={active === 0 ? "" : "transition-opacity duration-200 group-hover/prev:opacity-0 group-active/prev:opacity-0"}
+          />
+          {active !== 0 && (
+            <svg
+              className="absolute inset-0 m-auto opacity-0 transition-opacity duration-200 group-hover/prev:opacity-100 group-active/prev:opacity-100"
+              width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M18 6.75V9H0L0 6.75H18ZM4.5 9V11.25H2.25V9H4.5ZM6.75 11.25L6.75 13.5H4.5L4.5 11.25H6.75ZM9 13.5V15.75H6.75V13.5H9ZM4.5 6.75V4.5H2.25V6.75H4.5Z" fill="white" />
+              <path d="M6.75 11.25L6.75 2.25H4.5L4.5 11.25H6.75ZM9 13.5V0H6.75L6.75 13.5H9Z" fill="white" />
+            </svg>
+          )}
         </button>
         <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: 16, color: "#0D0D0D", minWidth: 32, textAlign: "center" }}>
           {active + 1}/{N}
@@ -232,44 +257,83 @@ export function BrandJourney() {
           onClick={goNext}
           disabled={active === N - 1}
           aria-label="Next phase"
+          // Black background/inverted icon used to be the *default* look for this button
+          // (only the disabled end-state was white) — now it starts white like the prev button
+          // and only turns black on hover/tap. active: (real :active, not media-gated) sits
+          // alongside hover: — Tailwind v4 wraps hover: in @media (hover: hover) to avoid
+          // iOS/Android's "sticky hover after tap" bug, which means it silently never applies at
+          // all on touch devices (they report hover:none). active: covers touch (fires on
+          // touchstart→touchend) so tapping still gets the same feedback a mouse hover gives on
+          // desktop. bg-white is a CLASS, not inline style — an inline `background` (even a
+          // static, non-conditional one) always wins over a stylesheet :hover/:active rule for
+          // that same property regardless of specificity, which is exactly what was silently
+          // blocking both of them here.
+          className={active === N - 1 ? "group/next relative bg-white" : "group/next relative bg-white hover:bg-[#0D0D0D] active:bg-[#0D0D0D] transition-colors duration-200"}
           style={{
             display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 48,
-            border: "1px solid rgba(13,13,13,0.15)", borderRadius: 10, background: active === N - 1 ? "#fff" : "#0D0D0D",
+            border: "1px solid rgba(13,13,13,0.15)", borderRadius: 10,
             cursor: active === N - 1 ? "default" : "pointer", opacity: active === N - 1 ? 0.35 : 1,
           }}
         >
-          <Image src="/classics/icons/right-arrow.svg" alt="" width={18} height={16} style={{ filter: active === N - 1 ? "none" : "invert(1)" }} />
+          <Image
+            src="/classics/icons/right-arrow.svg" alt="" width={18} height={16}
+            className={active === N - 1 ? "" : "transition-opacity duration-200 group-hover/next:opacity-0 group-active/next:opacity-0"}
+          />
+          {active !== N - 1 && (
+            // Swapped in on hover/tap instead of filter-inverting the dark arrow image above — a
+            // dedicated white-fill SVG so the hover state matches exactly, not just an
+            // approximation via CSS invert().
+            <svg
+              className="absolute inset-0 m-auto opacity-0 transition-opacity duration-200 group-hover/next:opacity-100 group-active/next:opacity-100"
+              width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"
+            >
+              <g opacity="0.8">
+                <path d="M0 6.75V9H18V6.75H0ZM13.5 9V11.25H15.75V9H13.5ZM11.25 11.25V13.5H13.5V11.25H11.25ZM9 13.5V15.75H11.25V13.5H9ZM13.5 6.75V4.5H15.75V6.75H13.5Z" fill="white" />
+                <path d="M11.25 11.25V2.25H13.5V11.25H11.25ZM9 13.5V0H11.25V13.5H9Z" fill="white" />
+              </g>
+            </svg>
+          )}
         </button>
       </div>
 
-      <div className="flex items-end justify-between flex-wrap" style={{ flex: "0 0 auto", gap: 24, marginTop: "clamp(16px,2.5vw,28px)" }}>
+      <div className="flex items-end justify-between flex-wrap max-md:gap-8 md:gap-6 max-md:mt-16 md:mt-[clamp(16px,2.5vw,28px)]" style={{ flex: "0 0 auto" }}>
         <span style={{
-          display: "inline-flex", alignItems: "center", border: "1px solid rgba(13,13,13,0.2)", borderRadius: 999,
-          padding: "8px 16px", fontFamily: "var(--font-ibm-mono)", fontWeight: 600, fontSize: 12,
+          display: "inline-flex", alignItems: "center", border: "1px solid rgba(13,13,13,0.2)", borderRadius: 8,
+          padding: "8px 16px", fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 12,
           letterSpacing: "0.08em", textTransform: "uppercase", color: "#0D0D0D",
         }}>
           Three phase journey of logo &amp; brand
         </span>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={phase.key}
-            className="flex items-start"
-            style={{ gap: "clamp(16px,2.5vw,32px)", maxWidth: 640 }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 15, whiteSpace: "nowrap" }}>
-              <span style={{ color: "#0456DD" }}>({phase.num})</span>{" "}
-              <span style={{ color: "#0456DD" }}>{phase.label}</span>
-            </p>
-            <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 400, fontSize: "clamp(14px,1.1vw,17px)", lineHeight: 1.6, color: "#0D0D0D" }}>
-              <span style={{ fontWeight: 600 }}>{phase.lead}</span>{phase.rest}
-            </p>
-          </motion.div>
-        </AnimatePresence>
+        {/* All 3 phases' text stacked in the same CSS grid cell (grid-area: 1 / 1 on every
+            child), only the active one visible via opacity — this makes the container's own
+            height equal to the TALLEST phase's text automatically (a plain grid sizing rule, no
+            measurement needed), instead of resizing to whichever phase happens to be showing.
+            Cosmos's description is noticeably longer than Classic's or Evolution's, so switching
+            phases used to change this row's height and reflow the fixed-height section above it
+            (the star card visibly jumping) every time the arrows were clicked. Replaces the old
+            AnimatePresence mount/unmount swap — this crossfades all three in place instead,
+            which also sidesteps any exit/enter timing gap between phases. */}
+        <div className="grid" style={{ maxWidth: 640 }}>
+          {PHASES.map((p, i) => (
+            <motion.div
+              key={p.key}
+              className="flex items-start"
+              style={{ gridArea: "1 / 1", gap: "clamp(16px,2.5vw,32px)", pointerEvents: i === active ? "auto" : "none" }}
+              initial={false}
+              animate={{ opacity: i === active ? 1 : 0, y: i === active ? 0 : (i < active ? -12 : 12) }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 15, whiteSpace: "nowrap" }}>
+                <span style={{ color: "#0456DD" }}>({p.num})</span>{" "}
+                <span style={{ color: "#0456DD" }}>{p.label}</span>
+              </p>
+              <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 400, fontSize: "clamp(14px,1.1vw,17px)", lineHeight: 1.6, color: "#0D0D0D" }}>
+                <span style={{ fontWeight: 600 }}>{p.lead}</span>{p.rest}
+              </p>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );
