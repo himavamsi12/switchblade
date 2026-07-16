@@ -333,16 +333,27 @@ export function RadiatesSection({
       })
         .to(shrinkProxy, {
           v: dockedScale,
-          ease: "power2.inOut",
+          // ease: "none" (LINEAR), not power2.inOut — this tween is scroll-SCRUBBED, so its ease
+          // is a mapping from scroll position to shrink amount, not a time curve. A non-linear
+          // ease here makes the star shrink slow→fast→slow at a CONSTANT scroll speed (it
+          // accelerates through the middle of the scroll range), which reads as the shrink not
+          // being smooth/uniform — and stopping in that steep middle makes scrub's catch-up cover
+          // a large shrink delta in one settle, the visible "jump on stop". The power2.inOut was
+          // a leftover from when this was a TIME-based tween (where an ease-in-out over ~0.9s
+          // wall-clock looks nice); once it became scrubbed it should have gone linear, matching
+          // globeTravel's own ease:"none" below. Linear = shrink advances in lockstep with scroll,
+          // uniform rate, no acceleration to jerk on.
+          ease: "none",
           onUpdate: () => { if (shrinkRef) shrinkRef.current = shrinkProxy.v; },
         }, 0)
         .to(star, {
           // Mobile owns its ENTIRE settle-down motion here (the entrance IntersectionObserver
           // above doesn't touch y on mobile at all) — one continuous scrubbed move from the
           // Hero baseline (0) straight to its final resting spot. 6vh matches the settle
-          // amount originally tuned via an old instant set.
+          // amount originally tuned via an old instant set. ease:"none" for the same
+          // scrubbed-tween reason as the shrink above — linear w.r.t. scroll.
           y: isMobile ? "6vh" : "-6vh",
-          ease: "power2.inOut",
+          ease: "none",
           force3D: true,
         }, 0);
       scaleTrigger = scaleTween.scrollTrigger;
