@@ -18,11 +18,14 @@ function Highlighted({ text }: { text: string }) {
 export function ParagraphReveal() {
   const badgeRef = useRef<HTMLSpanElement>(null);
   const leftColRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let killed = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let leftColTrigger: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let pinTrigger: any = null;
 
     import("gsap").then(async ({ gsap }) => {
       if (killed) return;
@@ -71,22 +74,54 @@ export function ParagraphReveal() {
           scrub: 0.3,
         },
       }).scrollTrigger;
+
+      // Desktop only: PIN this section once the star is actually sitting ON the globe, hold it,
+      // then release on the next scroll so the reader continues into the Origins section (where the
+      // star docks into the "O"). The star parks at its fixed spot (via RadiatesSection's
+      // globeTravel) EARLY, then stays put while the globe keeps scrolling up to meet it — the two
+      // only line up once this section's top has reached the top of the viewport (start: "top
+      // top"), which is the frame where the globe has risen to the star. Pinning there freezes that
+      // aligned frame instead of letting the globe scroll on past. pinSpacing keeps the page flow
+      // correct (the held distance becomes real scroll) and ScrollTrigger recomputes the downstream
+      // O-dock trigger against it, so the star only heads down into the Origins "O" after this pin
+      // has released.
+      // Short dwell (+25% ≈ a quarter-screen of scroll) — was +70%, which held the section frozen
+      // for so long after the reader kept scrolling that the star's descent to Origins felt
+      // disconnected from the (still-pinned, static) section. A brief catch here means the pin
+      // releases almost immediately on continued scroll, so the section starts scrolling away in
+      // sync with the star heading down to the "O".
+      if (sectionRef.current && window.innerWidth >= 1024) {
+        pinTrigger = ScrollTrigger.create({
+          trigger: sectionRef.current,
+          start: "top top",
+          end: "+=25%",
+          pin: true,
+          pinSpacing: true,
+        });
+      }
     });
 
     return () => {
       killed = true;
       leftColTrigger?.kill();
+      pinTrigger?.kill();
     };
   }, []);
 
   return (
+    // #paragraph-reveal itself is NOT the pinned element — sectionRef (the inner wrapper below) is.
+    // Pinning wraps the pinned node in a ScrollTrigger "pin-spacer" div; if that were this outer
+    // node (React's direct child of the page), React would later try to remove #paragraph-reveal
+    // from the page on client navigation and find it's no longer a direct child (it's inside the
+    // spacer) → "Failed to execute 'removeChild'... not a child of this node". Keeping the pin on an
+    // inner wrapper leaves this outer node a clean, unwrapped React child that unmounts safely.
     <div id="paragraph-reveal" style={{ background: "#ffffff", borderTop: "1px solid rgba(13,13,13,0.1)" }}>
-      <div className="site-px grid grid-cols-1 lg:[grid-template-columns:1fr_1fr]" style={{ gap: "clamp(32px,5vw,64px)", paddingTop: "clamp(56px,7vw,100px)", paddingBottom: "clamp(90px,7vw,175px)", alignItems: "center" }}>
+      <div ref={sectionRef} className="site-px grid grid-cols-1 lg:[grid-template-columns:1fr_1fr]" style={{ gap: "clamp(32px,5vw,64px)", paddingTop: "clamp(56px,7vw,100px)", paddingBottom: "clamp(90px,7vw,175px)", alignItems: "center" }}>
 
-        <div ref={leftColRef}>
+        <div ref={leftColRef} style={{ maxWidth: 554 }}>
           <p style={{
             fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(24px,3vw,32px)",
-            lineHeight: 1.12, color: "#0D0D0D", textAlign: "start",
+            lineHeight: 1.12, color: "#0D0D0D", textAlign: "justify",
           }}>
             <Highlighted text="Switchblade is the beginning of a journey for those who carry competence without seeking validation - the builders, thinkers & doers who value depth and attention to detail and those who refuse to get boxed in." />
           </p>
@@ -145,7 +180,7 @@ export function ParagraphReveal() {
             id="switchblade-badge"
             className="hidden lg:inline-flex absolute"
             style={{
-              top: "34%", left: "54%",
+              top: "34%", left: "58%",
               background: "#0A1AFF", color: "#fff", borderRadius: 999,
               fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 14,
               padding: "8px 16px", whiteSpace: "nowrap", opacity: 0,

@@ -243,15 +243,46 @@ export function OriginsSection() {
   const [highlightCosmos, setHighlightCosmos] = useState(false);
   const cosmosRef = useRef<HTMLParagraphElement>(null);
 
-  // Mobile only: StoryFull's popup content is position:fixed (the bottom sheet), which means it
-  // takes up ZERO space in normal document flow — so the instant AnimatePresence swaps
-  // StoryPreview (which DOES occupy real in-flow height) out for it, that space collapses and
-  // the page reflows, snapping whatever comes next (BrandJourney, including its 3D star) up into
-  // view with no scrolling involved. That's what read as "jumping to Brand Journey" instead of a
-  // smooth popup open. Locking scroll for the duration freezes the page underneath entirely, so
-  // there's nothing to reflow while the sheet is open. Desktop is unaffected — StoryFull renders
-  // in-flow there (md:contents), so there's no space collapse to guard against, and this would
-  // otherwise block the page scrolling normally while it's expanded inline.
+  // Mobile renders StoryFull as a fixed overlay ON TOP of a still-mounted StoryPreview, instead of
+  // swapping one for the other (see the render block below) — so this needs to be a real JS branch,
+  // not a CSS one. Starts false so SSR and the first client render agree; while storyOpen is false
+  // both branches render exactly the same tree anyway, so flipping it on mount changes nothing
+  // visually.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  // Closing the expanded story removes a LOT of in-flow height (desktop renders StoryFull inline),
+  // so the browser keeps the same scrollY and the viewport snaps upward — the reported "jump".
+  // Instead, on close, scroll back to the top of this section as one controlled motion: the
+  // collapse then happens at/below where the reader lands, so there's no abrupt jump. Routed
+  // through Lenis (window.__lenis) when present so it stays smooth and in sync with the homepage's
+  // smooth-scroll/ScrollTrigger; falls back to native scrollIntoView (mobile / no Lenis).
+  const closeStory = () => {
+    // Only desktop needs the scroll-back: there StoryFull renders IN-FLOW, so collapsing it is
+    // what removes the height and causes the jump. On mobile it's a fixed bottom sheet with the
+    // page scroll-locked in place underneath, so it just closes where the reader already is.
+    setStoryOpen(false);
+    if (isMobile) return;
+    requestAnimationFrame(() => {
+      const el = document.getElementById("origins-section");
+      if (!el) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lenis = (window as any).__lenis;
+      if (lenis?.scrollTo) lenis.scrollTo(el, { offset: -80 });
+      else el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  // Mobile only: with the sheet open, the page underneath must not scroll behind it. (The layout
+  // collapse that used to accompany opening is handled separately, by keeping StoryPreview mounted
+  // underneath — see the render block.) Desktop is unaffected: StoryFull renders in-flow there
+  // (md:contents), and locking would block scrolling the story itself while it's expanded inline.
   //
   // overflow:hidden on body, NOT the position:fixed+top-offset trick some other lock
   // implementations use: that trick makes window.scrollY read as 0 the instant it's applied
@@ -266,14 +297,14 @@ export function OriginsSection() {
   // further scrolling WITHOUT touching the current scrollY value at all (confirmed live: it
   // stayed exactly where it was), so nothing reads a false position and nothing desyncs.
   useLayoutEffect(() => {
-    if (!storyOpen || window.innerWidth >= 768) return;
+    if (!storyOpen || !isMobile) return;
     const body = document.body;
     const prevOverflow = body.style.overflow;
     body.style.overflow = "hidden";
     return () => {
       body.style.overflow = prevOverflow;
     };
-  }, [storyOpen]);
+  }, [storyOpen, isMobile]);
 
   // Auto-open the full story (the highlighted text otherwise only exists once "Read More" has
   // been clicked), then once that content has actually rendered, scroll the Cosmos paragraph
@@ -353,11 +384,28 @@ export function OriginsSection() {
         </p>
       </div>
 
+      {/* Desktop swaps preview -> full story in place (both are in-flow there, so the exchange is
+          height-neutral enough). Mobile must NOT swap: StoryFull is a position:fixed bottom sheet,
+          so it contributes zero in-flow height, and unmounting the preview would collapse a whole
+          screenful of page height the instant it opens. That collapse is what made BrandJourney's
+          3D star flash into view for a frame, and it also let the browser clamp scrollY to the
+          now-shorter document — which is why closing landed the reader down at Brand Journey
+          instead of back where they started. Keeping the preview mounted underneath means the
+          document height never changes at all, so there is nothing to reflow and no scroll to
+          restore. */}
       <AnimatePresence>
-        {storyOpen
-          ? <StoryFull key="full" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={() => setStoryOpen(false)} />
+        {storyOpen && !isMobile
+          ? <StoryFull key="full" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={closeStory} />
           : <StoryPreview key="preview" onReadMore={() => setStoryOpen(true)} />}
       </AnimatePresence>
+
+      {isMobile && (
+        <AnimatePresence>
+          {storyOpen && (
+            <StoryFull key="full-mobile" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={closeStory} />
+          )}
+        </AnimatePresence>
+      )}
 
       {/* Desktop only — on mobile, StoryFull renders its own close button pinned to its popup
           sheet instead (see the md:hidden button inside StoryFull). Placed after the full story
@@ -369,7 +417,7 @@ export function OriginsSection() {
         <div className="hidden md:flex justify-center" style={{ marginTop: "clamp(24px,3vw,36px)" }}>
           <button
             type="button"
-            onClick={() => setStoryOpen(false)}
+            onClick={closeStory}
             className="inline-flex items-center"
             style={{
               gap: 6, background: "#FF802B", color: "#fff",

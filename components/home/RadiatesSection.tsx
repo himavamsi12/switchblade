@@ -138,11 +138,12 @@ export function RadiatesSection({
       const section = outerRef.current;
       if (!section || !star) return;
 
-      // 26vw parks the star beside the globe image on desktop's side-by-side layout. On mobile
-      // that layout stacks into a single column (ParagraphReveal), so there's no globe beside the
-      // text to park next to — 26vw would just push the star off-center toward the right edge.
-      // Centered (0) is the right resting spot there instead.
-      const globeX = isMobile ? "0vw" : "22vw";
+      // Parks the star over the globe image on desktop's side-by-side layout — 24vw sits it
+      // centered on the globe (22vw left it a touch to the globe's left). On mobile that layout
+      // stacks into a single column (ParagraphReveal), so there's no globe beside the text to park
+      // next to — a right offset would just push the star toward the edge. Centered (0) is right there.
+      // NOTE: the O-dock ticker's hardcoded startX in page.tsx must match this (its 0.24*vw term).
+      const globeX = isMobile ? "0vw" : "24vw";
 
       // Target shrink factor: the 3D star model shrinks to 70% of full size (about its OWN
       // center, inside the canvas — see the scaleTween/shrinkRef note below) as the reader scrolls
@@ -361,10 +362,11 @@ export function RadiatesSection({
       // scroll, the two are mutually exclusive by construction at every scroll position and every
       // speed — no runtime gate required.
       //
-      // Sequence within the scrub: SWITCHBLADE types in letter-by-letter (each char rises +
-      // fades), THEN [SHARP EDGE] / [SOFT HEART] fade in together once the last letter has landed.
+      // Sequence within the scrub: SWITCHBLADE TYPES in letter-by-letter — each character snaps
+      // fully visible in turn with NO opacity fade and NO slide, a pure typewriter reveal — THEN
+      // [SHARP EDGE] / [SOFT HEART] fade in together once the last letter has landed.
       const wordmarkChars = wordmarkCharRefs.current.filter((el): el is HTMLSpanElement => el !== null);
-      gsap.set(wordmarkChars, { opacity: 0, y: 16 });
+      gsap.set(wordmarkChars, { opacity: 0 });
       gsap.set([sharpEdgeRef.current, softHeartRef.current], { opacity: 0 });
       wordmarkTween = gsap.timeline({
         scrollTrigger: {
@@ -380,10 +382,12 @@ export function RadiatesSection({
       })
         .to(wordmarkChars, {
           opacity: 1,
-          y: 0,
-          ease: "power2.out",
-          duration: 0.7,
-          stagger: { each: 0.05, from: "start" },
+          // Hard on/off per letter: duration ~0 with ease "steps(1)" makes each character POP
+          // fully visible at its stagger point instead of fading in — a true typewriter. No y, so
+          // letters don't slide either. The stagger (0.09) spaces the pops out across the scrub.
+          duration: 0.001,
+          ease: "steps(1)",
+          stagger: { each: 0.09, from: "start" },
         }, 0)
         .to([sharpEdgeRef.current, softHeartRef.current], {
           opacity: 1,
@@ -514,7 +518,7 @@ export function RadiatesSection({
   }, []);
 
   return (
-    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[500vh] lg:h-[520vh]">
+    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[500vh] lg:h-[400vh]">
       {/* Height grown from an original 380vh to 520vh: the extra scroll distance is what gives
           every scrubbed beat its own non-overlapping slice of scroll, so a normal scroll flick
           can't blow through more than one at once (which read as sections colliding at 380vh).

@@ -287,6 +287,7 @@ export function ClassicsGlobeSection() {
         marginTop:  "clamp(60px,8vw,120px)",
         background: "#ffffff",
         overflow:   "hidden",
+        
       }}
     >
       <div style={{ position: "absolute", inset: 0 }}>

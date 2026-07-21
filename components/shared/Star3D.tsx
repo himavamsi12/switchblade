@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { Group } from "three";
 import { nudgeCanvasResize } from "@/lib/canvasResizeNudge";
 
-function StarModel({ scale = 2.2, spinRef, dampRef, shrinkRef, autoRotate = true }: { scale?: number; spinRef?: React.RefObject<number>; dampRef?: React.RefObject<number>; shrinkRef?: React.RefObject<number>; autoRotate?: boolean }) {
+function StarModel({ scale = 2.2, spinRef, dampRef, shrinkRef, autoRotate = true, entranceRef }: { scale?: number; spinRef?: React.RefObject<number>; dampRef?: React.RefObject<number>; shrinkRef?: React.RefObject<number>; autoRotate?: boolean; entranceRef?: React.RefObject<number> }) {
   const groupRef = useRef<Group>(null);
   const { scene } = useGLTF("/Compass.glb");
   const entranceStart = useRef<number | null>(null);
@@ -56,14 +56,26 @@ function StarModel({ scale = 2.2, spinRef, dampRef, shrinkRef, autoRotate = true
     if (entranceStart.current === null) entranceStart.current = t;
 
     const ENTRANCE_DURATION = 1.15;
-    const elapsed = t - entranceStart.current;
-    const p = Math.min(elapsed / ENTRANCE_DURATION, 1);
+    // Entrance progress 0→1 drives the scale-grow + rotation settle + rise. When an entranceRef is
+    // supplied (the homepage hero), progress is driven EXTERNALLY by that ref — animated on the
+    // Hero's own GSAP intro timeline, in lockstep with the star's opacity reveal — so the visible
+    // "grow in" can't finish while the star is still transparent (which is what happened when this
+    // ran on its own R3F clock but the opacity reveal was delayed behind the gradient wash). With
+    // no entranceRef (footer, collaborate, modal, etc.) it falls back to the self-timed clock.
+    const p = entranceRef
+      ? Math.min(1, Math.max(0, entranceRef.current))
+      : Math.min((t - entranceStart.current) / ENTRANCE_DURATION, 1);
     const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
 
-    // Always rotate — the model's rotation axis passes through its horizontal center, so a
-    // continuously spinning star keeps its center point fixed (stays centered) while the arms
-    // sweep. It never freezes.
-    if (autoRotate) baseRotationRef.current += 0.25 * delta;
+    // Ambient rotation — but ONLY after the entrance has fully settled (p >= 1). Accumulating it
+    // from frame 1 meant the star settled at a DIFFERENT rotation angle every load (however much
+    // base rotation happened to build up by the ~1.15s settle depends on real-frame timing), and
+    // a rotating asymmetric star's silhouette reads as centered only at its front-facing pose —
+    // so the star landed slightly left on one load and slightly right on the next. Holding base at
+    // 0 through the entrance makes rotation.y settle at exactly 0 (front-facing, bilaterally
+    // symmetric = genuinely centered) on EVERY load, deterministically, before the ambient drift
+    // then begins from that centered pose.
+    if (autoRotate && p >= 1) baseRotationRef.current += 0.25 * delta;
     // RadiatesSection's entrance spin (spinRef going 0→1 over its own timeline) — half a turn
     // (Math.PI radians = 180°), not a full 360°.
     const extraSpin = (spinRef?.current ?? 0) * Math.PI;
@@ -105,7 +117,7 @@ function Loader() {
   );
 }
 
-export function Star3D({ className = "", scale = 2.2, cameraZ = 4, spinRef, dampRef, shrinkRef, autoRotate = true }: { className?: string; scale?: number; cameraZ?: number; spinRef?: React.RefObject<number>; dampRef?: React.RefObject<number>; shrinkRef?: React.RefObject<number>; autoRotate?: boolean }) {
+export function Star3D({ className = "", scale = 2.2, cameraZ = 4, fov = 44, spinRef, dampRef, shrinkRef, autoRotate = true, entranceRef }: { className?: string; scale?: number; cameraZ?: number; fov?: number; spinRef?: React.RefObject<number>; dampRef?: React.RefObject<number>; shrinkRef?: React.RefObject<number>; autoRotate?: boolean; entranceRef?: React.RefObject<number> }) {
   useEffect(() => {
     nudgeCanvasResize();
   }, []);
@@ -113,7 +125,12 @@ export function Star3D({ className = "", scale = 2.2, cameraZ = 4, spinRef, damp
   return (
     <div className={className} style={{ width: "100%", height: "100%" }}>
       <Canvas
-        camera={{ position: [0, 0, cameraZ], fov: 44 }}
+        // fov (default 44) is overridable so a caller can go near-orthographic (large cameraZ +
+        // small fov, keeping cameraZ·tan(fov/2) constant to preserve on-screen size). The homepage
+        // hero uses that to flatten perspective, so the continuously-spinning asymmetric star's
+        // arms don't foreshorten unevenly as they turn — which is what made it read as leaning
+        // off-centre at angled poses. Other placements keep the default dramatic 44° perspective.
+        camera={{ position: [0, 0, cameraZ], fov }}
         gl={{ antialias: true, alpha: true }}
         shadows={false}
         dpr={[1, 2]}
@@ -124,7 +141,7 @@ export function Star3D({ className = "", scale = 2.2, cameraZ = 4, spinRef, damp
         <directionalLight position={[-4, -4, -4]} intensity={1.2}  color="#7090FF" />
 
         <Suspense fallback={<Loader />}>
-          <StarModel scale={scale} spinRef={spinRef} dampRef={dampRef} shrinkRef={shrinkRef} autoRotate={autoRotate} />
+          <StarModel scale={scale} spinRef={spinRef} dampRef={dampRef} shrinkRef={shrinkRef} autoRotate={autoRotate} entranceRef={entranceRef} />
           <Environment preset="sunset" />
         </Suspense>
 

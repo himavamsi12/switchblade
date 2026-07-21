@@ -71,24 +71,24 @@
 .classics-exp .webgl.is-detail { filter: blur(14px); transition: filter .3s ease; }
 .classics-exp .detail { align-items: center; background: rgba(255, 255, 255, .55); display: flex; flex-direction: column; gap: 16px; inset: 0; justify-content: center; opacity: 0; pointer-events: none; position: fixed; transition: opacity .3s ease; z-index: 700; }
 .classics-exp .detail.is-open { opacity: 1; pointer-events: auto; }
-.classics-exp .detail__esc { align-items: center; color: rgba(0, 0, 0, .45); display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; gap: 12px; letter-spacing: .12em; max-width: 920px; padding: 0 var(--margin); text-align: left; text-transform: uppercase; width: 100%; }
+.classics-exp .detail__esc { align-items: center; color: rgba(0, 0, 0, .45); display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; gap: 12px; letter-spacing: .12em; max-width: 1320px; padding: 0 var(--margin); text-align: left; text-transform: uppercase; width: 100%; }
 /* Invisible spacer matching .detail__nav's width so the text starts exactly where
    .detail__card starts (the card sits after a nav button + gap inside .detail__inner) —
    without this the text lines up with .detail__inner's own padding edge, which is further
    left than the card because of that leading nav button. */
 .classics-exp .detail__esc::before { content: ""; flex-shrink: 0; visibility: hidden; width: 44px; }
-.classics-exp .detail__inner { align-items: center; display: flex; gap: 12px; justify-content: center; max-width: 920px; padding: 0 var(--margin); width: 100%; }
+.classics-exp .detail__inner { align-items: center; display: flex; gap: 12px; justify-content: center; max-width: 1320px; padding: 0 var(--margin); width: 100%; }
 .classics-exp .detail__nav { align-items: center; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; cursor: pointer; display: flex; flex-shrink: 0; height: 44px; justify-content: center; transition: background .2s ease; width: 44px; }
 .classics-exp .detail__nav:hover { background: #f2f2f2; }
-.classics-exp .detail__card { align-items: stretch; background: #fff; border: 1px solid #dedede; box-sizing: border-box; display: flex; gap: 16px; padding: 12px; width: min(830px, 100%); }
+.classics-exp .detail__card { align-items: stretch; background: #fff; border: 1px solid #dedede; box-sizing: border-box; display: flex; gap: 16px; padding: 12px; width: min(1220px, 100%); }
 /* Ghost (prev/next peek) cards: hidden by default (desktop, which keeps the old single-card +
    arrow-button layout) — mobile's media query below shows them as real, fully-rendered peek
    cards either side of the active one. Declared here rather than only inside the media query so
    there's no flash of an unstyled/default-display div on desktop before it's evaluated. */
 .classics-exp .detail__card--ghost { display: none; }
 .classics-exp .detail__mediaCol { display: flex; flex: 1 1 0; flex-direction: column; gap: 10px; min-width: 0; }
-.classics-exp .detail__media { flex: 1 1 auto; min-height: 341px; position: relative; }
-.classics-exp .detail__img { display: block; height: 100%; min-height: 341px; object-fit: cover; position: absolute; inset: 0; width: 100%; will-change: transform, opacity; backface-visibility: hidden; }
+.classics-exp .detail__media { flex: 1 1 auto; min-height: 520px; position: relative; }
+.classics-exp .detail__img { display: block; height: 100%; min-height: 520px; object-fit: cover; position: absolute; inset: 0; width: 100%; will-change: transform, opacity; backface-visibility: hidden; }
 .classics-exp .detail__thumbs { align-items: center; display: none; flex-shrink: 0; gap: 6px; }
 .classics-exp .detail__thumbs.is-visible { display: flex; }
 .classics-exp .detail__thumbTrack { display: flex; flex: 1; gap: 8px; overflow-x: auto; scrollbar-width: none; }

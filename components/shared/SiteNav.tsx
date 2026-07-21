@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { SparkleMark } from "@/components/shared/SparkleMark";
+import { SwitchbladeLogo } from "@/components/shared/SwitchbladeLogo";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -39,10 +40,15 @@ function triggerShopHighlight() {
  * hero; "light" (Classics) is always a plain white bar with a bottom border, since Classics has
  * no blue hero for a transparent bar to sit over.
  */
-export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
+export function SiteNav({ variant = "dark", animateIn = false }: { variant?: SiteNavVariant; animateIn?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const shouldReduceMotion = useReducedMotion();
+  // On the homepage the navbar is the LAST beat of the staged hero intro: it slides down + fades
+  // in from the top, timed (delay) to land just after the hero's gradient → star → text sequence
+  // (see Hero in app/(app)/page.tsx). Off (default) everywhere else, and skipped under reduced
+  // motion, so the bar is simply present at rest.
+  const navIntro = animateIn && !shouldReduceMotion;
   const pathname = usePathname();
   // "/" only matches the literal home route; every other link matches on prefix so nested
   // routes (e.g. a future /classics/[slug]) still highlight "Classics" as active.
@@ -81,7 +87,10 @@ export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
           bottom dock, and contact modal at z-index 1000-1150 above its canvas — this needs to
           clear all of that so the shared nav isn't buried under Classics-page-only UI. Homepage
           and Collaborate have nothing near that z-index, so this is a no-op there. */}
-      <div
+      <motion.div
+        initial={navIntro ? { y: "-100%", opacity: 0 } : false}
+        animate={navIntro ? { y: 0, opacity: 1 } : false}
+        transition={navIntro ? { duration: 0.6, delay: 3.5, ease: [0.22, 1, 0.36, 1] } : undefined}
         className={"absolute top-0 inset-x-0 z-[1200] site-px flex items-center justify-between" + (light ? " border-b border-black/8" : "")}
         style={{
           height: 72,
@@ -139,13 +148,12 @@ export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
 
         <Link
           href="/"
-          className={"absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 transition-colors" + (light ? " text-[#090909] hover:opacity-60" : " text-white hover:text-[#FF802B]")}
+          aria-label="Switchblade — Home"
+          className={"absolute left-1/2 -translate-x-1/2 flex items-center transition-colors" + (light ? " text-[#090909] hover:opacity-60" : " text-white hover:text-[#FF802B]")}
         >
-          <SparkleMark className="h-5 w-auto md:h-[26px] shrink-0" />
-          <span className="font-black tracking-[0.04em] text-sm md:text-lg">
-            SWITCHBLADE
-          </span>
-          <sup className="text-[9px] font-bold">TM</sup>
+          {/* Full logo lockup (mark + wordmark + ™) as one SVG, using currentColor so it follows
+              the nav variant colour. w-auto keeps its ~6.8:1 aspect ratio from the height. */}
+          <SwitchbladeLogo className="h-[18px] md:h-[22px] w-auto shrink-0" />
         </Link>
 
         <Link
@@ -164,7 +172,7 @@ export function SiteNav({ variant = "dark" }: { variant?: SiteNavVariant }) {
             <SparkleMark className="h-[16px] w-auto shrink-0 text-[#0F0E0C]" />
           </span>
         </Link>
-      </div>
+      </motion.div>
 
       <AnimatePresence>
         {menuOpen && (

@@ -1,16 +1,35 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Star3D } from "@/components/shared/Star3D";
+import { HelpModal } from "@/components/shared/HelpModal";
+import { GradientReveal } from "@/components/shared/GradientReveal";
 
+// "Help" has no href — it opens the HelpModal instead (see `action: "help"`); the rest are links.
 const NAV_LINKS = [
   { label: "Home",          href: "/" },
   { label: "Classics",      href: "/classics" },
   { label: "Shop",          href: "/membership" },
   { label: "Collaboration", href: "/collaborate" },
-  { label: "Help",          href: "#" },
+  { label: "Help",          action: "help" as const },
 ];
+
+const NAV_LINK_STYLE: React.CSSProperties = {
+  fontFamily:     "var(--font-ibm-mono)",
+  fontWeight:     700,
+  fontSize:       12,
+  letterSpacing:  "0.1em",
+  textTransform:  "uppercase",
+  color:          "rgba(255,255,255,0.75)",
+  textDecoration: "none",
+  transition:     "color 0.15s",
+  background:     "none",
+  border:         "none",
+  padding:        0,
+  cursor:         "pointer",
+};
 
 // Rendered twice below: once beside "You got this..." (mobile only), once in the nav row
 // (desktop only, hidden on mobile) — extracted so the two spots share one copy of the styling
@@ -54,6 +73,26 @@ function InstagramLink({ className = "" }: { className?: string }) {
 export function SiteFooter() {
   const wordmarkWrapRef = useRef<HTMLDivElement>(null);
   const wordmarkRef     = useRef<HTMLParagraphElement>(null);
+  const footerRef       = useRef<HTMLElement>(null);
+  const starWrapRef     = useRef<HTMLDivElement>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  // Lazily mount the footer's WebGL star only when its wrapper nears the viewport (see the JSX
+  // comment) — one-viewport buffer so it's ready just before it scrolls in, not popping late.
+  const [starVisible, setStarVisible] = useState(false);
+  useEffect(() => {
+    const el = starWrapRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setStarVisible(true); },
+      { rootMargin: "100% 0px 100% 0px", threshold: 0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  // Gradient reveal is handled by <GradientReveal> in the JSX below — the shared "the gradient
+  // falls in" overlay from the homepage hero (white cover slides down out of view, feathered top
+  // edge), triggered the first time the footer scrolls into view. It replaces the plain opacity
+  // cross-fade this used to run through its own GSAP ScrollTrigger.
 
   // Plain font-size (even tuned per-vw) can only approximate "SWITCHBLADE" spanning edge-to-edge
   // — actual glyph widths don't scale in perfect lockstep with the container across every
@@ -96,6 +135,7 @@ export function SiteFooter() {
 
   return (
     <footer
+      ref={footerRef}
       // Mobile floor bumped to 80px (max-md, below Tailwind's 768px breakpoint): the
       // clamp(64px,9vw,120px) this used everywhere gave phones only ~64-70px of top space before
       // the "You got this" line — desktop (md: and up) keeps the original clamp untouched.
@@ -104,7 +144,18 @@ export function SiteFooter() {
         background: "linear-gradient(180deg, #FFFFFF 2.2%, #E8EEF9 6.7%, #A8BCE6 20.3%, #7E9ADB 38.8%, #5174CC 55%, #2E51C0 75.8%, #143BB2 96%)",
         overflow:   "hidden",
         position:   "relative",
+        // Establishes a stacking context so the gradient-mask overlay's z-index:-1 is scoped to
+        // this footer — it paints above this element's own gradient background but behind all the
+        // (static) content — instead of leaking behind the footer into the page's root context.
+        isolation:  "isolate",
       }}>
+
+      {/* White cover over the gradient — z-index:-1 places it above the footer's gradient
+          background but behind all the content (text/star, which are static → paint above a
+          negative-z child), so it hides the gradient without hiding the content. Falls away
+          downward the first time the footer scrolls into view, the same reveal the homepage hero
+          plays on load. */}
+      <GradientReveal trigger="scroll" />
 
       <div className="flex items-start justify-between flex-wrap" style={{ gap: 32, marginBottom: "clamp(48px,7vw,96px)" }}>
         {/* md:block collapses this back to a single stacked child on desktop (InstagramLink is
@@ -159,23 +210,30 @@ export function SiteFooter() {
 
       <div className="flex items-center justify-between flex-wrap" style={{ gap: 20, marginBottom: "clamp(40px,6vw,72px)" }}>
         <div className="flex flex-wrap items-center" style={{ gap: "clamp(20px,3vw,44px)" }}>
-          {NAV_LINKS.map(link => (
-            <Link key={link.label} href={link.href} style={{
-              fontFamily:     "var(--font-ibm-mono)",
-              fontWeight:     700,
-              fontSize:       12,
-              letterSpacing:  "0.1em",
-              textTransform:  "uppercase",
-              color:          "rgba(255,255,255,0.75)",
-              textDecoration: "none",
-              transition:     "color 0.15s",
-            }}
-              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = "#fff")}
-              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)")}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {NAV_LINKS.map(link =>
+            "action" in link ? (
+              <button
+                key={link.label}
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                style={NAV_LINK_STYLE}
+                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = "#fff")}
+                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)")}
+              >
+                {link.label}
+              </button>
+            ) : (
+              <Link
+                key={link.label}
+                href={link.href}
+                style={NAV_LINK_STYLE}
+                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = "#fff")}
+                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)")}
+              >
+                {link.label}
+              </Link>
+            )
+          )}
         </div>
 
         {/* Hidden on mobile — moved up beside "You got this..." above (see InstagramLink there). */}
@@ -218,8 +276,13 @@ export function SiteFooter() {
               pointerEvents: "none",
             }}
           >
-            <div style={{ width: "clamp(120px,12vw,200px)", height: "clamp(120px,12vw,200px)" }}>
-              <Star3D scale={4.6} cameraZ={5.9} />
+            {/* Only mount the WebGL <Star3D> once the footer is near the viewport — browsers cap
+                the number of live WebGL contexts per page, and this footer sits far below several
+                other canvases (hero star, globe, etc.); mounting it unconditionally on load kept
+                one more context alive the whole time for no benefit and risked one being dropped
+                (a broken/blank canvas). This keeps concurrent contexts low. */}
+            <div ref={starWrapRef} style={{ width: "clamp(120px,12vw,200px)", height: "clamp(120px,12vw,200px)" }}>
+              {starVisible && <Star3D scale={4.6} cameraZ={5.9} />}
             </div>
           </div>
 
@@ -267,6 +330,12 @@ export function SiteFooter() {
           All rights reserved
         </p>
       </div>
+
+      {/* Help/community modal — opened by the "Help" nav button above. AnimatePresence lets it
+          fade out on close (it's unmounted when helpOpen is false). */}
+      <AnimatePresence>
+        {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+      </AnimatePresence>
     </footer>
   );
 }

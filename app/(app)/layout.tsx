@@ -57,7 +57,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${barlow.variable} ${ibmPlex.variable} ${ibmPlexMono.variable} ${averiaSerif.variable} ${inter.variable} ${archivo.variable}`}>
+    // data-scroll-behavior="smooth" is REQUIRED here because globals.css sets
+    // `html { scroll-behavior: smooth }` (for in-page anchor links). As of Next.js 16, the router
+    // no longer overrides that during a route transition on its own — so its scroll-to-top on
+    // navigation was being handed to the browser's native SMOOTH scroller, which then got cut off
+    // by the incoming page's render/layout shifts and left you sitting wherever you clicked from
+    // (click a footer link → land in the new page's footer instead of its hero). This attribute
+    // opts back into the pre-16 behavior: Next flips scroll-behavior to `auto` for the duration of
+    // the navigation, jumps instantly to the top, then restores `smooth` for anchor links.
+    // See node_modules/next/dist/docs/01-app/02-guides/upgrading/version-16.md → "Scroll Behavior
+    // Override".
+    <html lang="en" data-scroll-behavior="smooth" className={`${barlow.variable} ${ibmPlex.variable} ${ibmPlexMono.variable} ${averiaSerif.variable} ${inter.variable} ${archivo.variable}`}>
       <body suppressHydrationWarning className="bg-[#F2EDE4] text-[#0D0D0D] font-[family-name:var(--font-barlow)] antialiased">
         <CustomCursor />
         <main>{children}</main>

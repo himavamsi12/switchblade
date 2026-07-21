@@ -52,6 +52,12 @@ export function SmoothScroll() {
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       });
 
+      // Exposed so other components can do a Lenis-smooth programmatic scroll (e.g. OriginsSection
+      // scrolling back to itself when the expanded story closes). Native scrollTo/scrollIntoView
+      // fights Lenis; going through the instance keeps it smooth and in sync with ScrollTrigger.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__lenis = lenis;
+
       // Drive ScrollTrigger off Lenis's smoothed scroll position — every scroll frame Lenis
       // computes, ScrollTrigger re-evaluates against it, so scrubbed tweens track the smooth
       // value rather than the raw stepped one.
@@ -59,8 +65,14 @@ export function SmoothScroll() {
 
       // Run Lenis's own RAF from GSAP's ticker (one shared loop, no competing rAFs) — gsap.ticker
       // hands time in seconds, Lenis.raf wants milliseconds.
+      // prioritize=true (3rd arg) puts this at the FRONT of the ticker queue so Lenis advances the
+      // smooth-scroll position — and fires its "scroll" → ScrollTrigger.update — BEFORE any other
+      // gsap.ticker callback runs that frame. Critical for the star's O-dock ticker (page.tsx):
+      // it reads the O letter's live getBoundingClientRect() each frame, so it must run AFTER this
+      // frame's scroll is applied, otherwise it reads the O's PREVIOUS-frame position and the star
+      // trails/jitters behind the O by one frame while riding inside it.
       const raf = (time: number) => { lenis.raf(time * 1000); };
-      gsap.ticker.add(raf);
+      gsap.ticker.add(raf, false, true);
       // lagSmoothing(0): GSAP normally "catches up" after a frame spike by jumping time forward,
       // which would desync Lenis's integration — disable it so time stays continuous.
       gsap.ticker.lagSmoothing(0);
@@ -68,6 +80,8 @@ export function SmoothScroll() {
       cleanup = () => {
         gsap.ticker.remove(raf);
         gsap.ticker.lagSmoothing(500, 33); // restore GSAP's default
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((window as any).__lenis === lenis) (window as any).__lenis = undefined;
         lenis.destroy();
       };
     })();

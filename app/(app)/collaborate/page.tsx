@@ -8,6 +8,7 @@ import { SparkleMark } from "@/components/shared/SparkleMark";
 import { SiteFooter } from "@/components/shared/SiteFooter";
 import { SiteNav } from "@/components/shared/SiteNav";
 import { SweepText } from "@/components/shared/SweepText";
+import { GradientReveal } from "@/components/shared/GradientReveal";
 
 const Star3D = dynamic(
   () => import("@/components/shared/Star3D").then(m => m.Star3D),
@@ -59,6 +60,12 @@ export default function CollaboratePage() {
   const scenarioAnchorRef = useRef<HTMLDivElement>(null);
   const collabAnchorRef   = useRef<HTMLDivElement>(null);
   const shrinkRef         = useRef<number>(1);
+  // Both blue gradient areas on this page reveal through <GradientReveal> (see the JSX) — the
+  // shared "the gradient falls in" overlay from the homepage hero: a white cover that slides down
+  // out of view behind a feathered edge, rather than a flat opacity cross-fade. It's a pure CSS
+  // transform transition (no gsap), so it stays independent of the star choreography's own async
+  // gsap setup below. The hero's falls on page OPEN; the Collaboration-Standard one falls when
+  // that section scrolls INTO VIEW.
 
   useEffect(() => {
     let killed = false;
@@ -287,8 +294,15 @@ export default function CollaboratePage() {
         style={{
           minHeight: "100vh",
           padding: `112px ${PX} clamp(56px,7vw,96px)`,
+          // Stacking context so the mask overlay's z-index:-1 stays above this section's own
+          // gradient background but behind its content.
+          isolation: "isolate",
         }}
       >
+        {/* White cover over the gradient — z-index:-1 (above the section's gradient background,
+            behind the static content), falling away on page open so the gradient pours in from the
+            top. Present from first paint so there's no flash before it runs. */}
+        <GradientReveal trigger="load" />
         {/* `maxWidth: 14ch` used to force this onto two lines, but `ch` is measured from the
             font's "0" glyph — for this bold/uppercase/tight-tracking font that glyph is narrower
             than the actual word "COLLABORATIONS" renders at. Since it's one unbreakable word, it
@@ -405,8 +419,17 @@ export default function CollaboratePage() {
         style={{
           padding: `${SECTION} ${PX}`, scrollMarginTop: 62,
           background: "linear-gradient(180deg,#0C40BE 0%,#0456DD 22%,#8FA6EA 48%,#FFFFFF 100%)",
+          position: "relative",
+          // Stacking context so the mask overlay's z-index:-1 stays above this section's gradient
+          // background but behind its content.
+          isolation: "isolate",
         }}
       >
+        {/* White cover over the gradient — z-index:-1 (above the gradient background, behind the
+            static content), falling away when this section scrolls into view. GradientReveal clips
+            its own overhang, so this section doesn't need overflow:hidden (it deliberately has
+            none — see the heading comment below). */}
+        <GradientReveal trigger="scroll" />
         {/* Same fragile `ch`-based maxWidth pattern as the Hero heading above — "Collaboration"
             alone is 13 characters, leaving almost no margin before `14ch` under- or over-shoots
             depending on this font's actual glyph widths vs. its "0" glyph. Explicit break instead

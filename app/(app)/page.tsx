@@ -18,10 +18,13 @@ const Star3D = dynamic(
   { ssr: false, loading: () => null }
 );
 
-function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement | null>; shrinkRef: React.RefObject<number> }) {
+function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HTMLDivElement | null>; shrinkRef: React.RefObject<number>; entranceRef: React.RefObject<number> }) {
   const sectionRef = useRef<HTMLElement>(null);
   const tagRef     = useRef<HTMLDivElement>(null);
   const descRef    = useRef<HTMLParagraphElement>(null);
+  // White cover that sits over the hero's gradient on first paint and wipes away on load, so the
+  // gradient reads as "spreading in from white" as the first beat of the intro sequence.
+  const gradientMaskRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let killed = false;
@@ -63,13 +66,20 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
       // validated at tablet widths. Matching the split to 1024 across all three files gives
       // tablets the already-proven stacked/mobile layout instead of a half-working desktop one.
       const isMobile = window.innerWidth < 1024;
-      const restX = isMobile ? 0 : 1;
+      // No horizontal nudge — the star now settles at a deterministic front-facing (bilaterally
+      // symmetric) pose on every load (see Star3D's gated ambient rotation), so its box being
+      // dead-centered in the viewport is genuinely centered. The old per-load left/right variance
+      // was the star settling at a random rotation angle, not a position offset, so a fixed nudge
+      // could never fix it — this removes the nudge entirely.
+      const restX = 0;
       // transformOrigin MUST be the element's own center, explicitly. Without it, RadiatesSection's
       // scale-down was shrinking the star toward its LEFT EDGE instead of its center — measured as
       // the star drifting ~130px left as it scaled to 0.7 (exactly (1-0.7)×halfWidth for an ~820px
       // box, the signature of a left-edge origin). Pinning the origin to 50% 50% makes the scale
       // shrink symmetrically about the center, so the star stays put horizontally while it resizes.
-      gsap.set(star,            { xPercent: -50, yPercent: -50, x: `${restX}vw`, y: 0, scale: 0.88, opacity: 0, force3D: true, transformOrigin: "50% 50%" });
+      // Wrapper scale stays 1 (no CSS box scale) — the entrance "grow" is now done in 3D via the
+      // model's entranceRef, which is crisper than CSS-scaling the whole canvas. Only opacity fades.
+      gsap.set(star,            { xPercent: -50, yPercent: -50, x: `${restX}vw`, y: 0, scale: 1, opacity: 0, force3D: true, transformOrigin: "50% 50%" });
       gsap.set(tagRef.current,  { opacity: 0, y: 10 });
       gsap.set(descRef.current, { opacity: 0 });
 
@@ -106,16 +116,18 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
       const paragraphRevealTarget = isMobile ? null : document.getElementById("paragraph-reveal");
       const oLetter = isMobile ? null : document.getElementById("origins-o-letter");
       if (paragraphRevealTarget && oLetter) {
-        // start: "bottom 90%" of paragraph-reveal — safely AFTER globeTravel's scrub range ends
-        // (its end is paragraph-reveal's top at 45% viewport; the section is ~780px tall, so its
-        // bottom is still well below the viewport at that moment), so the two never fight over
-        // the star's x/y. end: the O's own top reaching 60% down the viewport — the star is
-        // fully docked while the heading sits in the lower half of the screen.
+        // Anchored to the O letter (in OriginsSection, below the now only BRIEFLY-pinned
+        // paragraph-reveal). start "top bottom": the star begins descending the moment the O
+        // enters from the bottom of the viewport — which, with the short +25% pin, is right as the
+        // globe section releases and scrolls away, so the star travels DOWN in sync with the
+        // section scrolling out rather than after it. end "top 45%": the dock completes as the O
+        // reaches a bit above centre, spreading the descent across roughly a screen of scroll so
+        // it reads as one continuous, scroll-linked glide.
         hideTrigger = ScrollTrigger.create({
-          trigger: paragraphRevealTarget,
-          start: "bottom 90%",
+          trigger: oLetter,
+          start: "top bottom",
           endTrigger: oLetter,
-          end: "top 60%",
+          end: "top 45%",
         });
         const dockTrigger = hideTrigger;
 
@@ -196,15 +208,21 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
           const targetAlpha = 1 - Math.exp(-dtForTarget / 0.1);
           smoothTargetX = smoothTargetX === null ? rawTargetX : smoothTargetX + (rawTargetX - smoothTargetX) * targetAlpha;
           smoothTargetY = smoothTargetY === null ? rawTargetY : smoothTargetY + (rawTargetY - smoothTargetY) * targetAlpha;
-          const targetX = smoothTargetX;
-          const targetY = smoothTargetY;
-          const startX = 0.5 * vw + 0.22 * vw;
+          const startX = 0.5 * vw + 0.24 * vw;
           const startY = 0.38 * vh + 0.08 * vh;
           // The wrapper's transform-less layout center — what a given gsap x/y is relative to.
           const baseX = 0.5 * vw;
           const baseY = 0.38 * vh;
 
           const e = easeInOut(Math.min(1, Math.max(0, p)));
+          // Target blends from the SMOOTHED O position while travelling (e<1, kills the sub-pixel
+          // wobble on a slow/paused scroll during the approach) to the RAW live O position once
+          // docked (e→1). Using the smoothed target after docking made the star LAG/jump behind
+          // the O whenever the page scrolled — the O rides up/down fast with the heading, and the
+          // eased target trailed it. At full dock the star must be glued to the O's exact live
+          // position every frame so it rides perfectly still inside the letter, no trailing.
+          const targetX = smoothTargetX * (1 - e) + rawTargetX * e;
+          const targetY = smoothTargetY * (1 - e) + rawTargetY * e;
           // Convex blend between the fixed canonical start and the LIVE target: always lands
           // exactly on the O no matter how the O moves mid-travel, and can never overshoot (the
           // position is by construction between the two endpoints).
@@ -232,18 +250,55 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
         removeTicker = () => { if (tickerFn) gsap.ticker.remove(tickerFn); };
       }
 
-      // The star stays centered through the hero exit — no more corner-parking/tilt. It hands
-      // off, still centered at scale 1, straight into RadiatesSection's own scroll-driven
-      // rotate/shrink choreography right below the hero.
-      // Star first, then text below — pushed later (was 0.85/1.2, overlapping the star's own
-      // 1.0s reveal and the heading's SweepText, which started at 0.95s independently of this
-      // timeline). Now tagRef/descRef wait until after the heading's own sweep (trigger="load",
-      // delay={1000} below, ~1000-2300ms) has had a chance to read, instead of racing it.
-      tl = gsap.timeline();
-      tl
-        .to(star,            { scale: 1, opacity: 1, duration: 1.0, ease: "power3.out" }, 0)
-        .to(tagRef.current,  { opacity: 1, y: 0,    duration: 0.4,  ease: "power3.out" }, 2.1)
-        .to(descRef.current, { opacity: 1,           duration: 0.5,  ease: "power2.out" }, 2.35);
+      // Staged page-load intro, in this order (by request):
+      //   1. the background gradient "spreads in" from an all-white hero,
+      //   2. then the 3D star fades/scales in,
+      //   3. then the heading + tagline below it appear,
+      //   4. (the navbar slides down + fades in from the top last — that's owned by SiteNav's
+      //      own `animateIn` entrance in page.tsx, timed to land right after this sequence).
+      // The star stays centered through the hero exit — no corner-parking/tilt — handing off at
+      // scale 1 into RadiatesSection's scroll-driven choreography right below the hero.
+      const mask = gradientMaskRef.current;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // Proxy the star's 3D entrance grow (0→1) so it lives on THIS timeline (driving Star3D's
+      // entranceRef) rather than Star3D's own R3F clock — keeping the visible grow perfectly in
+      // step with the opacity reveal below. Linear here; Star3D applies its own easeOutCubic.
+      const entranceProxy = { v: 0 };
+      const writeEntrance = () => { entranceRef.current = entranceProxy.v; };
+
+      if (reduceMotion) {
+        // No staged motion — reveal everything at its rest state immediately.
+        if (mask) gsap.set(mask, { autoAlpha: 0 });
+        entranceProxy.v = 1; writeEntrance();
+        gsap.set(star, { opacity: 1 });
+        gsap.set(tagRef.current, { opacity: 1, y: 0 });
+        gsap.set(descRef.current, { opacity: 1 });
+      } else {
+        tl = gsap.timeline();
+        tl
+          // 1) Gradient fades in: the white cover simply dissolves (opacity 1→0), so the gradient
+          //    itself smoothly materializes in place — no moving/wiping edge (a clip-path wipe read
+          //    as a white panel sliding down). Crossfading from an all-white first-paint state to
+          //    the gradient underneath is the smoothest way to "animate the gradient" itself.
+          // 1) Gradient "falls" in: the white cover slides straight DOWN and off (translateY 0 →
+          //    100% of its own height) over a long 2.2s sine.inOut, so the gradient is revealed
+          //    from the top down — colour pouring in — rather than a flat opacity fade. Its
+          //    feathered top edge (see the mask on this element) keeps the reveal line soft.
+          .fromTo(mask,
+            { yPercent: 0 },
+            { yPercent: 100, duration: 2.2, ease: "sine.inOut" }, 0)
+          // 2) Star GROWS in from tiny → full (entranceProxy → Star3D's entranceRef) while it
+          //    fades up — both run together on this one timeline so the grow is fully visible, not
+          //    finished behind the opacity. Positioned during the gradient wash so it reads as one
+          //    continuous flow.
+          .to(entranceProxy, { v: 1, duration: 1.15, ease: "none", onUpdate: writeEntrance }, 0.9)
+          .to(star, { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.9)
+          // 3) Tagline block below (the heading itself is SweepText trigger="load" delay=2400,
+          //    landing between these — see its JSX comment).
+          .to(tagRef.current,  { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 3.0)
+          .to(descRef.current, { opacity: 1,       duration: 0.5, ease: "power2.out" }, 3.2);
+      }
     });
 
     return () => {
@@ -264,6 +319,28 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
         background: "linear-gradient(180deg, #1130A2 0%, #1C38AE 14%, #7088D0 38%, #BAC8E8 52%, #ffffff 73%, #FFFFFF 100%)",
       }}
     >
+      {/* White cover over the gradient — present from first paint (so there's never a flash of the
+          gradient before JS runs), then it "falls" DOWNWARD out of view on load (translateY, see
+          the intro timeline) so the gradient is revealed from the top down like colour pouring in,
+          rather than a flat opacity fade. Its top edge is FEATHERED via a mask (transparent→opaque
+          over the top ~20%) so the reveal line is soft, not a hard sliding panel. Made taller than
+          the hero and offset up (top:-25%, height:125%) so at rest the feathered edge sits above
+          the hero (hero fully covered) and there's white to spare as it slides fully clear. z-10:
+          above the gradient background, below the z-30 tagline + z-20 star. */}
+      <div
+        ref={gradientMaskRef}
+        aria-hidden
+        className="absolute left-0 right-0 z-10 pointer-events-none"
+        style={{
+          top: "-25%",
+          height: "125%",
+          background: "#ffffff",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 20%)",
+          maskImage: "linear-gradient(to bottom, transparent 0%, #000 20%)",
+          willChange: "transform",
+        }}
+      />
+
       <div className="absolute bottom-0 inset-x-0 z-30 site-px pb-12 flex flex-col items-center text-center gap-3">
         <h1
           style={{
@@ -273,10 +350,10 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
             letterSpacing: "-0.01em",
           }}
         >
-          {/* delay bumped from 950 to 1000 (just past the star's own 1.0s reveal above) — the
-              star should visibly finish appearing first, THEN the heading sweeps in, not the
-              two overlapping. */}
-          <SweepText tone="dark" color="#0F0E0C" trigger="load" delay={1000}>
+          {/* delay 2400ms — the intro now runs a long, fluid gradient fade (0–2.2s) then the star
+              (1.3–2.3s) before this; the heading sweeps in once the star has visibly landed, just
+              ahead of the tagline block (3.0s), not overlapping the star's reveal. */}
+          <SweepText tone="dark" color="#0F0E0C" trigger="load" delay={2400}>
             ANYTHING BUT<br />EVERYTHING
           </SweepText>
         </h1>
@@ -317,6 +394,9 @@ export default function HomePage() {
   // canvas) rather than CSS-scaling the wrapper box — CSS-scaling the box dragged the star to one
   // side because the star isn't centered in its portrait canvas. See Star3D's useFrame.
   const shrinkRef = useRef<number>(1);
+  // Star entrance grow (0→1), driven by Hero's intro timeline so the model's "grow in" is
+  // perfectly in step with its opacity reveal (see Star3D's entranceRef).
+  const entranceProgressRef = useRef<number>(0);
 
   // The star's CSS wrapper box being bigger on mobile didn't actually make the star itself look
   // bigger — Star3D's camera uses a fixed FOV, so the model only fills a fixed FRACTION of
@@ -337,9 +417,9 @@ export default function HomePage() {
     // giving the tablet range in between a proportionate size instead of a cliff.
     const computeScale = () => {
       const w = window.innerWidth;
-      if (w <= 428) return 3.1;
-      if (w >= 1024) return 2.2;
-      return 3.1 + (2.2 - 3.1) * ((w - 428) / (1024 - 428));
+      if (w <= 428) return 2.8;
+      if (w >= 1024) return 1.95;
+      return 2.8 + (1.95 - 2.8) * ((w - 428) / (1024 - 428));
     };
     setStarScale(computeScale());
     const onResize = () => setStarScale(computeScale());
@@ -381,7 +461,9 @@ export default function HomePage() {
           smooth at all scroll speeds by feeding ScrollTrigger a continuous (rather than
           browser-stepped) scroll value. Replaces RadiatesSection's former normalizeScroll. */}
       <SmoothScroll />
-      <SiteNav />
+      {/* animateIn: the navbar is the final beat of the homepage's staged load intro — it slides
+          down + fades in from the top after the gradient/star/text sequence (see Hero). */}
+      <SiteNav animateIn />
 
       <div
         ref={globalStarRef}
@@ -411,15 +493,29 @@ export default function HomePage() {
           // Star3D's camera keeps a fixed vertical FOV, so a taller box just reveals more of the
           // scene above/below, it doesn't rescale the star itself.
           height: "clamp(280px, min(84vh, 125vw), 940px)",
+          // Centering transform applied in plain CSS from FIRST PAINT — not left for GSAP alone.
+          // Hero's gsap.set (xPercent:-50, yPercent:-50, x:0, y:0) runs only after gsap is
+          // dynamically imported (async), so before it lands the wrapper sits at left:50%/top:38%
+          // with NO centering offset — and R3F measures the canvas at that stale, off-centre
+          // position on mount, rendering the star slightly left until a resize/scroll forced a
+          // re-measure. Baking the same translate(-50%,-50%) into the initial style means the box
+          // is already centred when R3F first measures it; gsap.set then sets the identical
+          // transform (plus its entrance scale), so there's no jump and the first paint is correct.
+          transform: "translate(-50%, -50%)",
           willChange: "transform",
         }}
       >
         <div style={{ width: "100%", height: "100%" }}>
-          <Star3D className="w-full h-full" scale={starScale} spinRef={spinProgressRef} dampRef={rotationDampRef} shrinkRef={shrinkRef} />
+          {/* Reduced-perspective camera (cameraZ 9 + fov ~20.5, chosen so cameraZ·tan(fov/2) ≈
+              4·tan(22°) — same on-screen size as the default 44° lens): a middle ground between the
+              original dramatic 44° lens and full near-ortho. It roughly halves the arms' uneven
+              foreshortening as the star spins (so it reads far more centred) while keeping enough
+              depth that the star still looks full/large rather than flat. */}
+          <Star3D className="w-full h-full" scale={starScale} cameraZ={9} fov={20.5} spinRef={spinProgressRef} dampRef={rotationDampRef} shrinkRef={shrinkRef} entranceRef={entranceProgressRef} />
         </div>
       </div>
 
-      <Hero starRef={globalStarRef} shrinkRef={shrinkRef} />
+      <Hero starRef={globalStarRef} shrinkRef={shrinkRef} entranceRef={entranceProgressRef} />
 
       {/* RadiatesSection now also contains the SWITCHBLADE wordmark reveal (formerly the separate
           UniquenessReveal section) — the star shrinks in place and the wordmark fades in within
@@ -433,7 +529,7 @@ export default function HomePage() {
           globeTravel's scrollTrigger in RadiatesSection) take too many scrolls end-to-end;
           60vh was still too much stacked on top of that travel distance on mobile, so mobile
           gets a smaller 30vh buffer here while desktop keeps 60vh. */}
-      <div className="h-[30vh] lg:h-[60vh]" style={{ background: "#ffffff" }} />
+      <div className="h-[30vh] lg:h-[20vh]" style={{ background: "#ffffff" }} />
 
       <ParagraphReveal />
 

@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import "./classics-experience.css";
 
 interface Project { title: string; cat: string; img: string; gallery?: string[]; body?: string[] }
@@ -313,18 +314,11 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
     let centerStar: THREE.Group | null = null;
     function loadCenterStar() {
-      const ec = document.createElement("canvas"); ec.width = 256; ec.height = 128;
-      const ex = ec.getContext("2d")!;
-      const eg = ex.createLinearGradient(0, 0, 0, 128);
-      eg.addColorStop(0, "#ffffff"); eg.addColorStop(0.42, "#cfe0fb"); eg.addColorStop(0.62, "#3f5db0"); eg.addColorStop(1, "#0b1f63");
-      ex.fillStyle = eg; ex.fillRect(0, 0, 256, 128);
-      const bg = ex.createRadialGradient(180, 34, 4, 180, 34, 70);
-      bg.addColorStop(0, "#ffffff"); bg.addColorStop(1, "rgba(255,255,255,0)");
-      ex.fillStyle = bg; ex.fillRect(0, 0, 256, 128);
-      const envTex = new THREE.CanvasTexture(ec);
-      envTex.mapping = THREE.EquirectangularReflectionMapping; envTex.colorSpace = THREE.SRGBColorSpace; envTex.needsUpdate = true;
+      // Neutral studio environment (RoomEnvironment) rather than the former blue canvas gradient —
+      // the blue env was what tinted this metallic star flat blue. This gives the same silver
+      // CHROME reflections the site's Star3D uses everywhere else, matching its look.
       const pmrem = new THREE.PMREMGenerator(renderer);
-      scene.environment = pmrem.fromEquirectangular(envTex).texture;
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
       pmrem.dispose();
       scene.environmentIntensity = 1.4;
       scene.add(new THREE.AmbientLight(0xffffff, 0.4));
@@ -333,7 +327,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const grp = new THREE.Group(); grp.position.set(0, 0, 0); scene.add(grp); centerStar = grp;
       new GLTFLoader().load("/Compass.glb", gltf => {
         const m = gltf.scene;
-        m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshStandardMaterial({ color: new THREE.Color("#cdd9ef"), metalness: 1, roughness: 0.1, envMapIntensity: 2.0, side: THREE.DoubleSide }); });
+        // Same chrome material as the site-wide Star3D (components/shared/Star3D.tsx): silver
+        // MeshPhysicalMaterial with clearcoat, so this star reads identically to the rest of the site.
+        m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshPhysicalMaterial({ color: new THREE.Color("#B8C0CE"), metalness: 0.97, roughness: 0.05, clearcoat: 0.6, clearcoatRoughness: 0.04, envMapIntensity: 2.4, side: THREE.DoubleSide }); });
         const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z) || 1;
         m.scale.setScalar(4.6 / maxDim);
@@ -634,18 +630,11 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       starScene = new THREE.Scene();
       starCam = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
       starCam.position.set(0, 0, 4.6);
-      const ec = document.createElement("canvas"); ec.width = 256; ec.height = 128;
-      const ex = ec.getContext("2d")!;
-      const eg = ex.createLinearGradient(0, 0, 0, 128);
-      eg.addColorStop(0, "#ffffff"); eg.addColorStop(0.42, "#cfe0fb"); eg.addColorStop(0.62, "#3f5db0"); eg.addColorStop(1, "#0b1f63");
-      ex.fillStyle = eg; ex.fillRect(0, 0, 256, 128);
-      const bg = ex.createRadialGradient(180, 34, 4, 180, 34, 70);
-      bg.addColorStop(0, "#ffffff"); bg.addColorStop(1, "rgba(255,255,255,0)");
-      ex.fillStyle = bg; ex.fillRect(0, 0, 256, 128);
-      const envTex = new THREE.CanvasTexture(ec);
-      envTex.mapping = THREE.EquirectangularReflectionMapping; envTex.colorSpace = THREE.SRGBColorSpace; envTex.needsUpdate = true;
+      // Neutral studio environment (RoomEnvironment) for the same silver chrome look as the
+      // site-wide Star3D, matching the center star above (was a blue canvas gradient that tinted
+      // this metallic star flat blue).
       const pmrem = new THREE.PMREMGenerator(starRenderer);
-      starScene.environment = pmrem.fromEquirectangular(envTex).texture;
+      starScene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
       pmrem.dispose();
       starScene.environmentIntensity = 1.5;
       starScene.add(new THREE.AmbientLight(0xffffff, 0.35));
@@ -654,7 +643,8 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const grp = new THREE.Group(); starScene.add(grp); starModel = grp;
       new GLTFLoader().load("/Compass.glb", gltf => {
         const m = gltf.scene;
-        m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshStandardMaterial({ color: new THREE.Color("#cdd9ef"), metalness: 1, roughness: 0.1, envMapIntensity: 2.0, side: THREE.DoubleSide }); });
+        // Same chrome material as the site-wide Star3D.
+        m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshPhysicalMaterial({ color: new THREE.Color("#B8C0CE"), metalness: 0.97, roughness: 0.05, clearcoat: 0.6, clearcoatRoughness: 0.04, envMapIntensity: 2.4, side: THREE.DoubleSide }); });
         const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z) || 1;
         m.scale.setScalar(2.3 / maxDim);
