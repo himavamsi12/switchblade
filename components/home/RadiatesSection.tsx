@@ -248,7 +248,7 @@ export function RadiatesSection({
         .to(headingRef.current, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0)
         .to(spin, {
           v: 1,
-          duration: 1.6,
+          duration: 0.88,
           ease: "power1.inOut",
           onUpdate() { spinRef.current = spin.v; },
         }, 0.2)
@@ -259,10 +259,13 @@ export function RadiatesSection({
         // start together. (A single .to(labelGroups.flat()) with a stagger would instead type all
         // four words as one continuous left-to-right sequence across the whole group — which is the
         // one-by-one look we don't want here.)
-        .to(labelGroups[0], { opacity: 1, filter: "blur(0px)", duration: 0.3, ease: "none", stagger: { each: 0.05, from: "start" } }, 1.9)
-        .to(labelGroups[1], { opacity: 1, filter: "blur(0px)", duration: 0.3, ease: "none", stagger: { each: 0.05, from: "start" } }, 1.9)
-        .to(labelGroups[2], { opacity: 1, filter: "blur(0px)", duration: 0.3, ease: "none", stagger: { each: 0.05, from: "start" } }, 1.9)
-        .to(labelGroups[3], { opacity: 1, filter: "blur(0px)", duration: 0.3, ease: "none", stagger: { each: 0.05, from: "start" } }, 1.9);
+        // Start position tracks the spin's end (0.2 + 0.88 = 1.08), landing a hair before it so the
+        // two overlap slightly instead of running strictly back to back — if the spin's duration
+        // changes again, move this with it. Per-char stagger and duration are tuned to match.
+        .to(labelGroups[0], { opacity: 1, filter: "blur(0px)", duration: 0.26, ease: "none", stagger: { each: 0.03, from: "start" } }, 1.0)
+        .to(labelGroups[1], { opacity: 1, filter: "blur(0px)", duration: 0.26, ease: "none", stagger: { each: 0.03, from: "start" } }, 1.0)
+        .to(labelGroups[2], { opacity: 1, filter: "blur(0px)", duration: 0.26, ease: "none", stagger: { each: 0.03, from: "start" } }, 1.0)
+        .to(labelGroups[3], { opacity: 1, filter: "blur(0px)", duration: 0.26, ease: "none", stagger: { each: 0.03, from: "start" } }, 1.0);
 
       // ── Beat 2: heading + labels FADE OUT (scroll-scrubbed) ───────────────────────────────────
       // A scrubbed timeline over a non-overlapping slice (desktop 20%→28%, mobile 24%→34%). This
