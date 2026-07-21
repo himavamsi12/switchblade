@@ -153,7 +153,7 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
         >
           {/* Full logo lockup (mark + wordmark + ™) as one SVG, using currentColor so it follows
               the nav variant colour. w-auto keeps its ~6.8:1 aspect ratio from the height. */}
-          <SwitchbladeLogo className="h-[18px] md:h-[22px] w-auto shrink-0" />
+          <SwitchbladeLogo className="h-[26px] md:h-[32px] w-auto shrink-0" />
         </Link>
 
         <Link
