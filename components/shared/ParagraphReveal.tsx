@@ -44,13 +44,14 @@ export function ParagraphReveal() {
         gsap.set(badge, { opacity: 0, y: 8 });
       }
 
-      // Left column (the "Switchblade is the beginning..." paragraph + Vision + Core Belief)
-      // fades up on its own the same way this section's globe/badge already does — self-
-      // contained here (a plain ScrollTrigger, not the site-wide .scroll-entrance class other
-      // pages use) since ParagraphReveal already owns a GSAP effect of its own and this doesn't
-      // need to be shared/reused elsewhere. toggleActions "play none none none": plays once on
-      // first scroll-into-view, doesn't reverse or replay on scroll back up — matches the
-      // one-shot feel of every other entrance animation on this page.
+      // Left column (the "Switchblade is the beginning..." paragraph + Vision + Core Belief) fades
+      // up as the reader scrolls it into reading position. This used to be a one-shot time-based
+      // tween (toggleActions "play none none none", 0.9s) — fine for speed on its own, but the rest
+      // of this second-section flow (RadiatesSection's labels + wordmark) was converted to be fully
+      // scroll-SCRUBBED so it tracks scroll position at any speed, and a lone time-based fade here
+      // read as inconsistent with that (it kept playing on its own clock right after a scrubbed
+      // hand-off). Now scrubbed over its own scroll slice so the whole beat — wordmark out, then
+      // this paragraph in — advances in lockstep with scroll, forward or back, at every speed.
       if (killed) return;
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
       if (killed || !leftColRef.current) return;
@@ -59,12 +60,15 @@ export function ParagraphReveal() {
       leftColTrigger = gsap.to(leftColRef.current, {
         opacity: 1,
         y: 0,
-        duration: 0.9,
-        ease: "power3.out",
+        ease: "power2.out",
         scrollTrigger: {
           trigger: leftColRef.current,
-          start: "top 50%",
-          toggleActions: "play none none none",
+          // Reveal spans from the column entering the lower viewport (top at 85%) up to it sitting
+          // comfortably in the reading zone (top at 45%) — long enough that it's fully in before it
+          // dominates the screen, scrubbed so it never plays ahead of or behind the scroll.
+          start: "top 85%",
+          end: "top 45%",
+          scrub: 0.3,
         },
       }).scrollTrigger;
     });
