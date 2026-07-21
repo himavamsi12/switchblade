@@ -392,20 +392,15 @@ export function RadiatesSection({
         }); // no position arg — starts right after the last letter tween in the stagger above ends
       wordmarkTrigger = wordmarkTween.scrollTrigger;
 
-      // Mobile only: the star AND the whole SWITCHBLADE wordmark section travel down and out
-      // together after the wordmark's one-screen dwell (38%→58% of the section, see
-      // wordmarkTrigger above) has played out — it no longer rides down into paragraph-reveal at
-      // all (see the guard around Hero's own paragraph-reveal-based fade-out in page.tsx,
-      // disabled on mobile so it can't fight this).
-      //
-      // This used to be a fixed-duration (0.6s) onEnter/onLeaveBack tween on the star alone,
-      // triggered once at "58% top" — that read as the star snapping into a fast, scroll-
-      // independent animation while the wordmark section just sat frozen in place, since a sticky
-      // pin never moves on its own. Rebuilt as a scrub tied directly to scroll progress across a
-      // real range (58%→82% of the section) so both travel down and fade out together, at the
-      // reader's own scroll pace — reaching fully gone at 82%, comfortably before this section's
-      // pin releases into ParagraphReveal/OriginsSection, so it's mid-transit-invisible rather
-      // than still visible when Origins arrives.
+      // Mobile only: the STAR alone travels down and out after the wordmark's one-screen dwell
+      // (38%→58% of the section) — the SWITCHBLADE wordmark itself stays put, by request. It's a
+      // sticky-pinned layer, so leaving it untouched here means it simply holds its position for
+      // the rest of the section and then scrolls away naturally when the pin releases into
+      // ParagraphReveal, rather than sliding down in lockstep with the star (which read as the
+      // text being dragged along by the model). The star's downward travel + fade is scrubbed to
+      // scroll across 58%→82% so it tracks the reader's own pace and is fully gone before Origins
+      // arrives. Hero's own paragraph-reveal-based fade-out is guarded off on mobile (see page.tsx)
+      // so it can't fight this.
       if (isMobile) {
         starHideTrigger = ScrollTrigger.create({
           trigger: section,
@@ -415,7 +410,6 @@ export function RadiatesSection({
           onUpdate: (self: any) => {
             const p = self.progress;
             gsap.set(star, { y: `${6 + p * 60}vh`, opacity: 1 - p });
-            gsap.set(wordmarkStickyRef.current, { y: `${p * 60}vh`, opacity: 1 - p });
           },
         });
       }
