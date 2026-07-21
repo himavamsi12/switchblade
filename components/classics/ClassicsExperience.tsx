@@ -3,6 +3,10 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+// Compass.glb is meshopt-compressed (EXT_meshopt_compression, a REQUIRED extension — 7.5MB → 627KB),
+// so every loader that touches it must have this decoder set or the parse fails outright. drei's
+// useGLTF (Star3D, JourneyStar3D) wires it automatically; these raw GLTFLoaders do not.
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import "./classics-experience.css";
 
@@ -325,7 +329,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const dl = new THREE.DirectionalLight(0xffffff, 2.4); dl.position.set(4, 8, 5); scene.add(dl);
       const dl2 = new THREE.DirectionalLight(0x9fb6ff, 1.2); dl2.position.set(-5, -2, -3); scene.add(dl2);
       const grp = new THREE.Group(); grp.position.set(0, 0, 0); scene.add(grp); centerStar = grp;
-      new GLTFLoader().load("/Compass.glb", gltf => {
+      new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("/Compass.glb", gltf => {
         const m = gltf.scene;
         // Same chrome material as the site-wide Star3D (components/shared/Star3D.tsx): silver
         // MeshPhysicalMaterial with clearcoat, so this star reads identically to the rest of the site.
@@ -641,7 +645,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const dl = new THREE.DirectionalLight(0xffffff, 2.4); dl.position.set(4, 8, 5); starScene.add(dl);
       const dl2 = new THREE.DirectionalLight(0x9fb6ff, 1.2); dl2.position.set(-5, -2, -3); starScene.add(dl2);
       const grp = new THREE.Group(); starScene.add(grp); starModel = grp;
-      new GLTFLoader().load("/Compass.glb", gltf => {
+      new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load("/Compass.glb", gltf => {
         const m = gltf.scene;
         // Same chrome material as the site-wide Star3D.
         m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshPhysicalMaterial({ color: new THREE.Color("#B8C0CE"), metalness: 0.97, roughness: 0.05, clearcoat: 0.6, clearcoatRoughness: 0.04, envMapIntensity: 2.4, side: THREE.DoubleSide }); });

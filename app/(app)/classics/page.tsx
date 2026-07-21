@@ -1,38 +1,20 @@
-import { getPayload } from "payload";
-
-import config from "@/payload.config";
 import { ClassicsPageClient } from "@/components/classics/ClassicsPageClient";
-import type { CmsProject } from "@/components/classics/ClassicsExperience";
 
-export const dynamic = "force-dynamic";
-
-export default async function ClassicsPage() {
-  const payload = await getPayload({ config });
-  const { docs } = await payload.find({
-    collection: "classics-cards",
-    depth: 1,
-    limit: 100,
-    sort: "createdAt",
-  });
-
-  const cmsProjects: CmsProject[] = docs
-    .map((doc) => {
-      const image = typeof doc.image === "object" ? doc.image : null;
-      const gallery = (doc.gallery ?? [])
-        .map((entry) => (typeof entry.image === "object" ? entry.image?.url : null))
-        .filter((url): url is string => Boolean(url));
-      return {
-        title: doc.heading,
-        cat: doc.category,
-        img: image?.url ?? "",
-        gallery,
-        body: doc.paragraph
-          .split(/\n\s*\n/)
-          .map((p) => p.trim())
-          .filter(Boolean),
-      };
-    })
-    .filter((p) => p.img);
-
-  return <ClassicsPageClient cmsProjects={cmsProjects} />;
+/**
+ * Static page — deliberately NOT backed by Payload.
+ *
+ * This used to be `force-dynamic` and ran `payload.find({ collection: "classics-cards" })` on every
+ * request. That can't work on Vercel: the Payload config points `sqliteAdapter` at the local file
+ * `./payload.db`, which is gitignored (so it's never deployed) and couldn't be read or written
+ * anyway on a read-only, ephemeral serverless filesystem. The result was a 500 on /classics in
+ * production while every other (static) route was fine.
+ *
+ * Nothing was lost by dropping the query: the `classics-cards` collection was empty (0 rows), and
+ * ClassicsExperience composes its cards as `[...PROJECTS, ...cmsProjects]` — so the CMS array only
+ * ever appended to the hardcoded PROJECTS list, and was always appending nothing.
+ *
+ * To add or edit cards, edit PROJECTS in components/classics/ClassicsExperience.tsx.
+ */
+export default function ClassicsPage() {
+  return <ClassicsPageClient cmsProjects={[]} />;
 }
