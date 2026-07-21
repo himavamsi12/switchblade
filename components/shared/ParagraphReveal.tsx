@@ -1,6 +1,6 @@
 "use client";
-import Image from "next/image";
 import { useEffect, useRef } from "react";
+import { Globe3D } from "@/components/shared/Globe3D";
 
 function Highlighted({ text }: { text: string }) {
   const parts = text.split(/(Switchblade|thinkers & doers)/g);
@@ -17,32 +17,61 @@ function Highlighted({ text }: { text: string }) {
 
 export function ParagraphReveal() {
   const badgeRef = useRef<HTMLSpanElement>(null);
+  const leftColRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let killed = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let leftColTrigger: any = null;
 
-    import("gsap").then(({ gsap }) => {
+    import("gsap").then(async ({ gsap }) => {
       if (killed) return;
       const badge = badgeRef.current;
       // 1024, not 768 — matches the isMobile threshold in RadiatesSection.tsx/page.tsx (see
       // their comments): the star only travels here at all above that width now, so tablets
       // between 768-1023 need this to agree or the badge would try to animate in for a star
       // that RadiatesSection never actually sends this way.
-      if (!badge || window.innerWidth < 1024) return;
-      // Fading this in is owned by RadiatesSection's globeTravel timeline (see
-      // components/home/RadiatesSection.tsx), not a separate ScrollTrigger here — this used to be
-      // its own independently-created ScrollTrigger with a "top 45%" start chosen to match
-      // globeTravel's end exactly, but two separately-measured triggers on the same element with
-      // the same string can still resolve to different pixel positions (layout/measurement timing
-      // differences), and live testing showed the badge appearing well before the star had
-      // actually finished traveling to the globe. Driving it from the same timeline instance that
-      // drives the star's x/y guarantees they can't drift apart — this effect now only sets the
-      // hidden starting state; RadiatesSection finds this element by id and tweens it directly.
-      gsap.set(badge, { opacity: 0, y: 8 });
+      if (badge && window.innerWidth >= 1024) {
+        // Fading this in is owned by RadiatesSection's globeTravel timeline (see
+        // components/home/RadiatesSection.tsx), not a separate ScrollTrigger here — this used to
+        // be its own independently-created ScrollTrigger with a "top 45%" start chosen to match
+        // globeTravel's end exactly, but two separately-measured triggers on the same element with
+        // the same string can still resolve to different pixel positions (layout/measurement timing
+        // differences), and live testing showed the badge appearing well before the star had
+        // actually finished traveling to the globe. Driving it from the same timeline instance that
+        // drives the star's x/y guarantees they can't drift apart — this effect now only sets the
+        // hidden starting state; RadiatesSection finds this element by id and tweens it directly.
+        gsap.set(badge, { opacity: 0, y: 8 });
+      }
+
+      // Left column (the "Switchblade is the beginning..." paragraph + Vision + Core Belief)
+      // fades up on its own the same way this section's globe/badge already does — self-
+      // contained here (a plain ScrollTrigger, not the site-wide .scroll-entrance class other
+      // pages use) since ParagraphReveal already owns a GSAP effect of its own and this doesn't
+      // need to be shared/reused elsewhere. toggleActions "play none none none": plays once on
+      // first scroll-into-view, doesn't reverse or replay on scroll back up — matches the
+      // one-shot feel of every other entrance animation on this page.
+      if (killed) return;
+      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
+      if (killed || !leftColRef.current) return;
+      gsap.registerPlugin(ScrollTrigger);
+      gsap.set(leftColRef.current, { opacity: 0, y: 40 });
+      leftColTrigger = gsap.to(leftColRef.current, {
+        opacity: 1,
+        y: 0,
+        duration: 0.9,
+        ease: "power3.out",
+        scrollTrigger: {
+          trigger: leftColRef.current,
+          start: "top 50%",
+          toggleActions: "play none none none",
+        },
+      }).scrollTrigger;
     });
 
     return () => {
       killed = true;
+      leftColTrigger?.kill();
     };
   }, []);
 
@@ -50,7 +79,7 @@ export function ParagraphReveal() {
     <div id="paragraph-reveal" style={{ background: "#ffffff", borderTop: "1px solid rgba(13,13,13,0.1)" }}>
       <div className="site-px grid grid-cols-1 lg:[grid-template-columns:1fr_1fr]" style={{ gap: "clamp(32px,5vw,64px)", paddingTop: "clamp(56px,7vw,100px)", paddingBottom: "clamp(90px,7vw,175px)", alignItems: "center" }}>
 
-        <div>
+        <div ref={leftColRef}>
           <p style={{
             fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(24px,3vw,32px)",
             lineHeight: 1.12, color: "#0D0D0D", textAlign: "start",
@@ -74,7 +103,32 @@ export function ParagraphReveal() {
         </div>
 
         <div style={{ position: "relative", width: "100%", aspectRatio: "548/499" }}>
-          <Image src="/vision-globe.svg" alt="Globe" fill className="object-contain" sizes="(max-width:1024px) 90vw, 45vw" />
+          {/* Real rotating three.js globe (Globe3D) — replaces the former flat vision-globe.svg,
+              which baked its continents (and the two "50%" callouts below) into one static image
+              that could only ever be rotated as a flat tumbling card, not read as an actual
+              sphere turning. The "50%" callouts now live as plain HTML overlays here instead of
+              inside that SVG, so they stay upright and legible while the globe itself rotates
+              underneath them. */}
+          <Globe3D className="absolute inset-0" />
+
+          <div className="flex flex-col gap-1" style={{ position: "absolute", top: "2%", left: 0 }}>
+            <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 800, fontSize: "clamp(26px,3.3vw,40px)", lineHeight: 1, letterSpacing: "-0.02em", color: "#0D0D0D" }}>
+              50<span style={{ fontSize: "0.42em", fontWeight: 700 }}>%</span>
+            </span>
+            <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(13px,1.15vw,16px)", letterSpacing: "0.02em", textTransform: "uppercase", color: "#444", whiteSpace: "nowrap" }}>
+              Individual Identity
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-1" style={{ position: "absolute", bottom: "2%", right: 0, textAlign: "right" }}>
+            <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 800, fontSize: "clamp(26px,3.3vw,40px)", lineHeight: 1, letterSpacing: "-0.02em", color: "#0D0D0D" }}>
+              50<span style={{ fontSize: "0.42em", fontWeight: 700 }}>%</span>
+            </span>
+            <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(13px,1.15vw,16px)", letterSpacing: "0.02em", textTransform: "uppercase", color: "#444" }}>
+              Collaborative<br />Effort
+            </span>
+          </div>
+
           {/* "SWITCHBLADE" tag beside the star once it's docked here (RadiatesSection's
               globeTravel parks it roughly over this image's upper-center area on desktop).
               Hidden on mobile — the star never travels into this section there at all (see

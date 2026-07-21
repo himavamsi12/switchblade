@@ -6,9 +6,9 @@ import * as THREE from "three";
 import type { Group } from "three";
 import { nudgeCanvasResize } from "@/lib/canvasResizeNudge";
 
-function StarModel({ scale = 2.2, spinRef, dampRef, shrinkRef }: { scale?: number; spinRef?: React.RefObject<number>; dampRef?: React.RefObject<number>; shrinkRef?: React.RefObject<number> }) {
+function StarModel({ scale = 2.2, spinRef, dampRef, shrinkRef, autoRotate = true }: { scale?: number; spinRef?: React.RefObject<number>; dampRef?: React.RefObject<number>; shrinkRef?: React.RefObject<number>; autoRotate?: boolean }) {
   const groupRef = useRef<Group>(null);
-  const { scene } = useGLTF("/estar.glb");
+  const { scene } = useGLTF("/Compass.glb");
   const entranceStart = useRef<number | null>(null);
   // Accumulated base rotation, integrated frame-by-frame via delta rather than computed as
   // `elapsedTime * speed` — the scroll-driven extra spin (dampRef, added separately below) is
@@ -63,8 +63,10 @@ function StarModel({ scale = 2.2, spinRef, dampRef, shrinkRef }: { scale?: numbe
     // Always rotate — the model's rotation axis passes through its horizontal center, so a
     // continuously spinning star keeps its center point fixed (stays centered) while the arms
     // sweep. It never freezes.
-    baseRotationRef.current += 0.25 * delta;
-    const extraSpin = (spinRef?.current ?? 0) * Math.PI * 2;
+    if (autoRotate) baseRotationRef.current += 0.25 * delta;
+    // RadiatesSection's entrance spin (spinRef going 0→1 over its own timeline) — half a turn
+    // (Math.PI radians = 180°), not a full 360°.
+    const extraSpin = (spinRef?.current ?? 0) * Math.PI;
     // dampRef is extra rotation (radians) layered on top of the constant base spin, driven by
     // RadiatesSection's scroll progress rather than time — see rotationDampRef's declaration in
     // page.tsx for why this reads as "spins faster as you scroll through the shrink" regardless
@@ -103,7 +105,7 @@ function Loader() {
   );
 }
 
-export function Star3D({ className = "", scale = 2.2, cameraZ = 4, spinRef, dampRef, shrinkRef }: { className?: string; scale?: number; cameraZ?: number; spinRef?: React.RefObject<number>; dampRef?: React.RefObject<number>; shrinkRef?: React.RefObject<number> }) {
+export function Star3D({ className = "", scale = 2.2, cameraZ = 4, spinRef, dampRef, shrinkRef, autoRotate = true }: { className?: string; scale?: number; cameraZ?: number; spinRef?: React.RefObject<number>; dampRef?: React.RefObject<number>; shrinkRef?: React.RefObject<number>; autoRotate?: boolean }) {
   useEffect(() => {
     nudgeCanvasResize();
   }, []);
@@ -122,7 +124,7 @@ export function Star3D({ className = "", scale = 2.2, cameraZ = 4, spinRef, damp
         <directionalLight position={[-4, -4, -4]} intensity={1.2}  color="#7090FF" />
 
         <Suspense fallback={<Loader />}>
-          <StarModel scale={scale} spinRef={spinRef} dampRef={dampRef} shrinkRef={shrinkRef} />
+          <StarModel scale={scale} spinRef={spinRef} dampRef={dampRef} shrinkRef={shrinkRef} autoRotate={autoRotate} />
           <Environment preset="sunset" />
         </Suspense>
 
@@ -149,4 +151,4 @@ export function Star3D({ className = "", scale = 2.2, cameraZ = 4, spinRef, damp
   );
 }
 
-useGLTF.preload("/estar.glb");
+useGLTF.preload("/Compass.glb");

@@ -85,7 +85,12 @@ export function RadiatesSection({
 }) {
   const outerRef    = useRef<HTMLDivElement>(null);
   const headingRef  = useRef<HTMLDivElement>(null);
+  const labelsWrapRef = useRef<HTMLDivElement>(null);
   const wordmarkRef = useRef<HTMLDivElement>(null);
+  const wordmarkStickyRef = useRef<HTMLDivElement>(null);
+  const wordmarkCharRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const sharpEdgeRef = useRef<HTMLDivElement>(null);
+  const softHeartRef = useRef<HTMLDivElement>(null);
   const charRefs   = useRef<Record<string, (HTMLSpanElement | null)[]>>({});
   const dotRefs    = useRef<Record<string, HTMLSpanElement | null>>({});
 
@@ -95,6 +100,8 @@ export function RadiatesSection({
     let tlEnter: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let tlExit: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let tlExitTrigger: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let globeTravel: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -107,9 +114,7 @@ export function RadiatesSection({
     let wordmarkTrigger: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let starHideTrigger: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let normalizer: any = null;
-    let observer: IntersectionObserver | null = null;
+    let rafId = 0;
 
     import("gsap").then(async ({ gsap }) => {
       if (killed) return;
@@ -117,33 +122,17 @@ export function RadiatesSection({
       if (killed) return;
       gsap.registerPlugin(ScrollTrigger);
 
-      // Root cause of the persistent "jumping" report, found by measurement: it wasn't a bug in
-      // the tween logic (frame data showed x/y/scale moving in perfect lockstep) — it was
-      // `scrub`'s own catch-up lag. Raw wheel/trackpad scroll delivers scroll position in
-      // irregular chunks, not a smooth stream, so a scrub tween is always choosing between two
-      // bad options: track those chunks tightly (visible per-notch snapping) or ease toward them
-      // with a second of lag (the star keeps drifting for a while after your hand/scroll stops —
-      // reads as moving on its own, disconnected from the actual scroll). Tuning the scrub number
-      // back and forth can't fix this since both symptoms come from the same root cause: the raw
-      // input itself. normalizeScroll smooths that raw input at the platform level, so a much
-      // tighter scrub can track it directly with neither problem. This changes scroll feel
-      // page-wide (adds a bit of inertia to every scroll interaction, not just this section) —
-      // it's the standard fix GSAP recommends for exactly this complaint.
-      //
-      // Desktop only. normalizeScroll intercepts touchmove itself to do the smoothing, which as
-      // a side effect blocks the browser's native pull-to-refresh gesture site-wide — a mobile
-      // affordance users expect to work everywhere, not just outside this one section. Desktop
-      // has no such gesture to break, so it keeps the smoothing (with allowNestedScroll: true,
-      // otherwise it also hijacks touches inside nested scrollable elements elsewhere on the
-      // page, like OriginsSection's popup sheet, routing them to the page scroll instead of
-      // letting that element scroll itself).
-      // Threshold raised from 768 to 1024 (Tailwind's lg breakpoint) — see the matching comment
-      // in Hero's own effect in page.tsx for why tablets (768-1023) now take the "mobile" branch
-      // here too, consistently with there and with ParagraphReveal.
+      // Scroll input smoothing (so the scroll-scrubbed star animations below don't step/stutter
+      // on slow discrete wheel scroll) is now handled globally on the homepage by Lenis — see
+      // components/shared/SmoothScroll.tsx, mounted in page.tsx. This used to set up
+      // ScrollTrigger.normalizeScroll() here instead; that was removed because Lenis and
+      // normalizeScroll both hijack the scroll and must never run together. Lenis is scoped to
+      // the same desktop-only (>= 1024) range this isMobile check gates everything else in this
+      // file to, so behavior below is unchanged on mobile.
+      // Threshold: 1024 (Tailwind's lg breakpoint) — see the matching comment in Hero's own
+      // effect in page.tsx for why tablets (768-1023) take the "mobile" branch here too,
+      // consistently with there and with ParagraphReveal.
       const isMobile = window.innerWidth < 1024;
-      if (!isMobile) {
-        normalizer = ScrollTrigger.normalizeScroll({ allowNestedScroll: true });
-      }
 
       const star = starRef.current;
       const section = outerRef.current;
@@ -169,6 +158,10 @@ export function RadiatesSection({
       const dockedScale = isMobile ? 2.2 / mobileBaseScale : 0.7;
 
       gsap.set(headingRef.current, { opacity: 0, y: -14 });
+      // Wrapper starts fully "open" (opacity 1, no blur) — the labels' own hidden state comes
+      // from the per-character gsap.set below, not from this wrapper, so tlEnter's reveal is
+      // visible through it. tlExit only ever closes this wrapper back down.
+      gsap.set(labelsWrapRef.current, { opacity: 1, filter: "blur(0px)" });
 
       const labelGroups = LABELS.map((l) => {
         const chars = (charRefs.current[l.key] ?? []).filter(
@@ -188,15 +181,20 @@ export function RadiatesSection({
       // one at a time. Not scroll-scrubbed: scrolling shouldn't drag the spin back and forth,
       // it should just trigger the sequence (and reverse it if you scroll back above it).
       //
-      // IntersectionObserver instead of a GSAP ScrollTrigger onEnter/onLeaveBack pair: this
-      // section's height depends on layout that shifts as the 3D model/fonts finish loading,
-      // which can leave a scroll-trigger's cached pixel start/end stale. IntersectionObserver
-      // re-checks against the live layout every time, so it can't miss the crossing. The
-      // rootMargin collapses the "root" to a 0px sliver at the very top of the viewport, so
-      // isIntersecting flips true exactly when the section's top edge reaches the top of the
-      // viewport (same trigger point as ScrollTrigger's "top top"), and stays true for the
-      // whole section since it's much taller than the viewport — flipping false again only
-      // once scrolled back above it.
+      // Driven by a plain requestAnimationFrame poll of section.getBoundingClientRect().top,
+      // not an IntersectionObserver (what this used to be) or a GSAP ScrollTrigger onEnter/
+      // onLeaveBack pair. ScrollTrigger's cached pixel start/end can go stale as this section's
+      // height shifts while the 3D model/fonts finish loading — the original reason
+      // IntersectionObserver was chosen instead, since it re-checks against live layout on every
+      // callback. But confirmed live: IntersectionObserver only re-fires on a CHANGE of
+      // intersection ratio, and with rootMargin collapsing the root to a 0px-tall sliver (needed
+      // to fire exactly at "top top"), a fast scroll can cross that sliver between two of the
+      // browser's own (throttled/coalesced) IntersectionObserver checks — the callback simply
+      // never fires again afterward, so tlEnter never played for the rest of that visit. Polling
+      // getBoundingClientRect() every frame reads the SAME always-live layout IntersectionObserver
+      // was chosen for, but can't miss a crossing the way an event-based callback can: every
+      // frame independently re-evaluates "is top <= 0" against current reality, so there's no
+      // state transition to coalesce away.
       tlEnter = gsap.timeline({ paused: true });
 
       // No TWEEN for the star's settle-down move (that's the part that caused the old
@@ -207,12 +205,14 @@ export function RadiatesSection({
       // (zero duration) rather than animated, so it can push the star down the moment the section
       // is entered without reintroducing motion-during-scroll — it just snaps to the correct
       // resting spot for this section, same as it would have looked once the old tween finished.
-      let firstCall = true;
-      observer = new IntersectionObserver(
-        ([entry]) => {
-          if (killed) return;
-          if (firstCall) { firstCall = false; return; }
-          if (entry.isIntersecting) {
+      let wasIntersecting = false;
+      const checkIntersection = () => {
+        if (killed) return;
+        const top = section.getBoundingClientRect().top;
+        const isIntersecting = top <= 0;
+        if (isIntersecting !== wasIntersecting) {
+          wasIntersecting = isIntersecting;
+          if (isIntersecting) {
             tlEnter.play();
             // Desktop only — mobile's whole settle motion is owned by scaleTween alone (start:
             // "top 60%", see below), one continuous tween with no competing move here.
@@ -223,14 +223,14 @@ export function RadiatesSection({
             // top, well past this trigger point), so a short real tween is safe here now and
             // reads as a settle instead of a snap.
             if (!isMobile) gsap.to(star, { y: "5vh", duration: 0.35, ease: "power2.out", overwrite: "auto" });
-          } else if (entry.boundingClientRect.top > 0) {
+          } else if (top > 0) {
             tlEnter.reverse();
             if (!isMobile) gsap.to(star, { y: 0, duration: 0.35, ease: "power2.out", overwrite: "auto" });
           }
-        },
-        { rootMargin: "0px 0px -100% 0px", threshold: 0 }
-      );
-      observer.observe(section);
+        }
+        rafId = requestAnimationFrame(checkIntersection);
+      };
+      rafId = requestAnimationFrame(checkIntersection);
 
       tlEnter
         .to(headingRef.current, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0)
@@ -245,58 +245,152 @@ export function RadiatesSection({
         .to(labelGroups[2], { opacity: 1, filter: "blur(0px)", duration: 0.35, stagger: { each: 0.045, from: "start" } }, 3.1)
         .to(labelGroups[3], { opacity: 1, filter: "blur(0px)", duration: 0.35, stagger: { each: 0.045, from: "start" } }, 3.7);
 
-      // Scroll-scrubbed exit: once the reader keeps scrolling past the entrance dwell, the
-      // heading/labels fade out. (The star's own shrink is handled separately by scaleTween
-      // below — a time-based tween, not this scrub.) This fade stays scroll-tied since it's a
-      // release keyed to scroll position, not a one-shot flourish.
-      tlExit = gsap.timeline({
-        scrollTrigger: {
-          trigger: section,
-          // Mobile fades the labels out immediately (0%→20% of its own 500vh — see outerRef's
-          // height below), leaving a full 2-screen GAP of nothing (20%→60%) before the
-          // wordmark appears at 60%, so section 2 genuinely finishes disappearing before section
-          // 3 starts — previously the fade (45%→64%) overlapped the wordmark's old 50% start,
-          // so the wordmark began appearing WHILE labels were still mid-fade, reading as an
-          // immediate cut instead of a clean handoff. Desktop keeps its original 45%→64%.
-          start: isMobile ? "0% top" : "45% top",
-          // Desktop end pulled up from 64% to 56% — the wordmark lives at 75% of this section
-          // (see wordmarkTrigger below), and with the fade ending at 64% only ~57vh separated
-          // the labels from the wordmark. Scrolling BACK from the wordmark, the labels started
-          // reappearing almost immediately after the wordmark faded, so the two scenes read as
-          // butted directly against each other. Ending at 56% leaves a full ~19% of 520vh
-          // (~100vh — one screen of scroll) of genuinely empty gap between the labels and the
-          // wordmark in BOTH directions: labels fully gone one screen before the wordmark
-          // appears going down, and one screen of nothing after the wordmark disappears before
-          // the labels return going back up.
-          end: isMobile ? "20% top" : "56% top",
-          // With normalizeScroll now smoothing the raw input above, this can track scroll much
-          // more tightly than the old scrub: 1 (which existed to paper over raw wheel choppiness
-          // that normalizeScroll now handles at the source) — a full second of catch-up lag was
-          // itself the "star drifts on its own after you stop scrolling" complaint. 0.3 still
-          // takes the hard edge off frame-to-frame noise without leaving a noticeable lag.
-          scrub: 0.3,
-          onEnter: () => {
-            // tlEnter reveals the 4 labels over ~4s of real (wall-clock) time. tlExit's very
-            // first tween fades those same elements' opacity back to 0 as soon as scroll crosses
-            // this trigger point, independent of whether tlEnter's reveal has actually finished.
-            // Scroll fast enough and you cross this point before all 4 labels have appeared —
-            // tlEnter is still writing opacity:1 to some of them while tlExit is simultaneously
-            // writing opacity:0 to all of them, and whichever tween last touched a given element
-            // that frame wins. That's "sometimes two labels show, sometimes none," entirely
-            // dependent on scroll speed. Snapping tlEnter to its end here guarantees every label
-            // is already fully revealed (opacity 1) the instant before tlExit starts fading them
-            // out — so the fade always has a consistent, complete starting point no matter how
-            // fast the reader scrolled to reach it.
-            tlEnter.progress(1);
-          },
-        },
+      // Once the reader keeps scrolling past the entrance dwell, the heading/labels fade out.
+      // (The star's own shrink is handled separately by scaleTween below.) This fade stays
+      // scroll-tied since it's a release keyed to scroll position, not a one-shot flourish.
+      //
+      // NOT using GSAP's automatic `scrub` here (this timeline is `paused: true`, and progress
+      // is instead set by hand in the standalone ScrollTrigger's onUpdate below) — a real bug,
+      // confirmed live, was that `scrub` makes GSAP attach its OWN internal smoothing proxy tween
+      // that independently eases the timeline's progress toward the raw scroll-computed value on
+      // every frame. Calling tlExit.progress(1) inside onUpdate to freeze the labels hidden (see
+      // the wordmarkTween.progress() gate below) only won for that ONE frame — GSAP's own proxy tween
+      // kept fighting it back toward the real (unfrozen) value on every subsequent frame of a
+      // fast, multi-frame scroll, so the freeze couldn't actually hold: the labels visibly leaked
+      // back in while the wordmark was still reverse-animating, reading as a collision. Driving
+      // tlExit.progress() ENTIRELY by hand, with no competing auto-driver, is the only way this
+      // freeze can be absolute rather than "usually wins."
+      // Split into two .to() calls (not one shared array) because the label dots/chars carry a
+      // `filter: blur(...)` that headingRef never has (see tlEnter's `gsap.set` above — only the
+      // label sequences get blur:3px as their hidden state). A single shared tween only ever
+      // animates `opacity`, so on reverse scroll it correctly restores opacity to 1 but leaves
+      // whatever blur value was last on the labels untouched — confirmed live as labels reading
+      // "invisible" (heavily blurred small text is functionally unreadable) while the heading,
+      // which has no blur to get stuck, reappeared normally. Explicitly round-tripping filter
+      // here guarantees blur is back to 0 exactly when opacity is back to 1, symmetric with how
+      // tlEnter reveals them (fade + un-blur together) in both directions.
+      // Targets labelsWrapRef (a single wrapper around all 4 labels) rather than the labels'
+      // own per-character spans (labelGroups.flat()) — those same spans are what tlEnter's
+      // typewriter reveal animates with its own per-label stagger. Two separate tweens writing
+      // opacity/filter to the SAME character nodes race on every frame during fast scroll-
+      // direction changes: whichever tween renders a given character last that frame wins,
+      // confirmed live as one stray character sitting at full opacity while its neighbors (and
+      // whole other words) stayed hidden or vice versa. Fading the wrapper here instead means
+      // tlExit never touches an element tlEnter also animates, so there's nothing left to race —
+      // tlEnter fully owns each character's reveal, tlExit only ever owns the group's overall
+      // visibility.
+      tlExit = gsap.timeline({ paused: true })
+        .to(headingRef.current, { opacity: 0, duration: 0.3, ease: "none" }, 0)
+        .to(labelsWrapRef.current, { opacity: 0, filter: "blur(3px)", duration: 0.3, ease: "none" }, 0);
+
+      // Shared by tlExitTrigger's onUpdate below AND by tlEnter's own onComplete callback further
+      // down — see that callback's comment for why both need to drive the exact same logic.
+      const syncTlExit = (direction: number, raw: number) => {
+        // raw === 0 means we've scrolled back UP past this trigger's own START (6% top on
+        // desktop, 8% on mobile) — fully out the other side of the fade range, not merely
+        // somewhere inside it. That's unambiguous: the labels should be fully visible, full
+        // stop, regardless of whatever the wordmark or tlEnter's own entrance animation is
+        // doing. Checked FIRST — ScrollTrigger's onUpdate only fires while progress is actually
+        // CHANGING, so once progress flatlines at 0 there are no more calls to correct a wrong
+        // freeze later; falling into a later branch on this exact update would leave it stuck
+        // there indefinitely.
+        // Also gated on wordmarkTween's own progress — a fast enough reverse scroll can rush
+        // scroll position all the way back past this trigger's own start (raw hits exactly 0)
+        // before the wordmark's real-time reverse-out tween has actually finished, and this
+        // branch used to force the labels back to fully visible unconditionally right then,
+        // confirmed live as the labels and the still-mid-reverse wordmark both on screen at
+        // once. Holding tlExit hidden until the wordmark reports back to progress 0 closes that.
+        if (raw === 0 && wordmarkTween.progress() === 0) {
+          tlEnter.progress(1);
+          tlExit.progress(0);
+          return;
+        }
+        if (raw === 0) {
+          tlEnter.progress(1);
+          tlExit.progress(1);
+          return;
+        }
+        // Scrolling back UP (direction === -1) while still inside the range: don't let the
+        // labels start reappearing until the SWITCHBLADE wordmark has FULLY finished its own
+        // reverse-out. Reads wordmarkTween's own LIVE progress() directly rather than a
+        // separately-maintained boolean flag (a flag flipped only inside an onReverseComplete
+        // callback could get permanently stuck if that reverse was ever interrupted before
+        // finishing — confirmed live, historically, as labels staying frozen hidden for the
+        // rest of the session). The ~one-scroll gap to the wordmark (see wordmarkTrigger's own
+        // comment) comfortably fits the reverse-out's real-time duration under normal scroll
+        // speeds, so this rarely has to hold anything back in practice.
+        if (direction === -1 && wordmarkTween.progress() > 0) {
+          tlEnter.progress(1);
+          tlExit.progress(1);
+          return;
+        }
+        // Otherwise (scrolling forward into/through the range, or scrolling back up once the
+        // wordmark is confirmed gone): do NOT force tlEnter's own real-time entrance (the star's
+        // one-shot spin + each label's per-character typewriter reveal, ~4s) to complete early.
+        // This trigger's start sits fairly early in the section (see its own comment on why)
+        // specifically to remove a long dead scroll hold — but a fast, continuous scroll can
+        // cross that early start before ~4 real seconds have actually elapsed, and forcibly
+        // snapping tlEnter to "done" right then skipped the whole spin/typewriter animation,
+        // jumping straight to "revealed" and starting the fade in the same instant (confirmed
+        // live: the entrance effect not visibly playing at all). Holding tlExit at 0 (fully
+        // visible, not fading) for as long as tlEnter's own progress() hasn't yet reached 1
+        // guarantees the entrance always plays out in full first, no matter how fast the reader
+        // scrolls past this trigger's start — the fade only ever begins once it's genuinely
+        // finished.
+        if (tlEnter.progress() < 1) {
+          tlExit.progress(0);
+          return;
+        }
+        // tlEnter is confirmed fully settled — map the fade directly to raw scroll progress.
+        // There's no scrub-smoothing here (see the comment above tlExit's own definition), but
+        // Lenis already smooths the raw scroll input this is computed from, so a direct 1:1
+        // mapping still reads as smooth rather than stepped.
+        tlExit.progress(raw);
+      };
+
+      tlExitTrigger = ScrollTrigger.create({
+        trigger: section,
+        // Mobile: 8% top (not 0%) — a real, if brief, DWELL before the fade starts. At 0% this
+        // trigger's onEnter fired at the exact same scroll position that snaps tlEnter to its
+        // fully-revealed end (see the onEnter callback below), so the heading+labels appeared
+        // and immediately began fading within the same instant — confirmed live as reading like
+        // the whole section "rushing past" without ever settling, since there was no scroll
+        // distance where a reader could actually see the fully-revealed state before it started
+        // disappearing again. 8% (~1/12 of a screen) is enough to read as an intentional pause.
+        //
+        // Desktop: 6% (down from 45%) — that 45% left a huge ~2.3-screen dead hold after the
+        // labels finished forming, where nothing happened at all as you kept scrolling, before
+        // the fade even started (confirmed live as "too many scrolls"). 6% keeps just enough of
+        // the same brief settle-pause as mobile's 8% (proportionally, against 520vh vs 500vh)
+        // without the long dead stretch.
+        start: isMobile ? "8% top" : "6% top",
+        // Desktop end: 25% (down from 56%) — paired with the new 6% start above, this keeps the
+        // fade itself spanning roughly one screen's worth of scroll (~19% of 520vh ≈ 99vh), same
+        // as before, just moved earlier so the whole "labels visible → gone" beat now takes
+        // about one scroll from when they finish forming, not two-plus. The onUpdate below is
+        // still what actually GUARANTEES the wordmark is gone before the labels can reappear on
+        // scroll-back — this distance just needs to comfortably fit the reverse-out animation's
+        // own real-time duration under normal scroll speeds so that gate rarely has to hold
+        // anything back (see its own comment).
+        end: isMobile ? "26% top" : "25% top",
+        onUpdate: (self: { direction: number; progress: number }) => syncTlExit(self.direction, self.progress),
       });
 
-      tlExit.to(
-        [headingRef.current, ...labelGroups.flat()],
-        { opacity: 0, duration: 0.3, ease: "none" },
-        0
-      );
+      // tlEnter's own real-time entrance (star spin + per-label typewriter reveal, ~4s) can
+      // still be mid-flight at the moment scroll reaches tlExitTrigger's END — syncTlExit's
+      // "hold tlExit at 0 until tlEnter finishes" branch (below) correctly keeps the labels open
+      // through that. But ScrollTrigger's onUpdate only fires while progress is actually
+      // CHANGING — once scroll goes past this trigger's end, progress flatlines at 1 and onUpdate
+      // never fires again, so nothing was left to re-check tlExit once tlEnter DID finish a
+      // moment later. Confirmed live: scroll fast enough to reach the wordmark while the
+      // entrance was still finishing, and the labels stayed stuck fully visible (frozen at
+      // whatever syncTlExit last set) forever afterward, overlapping the wordmark once IT
+      // finished revealing too. This completion callback re-runs the exact same sync, driven by
+      // tlEnter itself finishing rather than by a scroll event, using the ScrollTrigger's own
+      // current (still-live) direction/progress at that moment — closing the gap.
+      tlEnter.eventCallback("onComplete", () => {
+        syncTlExit(tlExitTrigger.direction, tlExitTrigger.progress);
+      });
 
       // The star's shrink is SCRUBBED — locked to scroll position across a range, so the model
       // shrinks exactly in step with how far you've scrolled and stops the moment you stop.
@@ -320,14 +414,18 @@ export function RadiatesSection({
       scaleTween = gsap.timeline({
         scrollTrigger: {
           trigger: section,
-          // Desktop range sits after tlExit's label fade begins (start: "45% top" above) and
-          // completes just before the wordmark reveal (75% below) — percentages are of this
-          // section's own scroll height. Mobile shrinks DURING the incoming transition from
-          // Hero ("top 60%" = section top at 60% viewport, still scrolling up into view),
-          // finishing exactly as the sticky pin locks in ("top top") — same envelope the old
-          // play/reverse version covered, now distributed across it instead of dumped at entry.
-          start: isMobile ? "top 60%" : "52% top",
-          end: isMobile ? "top top" : "70% top",
+          // Desktop range sits right after tlExit's label fade ends (25% top — see its own
+          // comment for the full retiming) and completes well before the wordmark reveal (44%
+          // top below) — percentages are of this section's own scroll height. Re-anchored here
+          // (was 52%→58%, back when tlExit itself ended at 56%) to stay in the same relative
+          // spot — after the labels clear, before SWITCHBLADE appears — now that both of those
+          // moved much earlier to kill a long dead scroll hold. Mobile shrinks DURING the
+          // incoming transition from Hero ("top 60%" = section top at 60% viewport, still
+          // scrolling up into view), finishing exactly as the sticky pin locks in ("top top") —
+          // same envelope the old play/reverse version covered, now distributed across it
+          // instead of dumped at entry; untouched by this change.
+          start: isMobile ? "top 60%" : "27% top",
+          end: isMobile ? "top top" : "33% top",
           scrub: 0.3,
         },
       })
@@ -359,44 +457,110 @@ export function RadiatesSection({
       scaleTrigger = scaleTween.scrollTrigger;
 
       // SWITCHBLADE wordmark reveal — the former UniquenessReveal section, now merged INTO this
-      // sticky scene. Same time-based play/reverse pattern as the shrink: it fades + rises in,
-      // and reverses on scroll-back. Not scrubbed, so it's smooth regardless of scroll speed.
+      // sticky scene. Same time-based play/reverse pattern as the shrink: it plays out on its own
+      // clock and reverses on scroll-back. Not scrubbed, so it's smooth regardless of scroll speed.
       //
-      // Pushed well after the shrink (was 68%, right on scaleTrigger's heels at 60% — close
-      // enough in scroll distance that a normal scroll flick crossed both trigger points almost
-      // at once, so the wordmark started appearing WHILE the star was still mid-shrink/labels
-      // still fading, reading as "section 2 and 3 colliding". Now there's a full extra screen's
-      // worth of scroll (~1 viewport) between the shrink finishing and the wordmark starting.
-      gsap.set(wordmarkRef.current, { opacity: 0, y: 30 });
-      wordmarkTween = gsap.to(wordmarkRef.current, {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        ease: "power2.out",
-        paused: true,
-      });
+      // Starts at 44% (see wordmarkTrigger's own comment for the full tuning history) — well
+      // after the shrink above finishes (33%), so the star has genuinely settled before
+      // SWITCHBLADE begins typing in, and with enough real scroll distance before it that the
+      // reverse-out (played at its natural, full pace — NOT sped up) reliably finishes before a
+      // reader scrolling back up reaches the labels' own zone.
+      //
+      // Sequence: SWITCHBLADE types in letter-by-letter (each char rises + fades in with a short
+      // stagger, like the LABELS chars above), THEN — only once the last letter has landed —
+      // [SHARP EDGE] and [SOFT HEART] fade in together. Built as one timeline (not three separate
+      // tweens) so the whole sequence plays/reverses as a single unit under wordmarkTween.play()/
+      // .reverse() below, same as before.
+      const wordmarkChars = wordmarkCharRefs.current.filter((el): el is HTMLSpanElement => el !== null);
+      gsap.set(wordmarkChars, { opacity: 0, y: 16 });
+      gsap.set([sharpEdgeRef.current, softHeartRef.current], { opacity: 0 });
+      wordmarkTween = gsap.timeline({ paused: true })
+        .to(wordmarkChars, {
+          opacity: 1,
+          y: 0,
+          duration: 0.4,
+          ease: "power2.out",
+          stagger: { each: 0.045, from: "start" },
+        }, 0)
+        .to([sharpEdgeRef.current, softHeartRef.current], {
+          opacity: 1,
+          duration: 0.5,
+          ease: "power2.out",
+        }); // no position arg — starts right after the last letter tween in the stagger above ends
       wordmarkTrigger = ScrollTrigger.create({
         trigger: section,
-        // Mobile is paced in explicit screen-fulls against its own 500vh total height (see
-        // outerRef below): labels fade out over 0%→20%, then a full 2-screen GAP of nothing
-        // (20%→60%) so section 2 has genuinely finished disappearing, THEN the wordmark appears
-        // at 60% (300vh), stays fully visible for a full screen's dwell (up to starHideTrigger's
-        // 80% below), then the star heads out over the screen after that. Desktop keeps 75%.
-        start: isMobile ? "60% top" : "75% top",
-        onEnter: () => wordmarkTween.play(),
+        // Mobile is paced against its own 500vh total height (see outerRef below): labels fade
+        // out over 8%→26%, then the wordmark appears at 38% (a ~0.6-screen gap — shrunk down
+        // from an original full 2-screen gap of nothing, which read as "too many scrolls" between
+        // the labels disappearing and SWITCHBLADE appearing), stays fully visible for a one-screen
+        // dwell (up to starHideTrigger's 58% below), then the star heads out over the remaining
+        // scroll before this section releases into ParagraphReveal. The wordmarkTween.progress()
+        // gate below (see tlExit's onUpdate) is what actually guarantees the reverse-out still has
+        // room to finish before a fast scroll-back reaches the labels' zone, NOT scroll distance —
+        // shrinking this gap is safe because that gate doesn't depend on a generous buffer.
+        //
+        // Desktop: 44% — a ~100vh (one full scroll/screen) gap after tlExit's new 25% end (see
+        // tlExitTrigger's own comment: its start/end both moved much earlier to kill a long dead
+        // hold after the labels finished forming). Kept the SAME one-scroll gap size that was
+        // separately tuned/confirmed live as the right amount of breathing room between "labels
+        // gone" and "SWITCHBLADE appears" (a tighter gap read as the wordmark appearing
+        // "immediately" on top of the labels on scroll-back) — just re-anchored to the new,
+        // earlier tlExit end instead of the old 56%. Net result: forming → labels gone is one
+        // scroll, labels gone → SWITCHBLADE is another, instead of the ~4 screens of mostly dead
+        // scrolling this used to take. Correctness doesn't depend on this gap's exact size (see
+        // tlExit's onUpdate, which reads wordmarkTween.progress() live rather than a wall-clock
+        // flag), so this is purely a pacing/feel choice.
+        start: isMobile ? "38% top" : "44% top",
+        // Force the labels fully hidden the INSTANT the wordmark starts revealing, rather than
+        // trusting the gap between this trigger's start (44%/38%) and tlExitTrigger's end
+        // (25%/26%) to have already finished the fade in real time. A scroll fast enough to
+        // reach here well within tlEnter's own ~4s wall-clock entrance duration used to leave
+        // syncTlExit's "hold tlExit at 0 until tlEnter finishes" branch still active — the
+        // labels stayed fully visible, confirmed live as reading simultaneously with the fully-
+        // revealed SWITCHBLADE wordmark. Snapping both progresses here guarantees the two states
+        // are mutually exclusive no matter how fast the reader gets here.
+        onEnter: () => {
+          tlEnter.progress(1);
+          tlExit.progress(1);
+          wordmarkTween.play();
+        },
         onLeaveBack: () => wordmarkTween.reverse(),
       });
 
-      // Mobile only: the star disappears after the SWITCHBLADE wordmark, once its one-screen
-      // dwell (60%→80% of the section, see wordmarkTrigger above) has played out — it no longer
-      // rides down into paragraph-reveal at all (see the guard around Hero's own
-      // paragraph-reveal-based fade-out in page.tsx, disabled on mobile so it can't fight this).
+      // Mirrors tlEnter's own onComplete hookup above: ScrollTrigger's onUpdate only fires while
+      // progress is actually CHANGING, so a fast reverse scroll that reaches tlExitTrigger's raw
+      // === 0 before wordmarkTween's reverse-out has finished leaves nothing to re-check once it
+      // DOES finish a moment later (see the raw === 0 branch's own comment above). This re-runs
+      // the same sync at that moment, using ScrollTrigger's still-live direction/progress.
+      wordmarkTween.eventCallback("onReverseComplete", () => {
+        syncTlExit(tlExitTrigger.direction, tlExitTrigger.progress);
+      });
+
+      // Mobile only: the star AND the whole SWITCHBLADE wordmark section travel down and out
+      // together after the wordmark's one-screen dwell (38%→58% of the section, see
+      // wordmarkTrigger above) has played out — it no longer rides down into paragraph-reveal at
+      // all (see the guard around Hero's own paragraph-reveal-based fade-out in page.tsx,
+      // disabled on mobile so it can't fight this).
+      //
+      // This used to be a fixed-duration (0.6s) onEnter/onLeaveBack tween on the star alone,
+      // triggered once at "58% top" — that read as the star snapping into a fast, scroll-
+      // independent animation while the wordmark section just sat frozen in place, since a sticky
+      // pin never moves on its own. Rebuilt as a scrub tied directly to scroll progress across a
+      // real range (58%→82% of the section) so both travel down and fade out together, at the
+      // reader's own scroll pace — reaching fully gone at 82%, comfortably before this section's
+      // pin releases into ParagraphReveal/OriginsSection, so it's mid-transit-invisible rather
+      // than still visible when Origins arrives.
       if (isMobile) {
         starHideTrigger = ScrollTrigger.create({
           trigger: section,
-          start: "80% top",
-          onEnter: () => gsap.to(star, { opacity: 0, duration: 0.35, ease: "power3.in", overwrite: "auto" }),
-          onLeaveBack: () => gsap.to(star, { opacity: 1, duration: 0.35, ease: "power3.out", overwrite: "auto" }),
+          start: "58% top",
+          end: "82% top",
+          scrub: 0.3,
+          onUpdate: (self: any) => {
+            const p = self.progress;
+            gsap.set(star, { y: `${6 + p * 60}vh`, opacity: 1 - p });
+            gsap.set(wordmarkStickyRef.current, { y: `${p * 60}vh`, opacity: 1 - p });
+          },
         });
       }
 
@@ -482,9 +646,9 @@ export function RadiatesSection({
 
     return () => {
       killed = true;
-      observer?.disconnect();
+      cancelAnimationFrame(rafId);
       tlEnter?.kill();
-      tlExit?.scrollTrigger?.kill();
+      tlExitTrigger?.kill();
       tlExit?.kill();
       globeTravel?.scrollTrigger?.kill();
       globeTravel?.kill();
@@ -493,7 +657,6 @@ export function RadiatesSection({
       wordmarkTrigger?.kill();
       wordmarkTween?.kill();
       starHideTrigger?.kill();
-      normalizer?.kill();
       if (dampRef) dampRef.current = 0;
       if (shrinkRef) shrinkRef.current = 1;
     };
@@ -501,21 +664,24 @@ export function RadiatesSection({
   }, []);
 
   return (
-    <div ref={outerRef} style={{ background: "#ffffff" }} className="relative h-[500vh] lg:h-[520vh]">
-      {/* Height grown from 380vh to 520vh: the extra scroll distance is what gives real separation
-          between the shrink (scaleTrigger, ~42%) and the wordmark reveal (wordmarkTrigger, ~75%)
-          below, plus dwell room after the wordmark appears before this section releases into
-          ParagraphReveal — the old 380vh packed all three beats (labels fade → shrink → wordmark)
-          into too little scroll distance, so a normal scroll flick blew through more than one beat
-          at once and read as sections colliding. Mobile gets its OWN total height (500vh vs
-          desktop's 520vh), sized to an explicit screen-fulls pacing: labels fade out over the
-          first screen (tlExit 0%→20%), a full 2-screen GAP of nothing (20%→60%) so section 2 has
-          genuinely finished disappearing before anything new starts, then the wordmark appears
-          at 60% (wordmarkTrigger), stays fully visible for a full screen's dwell, then the star
-          heads out over the screen after that (starHideTrigger at 80%), leaving one more screen
-          before the section ends and releases into ParagraphReveal (via the buffer in page.tsx).
-          All the percentage-based triggers below are computed live against whatever this height
-          actually is, so it's the single place to retune the overall mobile pacing.
+    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[500vh] lg:h-[520vh]">
+      {/* Height grown from an original 380vh to 520vh: the extra scroll distance is what gave
+          real separation between the shrink (scaleTrigger) and the wordmark reveal
+          (wordmarkTrigger) below, plus dwell room after the wordmark appears before this section
+          releases into ParagraphReveal — the old 380vh packed all three beats (labels fade →
+          shrink → wordmark) into too little scroll distance, so a normal scroll flick blew
+          through more than one beat at once and read as sections colliding. (Those triggers'
+          own percentages have since moved much earlier — see tlExitTrigger/scaleTween/
+          wordmarkTrigger's own comments — to kill a later-discovered dead scroll hold; this
+          520vh total and its "why" are otherwise unchanged.) Mobile gets its OWN total height (500vh vs
+          desktop's 520vh), paced as: labels fade out over tlExit's 8%→26%, then the wordmark
+          appears at 38% (a short ~0.6-screen gap — shrunk down from an original full 2-screen gap
+          of nothing, which read as "too many scrolls" between the labels disappearing and
+          SWITCHBLADE appearing), stays fully visible for a one-screen dwell, then the star heads
+          out (starHideTrigger at 58%), leaving the remaining scroll before the section ends and
+          releases into ParagraphReveal (via the buffer in page.tsx). All the percentage-based
+          triggers below are computed live against whatever this height actually is, so it's the
+          single place to retune the overall mobile pacing.
 
           Wordmark layer — its own sticky pin at z-10, BELOW the fixed star (z-20 in page.tsx) so
           the star sits OVER the SWITCHBLADE letters. The heading/labels live in the separate z-25
@@ -523,33 +689,55 @@ export function RadiatesSection({
           section; the star floats between them. `top: 54vh` (nudged down from 48vh) gives the
           star's -6vh upward shift room (see scaleTween) to actually clear the wordmark instead of
           overlapping it. */}
-      <div className="sticky top-0 h-screen overflow-hidden pointer-events-none" style={{ zIndex: 10 }}>
+      <div ref={wordmarkStickyRef} className="sticky top-0 h-screen overflow-hidden pointer-events-none" style={{ zIndex: 10 }}>
         <div
           className="absolute left-1/2 select-none"
           style={{ top: "54vh", transform: "translateX(-50%)" }}
         >
-          <div ref={wordmarkRef} className="relative" style={{ opacity: 0 }}>
+          {/* wordmarkRef itself stays visible (opacity always 1) — the reveal now animates each
+              letter of SWITCHBLADE and the two annotations individually (see wordmarkTween
+              above), not this wrapper as a whole, so it can't be the thing hiding them. */}
+          <div ref={wordmarkRef} className="relative">
             {/* [SHARP EDGE] top-left / [SOFT HEART] bottom-right, flush with the wordmark's own
                 left/right edges — used to sit beside the word (left/right of it) on desktop
                 (md:top-[8%]/md:right-[calc(100%+gap)] etc.), but the reference layout wants them
                 above/below on every breakpoint, just like mobile already had. Desktop now reuses
                 that same above/below placement, with a larger, viewport-scaled gap to suit the
-                much bigger desktop wordmark instead of mobile's fixed -top-6/-bottom-6. */}
+                much bigger desktop wordmark instead of mobile's fixed -top-6/-bottom-6. Both fade
+                in AFTER the SWITCHBLADE letters finish typing in (see wordmarkTween). */}
             <div
+              ref={sharpEdgeRef}
               className="absolute left-0 -top-6 md:top-auto md:bottom-[calc(100%+clamp(10px,1.4vw,24px))]"
               style={{ ...ANNO, color: "#888" }}
             >
               [SHARP EDGE]
             </div>
 
+            {/* Each letter of SWITCHBLADE gets its own span/ref so wordmarkTween above can
+                stagger them in one at a time (rise + fade), reading as a letter-by-letter type
+                effect rather than the whole word fading in at once. inline-block is required for
+                the y-offset transform to actually move each letter independently — but browsers
+                treat adjacent inline-block boxes as breakable between them by default (the same
+                as between words), so splitting one word into 11 of them made the line wrap mid-
+                word on narrower viewports. whiteSpace:"nowrap" here forbids that break, same as
+                it was implicitly forbidden before when this was one plain text node. */}
             <p
               className="text-[#0D0D0D] font-black text-center"
-              style={{ fontSize: "clamp(40px, 10vw, 106px)", letterSpacing: "-0.04em", lineHeight: 0.92 }}
+              style={{ fontSize: "clamp(40px, 10vw, 106px)", letterSpacing: "-0.04em", lineHeight: 0.92, whiteSpace: "nowrap" }}
             >
-              SWITCHBLADE
+              {"SWITCHBLADE".split("").map((ch, i) => (
+                <span
+                  key={i}
+                  ref={(el) => { wordmarkCharRefs.current[i] = el; }}
+                  style={{ display: "inline-block" }}
+                >
+                  {ch}
+                </span>
+              ))}
             </p>
 
             <div
+              ref={softHeartRef}
               className="absolute right-0 -bottom-6 md:bottom-auto md:top-[calc(100%+clamp(10px,1.4vw,24px))]"
               style={{ ...ANNO, color: "#0A1AFF" }}
             >
@@ -585,42 +773,51 @@ export function RadiatesSection({
           
         </div>
 
-        {LABELS.map((l) => (
-          <div
-            key={l.key}
-            className={"absolute flex items-center select-none pointer-events-none " + l.posClass}
-            style={{ ...l.style, gap: 8, justifyContent: l.justify }}
-          >
-            {l.dotFirst && (
-              <span ref={(el) => { dotRefs.current[l.key] = el; }} style={DOT} />
-            )}
-            <span
-              style={{
-                fontFamily: "var(--font-archivo)",
-                fontWeight: 500,
-                fontSize: "clamp(15px, 1.35vw, 19px)",
-                color: "#0D0D0D",
-                whiteSpace: "nowrap",
-              }}
+        {/* absolute inset-0 (not a plain unstyled wrapper): gsap animates this wrapper's `filter`
+            (see tlExit above), and any non-"none" CSS filter — even blur(0px) — makes an element
+            a new containing block for its absolutely-positioned descendants, same as a
+            transform. Without inset-0 giving this wrapper the sticky parent's full box, the
+            labels' percentage-based top/left (posClass) would suddenly resolve against this
+            wrapper's own (contentless, near-zero) box the instant tlExit sets any filter value,
+            instead of against the sticky container they were positioned against before. */}
+        <div ref={labelsWrapRef} className="absolute inset-0">
+          {LABELS.map((l) => (
+            <div
+              key={l.key}
+              className={"absolute flex items-center select-none pointer-events-none " + l.posClass}
+              style={{ ...l.style, gap: 8, justifyContent: l.justify }}
             >
-              {l.word.split("").map((ch, i) => (
-                <span
-                  key={i}
-                  ref={(el) => {
-                    if (!charRefs.current[l.key]) charRefs.current[l.key] = [];
-                    charRefs.current[l.key][i] = el;
-                  }}
-                  style={{ display: "inline-block" }}
-                >
-                  {ch}
-                </span>
-              ))}
-            </span>
-            {!l.dotFirst && (
-              <span ref={(el) => { dotRefs.current[l.key] = el; }} style={DOT} />
-            )}
-          </div>
-        ))}
+              {l.dotFirst && (
+                <span ref={(el) => { dotRefs.current[l.key] = el; }} style={DOT} />
+              )}
+              <span
+                style={{
+                  fontFamily: "var(--font-archivo)",
+                  fontWeight: 500,
+                  fontSize: "clamp(15px, 1.35vw, 19px)",
+                  color: "#0D0D0D",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {l.word.split("").map((ch, i) => (
+                  <span
+                    key={i}
+                    ref={(el) => {
+                      if (!charRefs.current[l.key]) charRefs.current[l.key] = [];
+                      charRefs.current[l.key][i] = el;
+                    }}
+                    style={{ display: "inline-block" }}
+                  >
+                    {ch}
+                  </span>
+                ))}
+              </span>
+              {!l.dotFirst && (
+                <span ref={(el) => { dotRefs.current[l.key] = el; }} style={DOT} />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

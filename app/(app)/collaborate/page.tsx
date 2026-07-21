@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Clock, ArrowUp } from "lucide-react";
 import { SparkleMark } from "@/components/shared/SparkleMark";
 import { SiteFooter } from "@/components/shared/SiteFooter";
@@ -32,7 +32,7 @@ const CASES = [
   { kind: "Apparel",     title: "Shared - Archive Capsule",   desc: "Limited garments drawn from two design languages, made as one",             chip: "#2755C5" },
 ] as const;
 
-const SCENARIO_TEXT = "wins only in one scenario: when what we build together helps people to stay and get inspired";
+const SCENARIO_TEXT = "wins only in one scenario: when what we build together helps people to stay and get inspired.";
 
 const PX = "clamp(20px,5vw,80px)";
 const SECTION = "clamp(80px,10vw,160px)";
@@ -55,15 +55,98 @@ function Tag({ children, tone = "dark", pill = false }: { children: React.ReactN
 }
 
 export default function CollaboratePage() {
+  const travelStarRef    = useRef<HTMLDivElement>(null);
+  const scenarioAnchorRef = useRef<HTMLDivElement>(null);
+  const collabAnchorRef   = useRef<HTMLDivElement>(null);
+  const shrinkRef         = useRef<number>(1);
+
   useEffect(() => {
     let killed = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const triggers: any[] = [];
+    let removeTravelTicker: (() => void) | null = null;
     (async () => {
       const { gsap } = await import("gsap");
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
       if (killed) return;
       gsap.registerPlugin(ScrollTrigger);
+
+      // Single traveling star: this page used to have TWO separate, independent Star3D instances
+      // — one static in the "wins only in one scenario" section, one static in "Let's
+      // Collaborate" — each just fading in/out with its own section via the .rise class, with no
+      // connection between them. Now there's ONE star, fixed-position, that visually rests at the
+      // first anchor's spot, then travels down to dock at the second anchor's spot as the reader
+      // scrolls between the two sections — same "live-rect ticker" approach as the homepage's O-
+      // letter dock (page.tsx): no lifecycle callbacks own any state (those proved flaky under
+      // scroll momentum elsewhere in this codebase — see RadiatesSection/page.tsx's own notes);
+      // instead a gsap.ticker callback reads a ScrollTrigger's progress FRESH every frame and
+      // derives position by convex-blending the two anchors' LIVE getBoundingClientRect() centers
+      // — before the range starts that blend collapses to exactly the scenario anchor's live
+      // position (so the star just tracks it at rest, robust to layout shifts/resize), and once
+      // the range ends it collapses to exactly the collab anchor's live position (so the star
+      // rides along with it, "docked", for as long as that section stays on screen).
+      const star = travelStarRef.current;
+      const scenarioAnchor = scenarioAnchorRef.current;
+      const collabAnchor = collabAnchorRef.current;
+      // Desktop only (1024, matching the collab anchor's own lg: breakpoint) — the collab anchor
+      // is display:none below that, so its rect is degenerate (0,0,0,0) and there's nowhere for
+      // the star to travel TO on mobile anyway. Mobile keeps the scenario section's own Star3D
+      // visible instead (see its lg:invisible class above).
+      if (star && scenarioAnchor && collabAnchor && window.innerWidth >= 1024) {
+        gsap.set(star, { xPercent: -50, yPercent: -50, opacity: 0, transformOrigin: "50% 50%" });
+
+        const travelTrigger = ScrollTrigger.create({
+          // History: "bottom 65%"→"top 55%" read too fast; "bottom 70%"→"bottom 25%" too slow;
+          // "bottom 70%"→"bottom 50%" still a bit slow; "bottom 70%"→"top 75%" then too fast.
+          // Settled between those last two at "top 30%".
+          trigger: scenarioAnchor.closest("section") ?? scenarioAnchor,
+          start: "bottom 70%",
+          endTrigger: collabAnchor.closest("section") ?? collabAnchor,
+          end: "top 30%",
+        });
+
+        const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2);
+        // Base scale/cameraZ are the scenario star's own tuned values (18.2 / 28) — the box stays
+        // this fixed size the whole trip; only the MODEL shrinks (via shrinkRef) to visually
+        // settle at this fraction once docked. 0.5 (bumped up from the original static collab
+        // star's own ratio, 6.2/18.2 ≈ 0.34) — confirmed live as reading too small next to the
+        // "Let's Collaborate" heading, wanted a bit bigger.
+        const DOCKED_SHRINK = 0.5;
+        let smoothP = 0;
+        let visible = false;
+
+        const travelTicker = (_time: number, deltaTime: number) => {
+          const raw = travelTrigger.progress;
+          const dt = Math.min(deltaTime / 1000, 0.1);
+          smoothP += (raw - smoothP) * (1 - Math.exp(-dt / 0.1));
+          const p = raw <= 0 && smoothP < 0.005 ? 0 : raw >= 1 && smoothP > 0.995 ? 1 : smoothP;
+          const e = easeInOut(Math.max(0, Math.min(1, p)));
+
+          const sRect = scenarioAnchor.getBoundingClientRect();
+          const cRect = collabAnchor.getBoundingClientRect();
+          const startX = sRect.left + sRect.width / 2, startY = sRect.top + sRect.height / 2;
+          const targetX = cRect.left + cRect.width / 2, targetY = cRect.top + cRect.height / 2;
+
+          gsap.set(star, {
+            x: startX * (1 - e) + targetX * e,
+            y: startY * (1 - e) + targetY * e,
+          });
+          shrinkRef.current = 1 + (DOCKED_SHRINK - 1) * e;
+
+          // Only visible while at least one anchor is reasonably near the viewport — hidden
+          // before the scenario section ever scrolls into view, and hidden again once the reader
+          // has scrolled well past the collab section into the footer below it.
+          const vh = window.innerHeight;
+          const shouldShow = sRect.top < vh && cRect.bottom > -vh * 0.3;
+          if (shouldShow !== visible) {
+            visible = shouldShow;
+            gsap.to(star, { opacity: visible ? 1 : 0, duration: 0.3, ease: "power2.out", overwrite: "auto" });
+          }
+        };
+        gsap.ticker.add(travelTicker);
+        removeTravelTicker = () => gsap.ticker.remove(travelTicker);
+        triggers.push(travelTrigger);
+      }
 
       gsap.fromTo(".hero-rise",
         { opacity: 0, y: 54 },
@@ -161,12 +244,25 @@ export default function CollaboratePage() {
 
       ScrollTrigger.refresh();
     })();
-    return () => { killed = true; triggers.forEach(t => t.kill()); };
+    return () => { killed = true; triggers.forEach(t => t.kill()); removeTravelTicker?.(); };
   }, []);
 
   return (
     <>
       <SiteNav />
+
+      {/* Fixed traveling star — desktop only (hidden below lg, matching the collab anchor's own
+          breakpoint and the isMobile guard in the effect above). Starts invisible (opacity:0 set
+          in the effect) and is positioned entirely by the travel ticker; box size matches the
+          scenario anchor's own size since that's this star's resting/base scale (18.2/cameraZ
+          28) — only the MODEL shrinks via shrinkRef as it travels, not this box. */}
+      <div
+        ref={travelStarRef}
+        className="hidden lg:block fixed pointer-events-none"
+        style={{ zIndex: 30, top: 0, left: 0, width: "clamp(320px,14vw,420px)", aspectRatio: "129.133/193.7" }}
+      >
+        <Star3D className="w-full h-full" scale={18.2} cameraZ={28} shrinkRef={shrinkRef} />
+      </div>
 
       <style>{`
         .hero-rise,.rise,.rise-item{opacity:0;will-change:transform,opacity;}
@@ -217,8 +313,8 @@ export default function CollaboratePage() {
             `justify-between` with a single item on a line falls back to flex-start — which put
             the star flush left instead of centered. */}
         <div className="flex flex-col items-center md:flex-row md:items-end md:justify-between gap-10 md:flex-wrap">
-          <div className="hero-rise relative shrink-0" style={{ width: "clamp(190px,21.5vw,278px)", aspectRatio: "277.868/416.802" }}>
-            <Star3D className="w-full h-full" scale={9.5} cameraZ={14} />
+          <div className="hero-rise relative shrink-0" style={{ width: "clamp(190px,21.5vw,278px)", aspectRatio: "277.868/516.802" }}>
+            <Star3D className="w-full h-full" scale={10} cameraZ={14} />
           </div>
 
           <div className="hero-rise flex flex-col items-start gap-[18px]" style={{ maxWidth: 560, flex: "1 1 420px" }}>
@@ -226,7 +322,7 @@ export default function CollaboratePage() {
               fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(15px,1.5vw,16px)",
               lineHeight: 1.4, color: "#363636", textTransform: "uppercase",
             }}>
-              A major part of <span style={{ color: "#0456DD" }}>Switchblade&apos;s vision</span> is to explore categories and get comfortable with something not yet done. This calls for people/brands to come together and make something together which has not been done yet and explore new boundaries
+              A major part of <span style={{ color: "#0456DD" }}>Switchblade&apos;s vision</span> is to explore categories and get comfortable with something not yet done.<br/> This calls for people/brands to come together and make something together which has not been done yet and explore new boundaries
             </p>
             <div className="flex items-center gap-[18px] flex-wrap">
               <a
@@ -415,8 +511,15 @@ export default function CollaboratePage() {
             </span>
           ))}
         </p>
-        <div className="rise shrink-0" style={{ width: "clamp(320px,14vw,420px)", aspectRatio: "129.133/193.7", marginTop: "clamp(24px,3vw,24px)" }}>
-          <Star3D className="w-full h-full" scale={18.2} cameraZ={28} />
+        {/* Desktop: this box is a layout anchor only — the fixed traveling star (see
+            travelStarRef near the top of this component) reads it live via
+            getBoundingClientRect() to know where to rest before traveling down to the "Let's
+            Collaborate" anchor, and the actual Star3D inside is invisible there (lg:invisible)
+            so it doesn't double up with the traveling copy. Mobile has no travel (the collab
+            anchor below is lg-only, so there's nowhere to travel TO) and keeps showing this
+            Star3D directly, exactly as before. */}
+        <div ref={scenarioAnchorRef} className="rise shrink-0" style={{ width: "clamp(320px,14vw,420px)", aspectRatio: "129.133/193.7", marginTop: "clamp(24px,3vw,24px)" }}>
+          <Star3D className="w-full h-full lg:invisible" scale={18.2} cameraZ={28} />
         </div>
       </section>
 
@@ -444,9 +547,11 @@ export default function CollaboratePage() {
               <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, color: "#929292", maxWidth: 440 }}>
                 Tell us what we&apos;d make together. If it elevates both of us, we&apos;ll build it
               </p>
-              <div className="hidden lg:block shrink-0" style={{ width: "clamp(250px,13.5vw,350px)", aspectRatio: "189.133/293.7", marginTop: "clamp(24px,3vw,40px)" }}>
-                <Star3D className="w-full h-full" scale={6.2} cameraZ={10.5} />
-              </div>
+              {/* Layout anchor only (no Star3D) — see the matching comment on scenarioAnchorRef
+                  above. The traveling star docks here (reading this box's live rect) and rides
+                  along with it for the rest of the page. Mobile keeps this hidden, same as
+                  before, since the desktop-only travel never brings the star here on mobile. */}
+              <div ref={collabAnchorRef} className="hidden lg:block shrink-0" style={{ width: "clamp(250px,13.5vw,350px)", aspectRatio: "189.133/293.7", marginTop: "clamp(24px,3vw,40px)" }} />
             </div>
 
             <div className="rise flex items-center flex-wrap gap-4" style={{
@@ -507,7 +612,7 @@ export default function CollaboratePage() {
                 onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
                 onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
               >
-                /Send the pitch
+                Send the pitch
               </button>
             </form>
           </div>

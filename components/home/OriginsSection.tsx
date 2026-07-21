@@ -26,7 +26,7 @@ const STORY_RIGHT = [
 function StoryContinuation() {
   return (
     <>
-      . Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
+      Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
       <br />That&rsquo;s reason number one to establish Switchblade.
       <br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
       <p style={{ marginTop: "1.4em" }}>
@@ -88,18 +88,32 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
           </p>
           <p>
             I read that and something settled in me. This logo has lived with me since I was{" "}
+            {/* Mobile: plain "......." instead of the AGE-11 tag image — the image is desktop-
+                only here (md:inline-block); mobile gets the dots (md:hidden) instead, by
+                request. Read More also moves inline right after the dots on mobile (see below)
+                instead of sitting as its own block underneath the paragraph. */}
+            <span className="md:hidden">.......</span>
             <Image
               src="/age-11-tag.png"
               alt="Age 11"
               width={182}
               height={127}
-              style={{ display: "inline-block", verticalAlign: "middle", height: "3.6em", width: "auto" }}
+              className="hidden md:inline-block"
+              style={{ verticalAlign: "middle", height: "3.6em", width: "auto" }}
             />
             <span className="hidden md:inline">
               . Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
               <br />That&rsquo;s reason number one to establish Switchblade.
               <br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
-            </span>
+            </span>{" "}
+            <button
+              type="button"
+              onClick={onReadMore}
+              className="md:hidden inline-flex items-center rounded-lg text-white font-medium hover:opacity-85 transition-opacity align-middle"
+              style={{ background: "#FF802B", fontFamily: "var(--font-archivo)", fontSize: 14, padding: "6px 16px", marginTop: 8, border: "none", cursor: "pointer" }}
+            >
+              Read More
+            </button>
           </p>
           <p className="hidden md:block" style={{ marginTop: "1.4em" }}>
             I want to be honest from the start  that&rsquo;s the only way I know how to do this.
@@ -112,14 +126,15 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
               height={127}
               style={{ display: "inline-block", verticalAlign: "middle", height: "3.6em", width: "auto" }}
             />
-            
+
           </p>
         </div>
 
+        {/* Desktop only now — mobile's Read More moved inline into the paragraph above. */}
         <button
           type="button"
           onClick={onReadMore}
-          className="inline-flex items-center rounded-lg text-white font-medium hover:opacity-85 transition-opacity"
+          className="hidden md:inline-flex items-center rounded-lg text-white font-medium hover:opacity-85 transition-opacity"
           style={{ background: "#FF802B", fontFamily: "var(--font-archivo)", fontSize: 15, padding: "10px 22px", marginTop: "clamp(16px,2.5vw,28px)", border: "none", cursor: "pointer" }}
         >
           Read More

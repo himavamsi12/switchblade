@@ -282,6 +282,9 @@ export function ClassicsGlobeSection() {
         width:      "100%",
         height:     "100vh",
         minHeight:  "640px",
+        // Space above this section — it used to butt directly against whatever comes before it
+        // with no gap at all.
+        marginTop:  "clamp(60px,8vw,120px)",
         background: "#ffffff",
         overflow:   "hidden",
       }}
@@ -405,7 +408,7 @@ export function ClassicsGlobeSection() {
             (e.currentTarget as HTMLAnchorElement).style.transform  = "scale(1)";
           }}
         >
-          Classics
+          Explore Classics
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, background: "#fff", borderRadius: 6 }}>
             <SparkleMark className="h-[14px] w-auto shrink-0 text-[#0D0D0D]" />
           </span>

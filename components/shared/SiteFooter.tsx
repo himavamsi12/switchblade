@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { Star3D } from "@/components/shared/Star3D";
 
 const NAV_LINKS = [
   { label: "Home",          href: "/" },
@@ -10,6 +11,45 @@ const NAV_LINKS = [
   { label: "Collaboration", href: "/collaborate" },
   { label: "Help",          href: "#" },
 ];
+
+// Rendered twice below: once beside "You got this..." (mobile only), once in the nav row
+// (desktop only, hidden on mobile) — extracted so the two spots share one copy of the styling
+// instead of duplicating this whole block.
+function InstagramLink({ className = "" }: { className?: string }) {
+  return (
+    <a href="#" className={className} style={{
+      display:       "inline-flex",
+      alignItems:    "center",
+      gap:           8,
+      height:        32,
+      padding:       "0 17px",
+      borderRadius:  999,
+      border:        "1px solid rgba(255,255,255,0.28)",
+      fontFamily:    "var(--font-ibm-mono)",
+      fontWeight:    700,
+      fontSize:      12,
+      letterSpacing: "0.1em",
+      textTransform: "uppercase",
+      color:          "rgba(255,255,255,0.75)",
+      textDecoration: "none",
+      transition:     "all 0.15s",
+    }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.borderColor = "#fff";
+        el.style.color       = "#fff";
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.borderColor = "rgba(255,255,255,0.28)";
+        el.style.color       = "rgba(255,255,255,0.75)";
+      }}
+    >
+      Instagram
+      <Image src="/instagram-icon.svg" alt="" width={16} height={16} />
+    </a>
+  );
+}
 
 export function SiteFooter() {
   const wordmarkWrapRef = useRef<HTMLDivElement>(null);
@@ -61,23 +101,29 @@ export function SiteFooter() {
       // the "You got this" line — desktop (md: and up) keeps the original clamp untouched.
       className="site-px max-md:pt-20 md:pt-[clamp(64px,9vw,120px)]"
       style={{
-        background: "linear-gradient(180deg, #FFFFFF 2.2%, #E8EEF9 7.7%, #A8BCE6 26.3%, #7E9ADB 38.8%, #5174CC 55%, #2E51C0 75.8%, #143BB2 96%)",
+        background: "linear-gradient(180deg, #FFFFFF 2.2%, #E8EEF9 6.7%, #A8BCE6 20.3%, #7E9ADB 38.8%, #5174CC 55%, #2E51C0 75.8%, #143BB2 96%)",
         overflow:   "hidden",
         position:   "relative",
       }}>
 
       <div className="flex items-start justify-between flex-wrap" style={{ gap: 32, marginBottom: "clamp(48px,7vw,96px)" }}>
-        <p style={{
-          fontFamily:    "var(--font-archivo)",
-          fontWeight:    900,
-          fontSize:      "clamp(18px,1.8vw,24px)",
-          lineHeight:    1.25,
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          color:         "#fefefe",
-        }}>
-          You got this.<br />Keep going. <br />Never give up
-        </p>
+        {/* md:block collapses this back to a single stacked child on desktop (InstagramLink is
+            md:hidden there) — the flex row is only meant to place the Instagram pill beside this
+            text on mobile, matching where it used to sit in the nav row lower down. */}
+        <div className="flex items-start justify-between gap-4 w-full md:block md:w-auto">
+          <p style={{
+            fontFamily:    "var(--font-archivo)",
+            fontWeight:    900,
+            fontSize:      "clamp(18px,1.8vw,24px)",
+            lineHeight:    1.25,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            color:         "#fefefe",
+          }}>
+            You got this.<br />Keep going. <br />Never give up
+          </p>
+          <InstagramLink className="md:hidden shrink-0" />
+        </div>
 
         <div style={{ textAlign: "left" }}>
           <p style={{
@@ -132,43 +178,52 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="flex items-center" style={{ gap: 20 }}>
-          <a href="#" style={{
-            display:       "inline-flex",
-            alignItems:    "center",
-            gap:           8,
-            height:        32,
-            padding:       "0 17px",
-            borderRadius:  999,
-            border:        "1px solid rgba(255,255,255,0.28)",
-            fontFamily:    "var(--font-ibm-mono)",
-            fontWeight:    700,
-            fontSize:      12,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color:          "rgba(255,255,255,0.75)",
-            textDecoration: "none",
-            transition:     "all 0.15s",
-          }}
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLElement;
-              el.style.borderColor = "#fff";
-              el.style.color       = "#fff";
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLElement;
-              el.style.borderColor = "rgba(255,255,255,0.28)";
-              el.style.color       = "rgba(255,255,255,0.75)";
-            }}
-          >
-            Instagram
-            <Image src="/instagram-icon.svg" alt="" width={16} height={16} />
-          </a>
-
+        {/* Hidden on mobile — moved up beside "You got this..." above (see InstagramLink there). */}
+        <div className="max-md:hidden flex items-center" style={{ gap: 20 }}>
+          <InstagramLink />
         </div>
       </div>
 
-      <div ref={wordmarkWrapRef} style={{ overflow: "hidden" }}>
+      {/* Small rotating chrome Compass.glb, now sitting directly above the SWITCHBLADE wordmark
+          (moved down from above the nav row) — reuses Star3D at a much smaller footprint than
+          its other placements on the site. cameraZ is pulled back far enough (see Star3D's
+          fov=44 vertical frustum) that the full model height fits inside the small square canvas
+          instead of clipping top/bottom. */}
+      {/* position:relative wrapper so the star can be positioned absolutely against the
+          wordmark's own box (via bottom:100%) instead of pushing it down through normal-flow
+          margin — the star now floats on top of/overlapping the wordmark's top edge (the
+          negative marginBottom below pulls it down by a fixed amount so its tip pokes into the
+          text) rather than sitting in its own separate flow slot above it. */}
+      {/* Mobile-only clearance above the star (the collision was only flagged on mobile — desktop
+          stays untouched). This padding lives on a SEPARATE outer wrapper, not the position:
+          relative div below — putting it directly on that div did nothing visible, because the
+          star's `bottom:100%` is measured against that div's own padding-box top edge, which
+          padding-top on the SAME element doesn't move; only content in normal flow (the wordmark)
+          shifted down, widening the star-to-wordmark gap while leaving the star exactly as
+          overlapped with the nav row as before. An outer wrapper's padding instead pushes the
+          relative div's own top edge down bodily, carrying the star down WITH it. (A plain
+          marginTop on that div was tried even earlier and also did nothing — it just collapsed
+          with the nav row's own marginBottom above, adjoining block margins take the larger of
+          the two, not the sum.) */}
+      <div className="max-md:pt-24">
+        <div style={{ position: "relative" }}>
+          <div
+            className="flex justify-center"
+            style={{
+              position:     "absolute",
+              left:         0,
+              right:        0,
+              bottom:       "100%",
+              marginBottom: "clamp(-5px,-2vw,6px)",
+              pointerEvents: "none",
+            }}
+          >
+            <div style={{ width: "clamp(120px,12vw,200px)", height: "clamp(120px,12vw,200px)" }}>
+              <Star3D scale={4.6} cameraZ={5.9} />
+            </div>
+          </div>
+
+          <div ref={wordmarkWrapRef} style={{ overflow: "hidden" }}>
         <p
           ref={wordmarkRef}
           style={{
@@ -194,6 +249,8 @@ export function SiteFooter() {
         >
           SWITCHBLADE
         </p>
+          </div>
+        </div>
       </div>
 
       <div style={{

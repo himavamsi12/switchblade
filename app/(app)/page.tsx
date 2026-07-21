@@ -8,6 +8,7 @@ import { ClassicsGlobeSection } from "@/components/home/ClassicsGlobeSection";
 import { CollaboratorsSection } from "@/components/shared/CollaboratorsSection";
 import { SiteFooter } from "@/components/shared/SiteFooter";
 import { SiteNav } from "@/components/shared/SiteNav";
+import { SmoothScroll } from "@/components/shared/SmoothScroll";
 import { SweepText } from "@/components/shared/SweepText";
 import dynamic from "next/dynamic";
 import type React from "react";
@@ -122,12 +123,12 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
         // The docked-beside-the-globe rest state the star is guaranteed to be in when this
         // trigger's range begins (globeTravel finishes well before it — see `start` above):
         // globeTravel parks it at x:22vw / y:8vh, and RadiatesSection's scaleTween holds the
-        // model shrink at 0.7 on desktop. These are CONSTANTS, deliberately not captured from
-        // the star's live position on entry — a first attempt did capture on entry, and a fast
-        // scroll (or scrollTo jump) that crosses the boundary while the earlier scrubbed tweens
-        // are still catching up sampled a transient mid-flight position, poisoning the whole
-        // path. Deriving the start analytically makes every frame a pure function of scroll
-        // progress + live layout, with no state to poison.
+        // model shrink at 0.7 on desktop. startX/startY below hardcode that same resting point
+        // as an analytic formula (0.5vw+0.22vw, 0.38vh+0.08vh) rather than reading it live off
+        // the star, specifically because a fast scroll can cross this boundary while globeTravel's
+        // own GSAP `scrub` proxy (its internal easing lag) is still catching up — capturing
+        // "live" at that moment would sample a transient mid-flight position, poisoning the
+        // whole path with a start point the star was only ever passing through.
         const DOCK_START_SHRINK = 0.7;
         // Smoothed copy of the trigger's raw progress. Raw scroll progress arrives in discrete
         // per-event steps (a wheel notch can move several % of this range at once) — mapping it
@@ -139,20 +140,36 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
         // Whether the previous frame wrote to the star — lets the exit path below run its
         // one-time final write on the exact frame the range is left, then go fully idle.
         let wasActive = false;
+        // Smoothed copy of the O letter's own live position — smoothP above filters the SCROLL
+        // progress, but targetX/Y were read from getBoundingClientRect() completely raw, every
+        // frame, with no filtering at all. Any sub-pixel jitter in that live read (layout
+        // rounding, the scroll position still asymptotically settling, etc.) fed straight into
+        // the star's position — invisible while the star is moving fast (swamped by its own
+        // large frame-to-frame motion), but visible as a left/right wobble whenever scrolling is
+        // slow or paused and nothing else masks it (confirmed as exactly the reported pattern:
+        // fine on a fast scroll, wobbling on a slow/stopped one). Smoothing the target the same
+        // way progress already is filters that out regardless of its exact source.
+        let smoothTargetX: number | null = null;
+        let smoothTargetY: number | null = null;
 
         tickerFn = (_time: number, deltaTime: number) => {
           const raw = dockTrigger.progress;
 
           // Below the range: go idle IMMEDIATELY — do NOT let the smoothing tail keep decaying
           // and writing for another ~0.5s. On a fast reverse scroll, globeTravel's own reverse
-          // scrub finishes its catch-up within that window, and every frame it rendered was
-          // being clobbered by this ticker's later-in-frame write; once both settled, nothing
-          // ever re-rendered x again, leaving the star stuck at the globe-side offset all the
-          // way back up to the hero. One final write at exactly p=0 (the parked-beside-globe
-          // state, which is what the dead zone between this range and globeTravel's expects)
-          // and then full silence hands ownership back to globeTravel cleanly.
+          // pass finishes its catch-up within that window, and every frame it rendered was being
+          // clobbered by this ticker's later-in-frame write; once both settled, nothing ever
+          // re-rendered x again, leaving the star stuck at the globe-side offset all the way
+          // back up to the hero. One final write at exactly p=0 (the parked-beside-globe state,
+          // which is what the dead zone between this range and globeTravel's expects) and then
+          // full silence hands ownership back to globeTravel cleanly.
           if (raw <= 0) {
             smoothP = 0;
+            // Reset too, not just smoothP — otherwise re-entering the range later would ease
+            // the target in from wherever the O last was, rather than snapping straight to its
+            // current (possibly moved, e.g. after a resize) live position.
+            smoothTargetX = null;
+            smoothTargetY = null;
             if (!wasActive) return;
             wasActive = false;
             // fall through once with p = 0 for the final parked-state write
@@ -171,11 +188,16 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
 
           const vw = window.innerWidth, vh = window.innerHeight;
           const oRect = oLetter.getBoundingClientRect();
-          const targetX = oRect.left + oRect.width / 2;
-          const targetY = oRect.top + oRect.height / 2;
-          // Canonical pre-dock star center in viewport coords: wrapper layout center is at
-          // (50vw, 38vh) (left:50% + xPercent:-50, top:38% + yPercent:-50), plus the
-          // globeTravel-applied transforms of x:22vw / y:8vh.
+          const rawTargetX = oRect.left + oRect.width / 2;
+          const rawTargetY = oRect.top + oRect.height / 2;
+          // Same dt/time-constant as smoothP above — first frame snaps straight to the live
+          // value (nothing to smooth FROM yet) rather than easing in from 0.
+          const dtForTarget = Math.min(deltaTime / 1000, 0.1);
+          const targetAlpha = 1 - Math.exp(-dtForTarget / 0.1);
+          smoothTargetX = smoothTargetX === null ? rawTargetX : smoothTargetX + (rawTargetX - smoothTargetX) * targetAlpha;
+          smoothTargetY = smoothTargetY === null ? rawTargetY : smoothTargetY + (rawTargetY - smoothTargetY) * targetAlpha;
+          const targetX = smoothTargetX;
+          const targetY = smoothTargetY;
           const startX = 0.5 * vw + 0.22 * vw;
           const startY = 0.38 * vh + 0.08 * vh;
           // The wrapper's transform-less layout center — what a given gsap x/y is relative to.
@@ -184,8 +206,8 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
 
           const e = easeInOut(Math.min(1, Math.max(0, p)));
           // Convex blend between the fixed canonical start and the LIVE target: always lands
-          // exactly on the O no matter how the O moves mid-travel, and can never overshoot
-          // (the position is by construction between the two endpoints).
+          // exactly on the O no matter how the O moves mid-travel, and can never overshoot (the
+          // position is by construction between the two endpoints).
           const wantX = startX * (1 - e) + targetX * e;
           const wantY = startY * (1 - e) + targetY * e;
           gsap.set(star, {
@@ -195,15 +217,15 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
             rotation: -14 * Math.sin(Math.PI * e),
           });
           // Final model shrink derived from live layout so it responds to font size / viewport:
-          // the model visually fills ~78% of its wrapper box at shrink 1, and the docked star
-          // should stand ~1.5x the O's glyph height (vertical tips poking above/below the
-          // letter, per the reference image). The wrapper's height is computed from its own CSS
-          // clamp (see the style on this element) rather than getBoundingClientRect — the rect
-          // is the ROTATED bounding box, which grows up to ~30% while the star is tilted
+          // the model visually fills ~78% of its wrapper box at shrink 1. Docked ratio lowered
+          // from 1.5x to 0.85x the O's glyph height — 1.5x left the star towering well above/
+          // below the letter instead of sitting inside it. The wrapper's height is computed from
+          // its own CSS clamp (see the style on this element) rather than getBoundingClientRect —
+          // the rect is the ROTATED bounding box, which grows up to ~30% while the star is tilted
           // mid-travel, and that wobble fed straight into the shrink target (the "not properly
           // shrinking" pumping effect).
           const wrapH = Math.min(940, Math.max(280, Math.min(0.84 * vh, vw)));
-          const finalShrink = Math.min(0.35, Math.max(0.05, (oRect.height * 1.5) / (wrapH * 0.78)));
+          const finalShrink = Math.min(0.35, Math.max(0.05, (oRect.height * 0.85) / (wrapH * 0.78)));
           shrinkRef.current = DOCK_START_SHRINK + (finalShrink - DOCK_START_SHRINK) * e;
         };
         gsap.ticker.add(tickerFn);
@@ -213,11 +235,15 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
       // The star stays centered through the hero exit — no more corner-parking/tilt. It hands
       // off, still centered at scale 1, straight into RadiatesSection's own scroll-driven
       // rotate/shrink choreography right below the hero.
+      // Star first, then text below — pushed later (was 0.85/1.2, overlapping the star's own
+      // 1.0s reveal and the heading's SweepText, which started at 0.95s independently of this
+      // timeline). Now tagRef/descRef wait until after the heading's own sweep (trigger="load",
+      // delay={1000} below, ~1000-2300ms) has had a chance to read, instead of racing it.
       tl = gsap.timeline();
       tl
         .to(star,            { scale: 1, opacity: 1, duration: 1.0, ease: "power3.out" }, 0)
-        .to(tagRef.current,  { opacity: 1, y: 0,    duration: 0.4,  ease: "power3.out" }, 0.85)
-        .to(descRef.current, { opacity: 1,           duration: 0.5,  ease: "power2.out" }, 1.2);
+        .to(tagRef.current,  { opacity: 1, y: 0,    duration: 0.4,  ease: "power3.out" }, 2.1)
+        .to(descRef.current, { opacity: 1,           duration: 0.5,  ease: "power2.out" }, 2.35);
     });
 
     return () => {
@@ -247,7 +273,10 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
             letterSpacing: "-0.01em",
           }}
         >
-          <SweepText tone="dark" color="#0F0E0C" trigger="load" delay={950}>
+          {/* delay bumped from 950 to 1000 (just past the star's own 1.0s reveal above) — the
+              star should visibly finish appearing first, THEN the heading sweeps in, not the
+              two overlapping. */}
+          <SweepText tone="dark" color="#0F0E0C" trigger="load" delay={1000}>
             ANYTHING BUT<br />EVERYTHING
           </SweepText>
         </h1>
@@ -267,7 +296,7 @@ function Hero({ starRef, shrinkRef }: { starRef: React.RefObject<HTMLDivElement 
         >
           The superpower that you carry everywhere.{" "}
           <span style={{ color: "var(--blue)" }}>Invisible, until the world demands it.</span>{" "}
-          A philosophy applied to whatever it touches. Maximum impact.
+          A philosophy applied to whatever it touches.<br/> Maximum impact.
         </p>
       </div>
     </section>
@@ -297,20 +326,20 @@ export default function HomePage() {
   // stays untouched.
   const [starScale, setStarScale] = useState(2.2);
   useEffect(() => {
-    // 3.4 was tuned specifically for narrow phone widths (~375-428px), where the star's CSS
+    // 3.1 was tuned specifically for narrow phone widths (~375-428px), where the star's CSS
     // wrapper box (sized via vw/vh clamps in the star's own style below) is small. That same flat
-    // 3.4 was previously applied to the ENTIRE <1024 range as a step function — fine on phones,
+    // value was previously applied to the ENTIRE <1024 range as a step function — fine on phones,
     // but on a tablet-width screen (e.g. 1023px) the wrapper box itself is already much bigger
     // (it scales fluidly with viewport width), so reusing the phone's scale on top of an
     // already-large box rendered a hugely oversized star that overlapped the labels and pushed
-    // "Love" off the bottom of the screen. Interpolating linearly from 3.4 at 428px down to 2.2
-    // at 1024px (Star3D's own desktop default) keeps both original endpoints exactly as tuned,
-    // while giving the tablet range in between a proportionate size instead of a cliff.
+    // "Love" off the bottom of the screen. Interpolating linearly from 3.1 at 428px down to 2.2
+    // at 1024px (Star3D's own desktop default) keeps both endpoints tuned per breakpoint, while
+    // giving the tablet range in between a proportionate size instead of a cliff.
     const computeScale = () => {
       const w = window.innerWidth;
-      if (w <= 428) return 3.4;
+      if (w <= 428) return 3.1;
       if (w >= 1024) return 2.2;
-      return 3.4 + (2.2 - 3.4) * ((w - 428) / (1024 - 428));
+      return 3.1 + (2.2 - 3.1) * ((w - 428) / (1024 - 428));
     };
     setStarScale(computeScale());
     const onResize = () => setStarScale(computeScale());
@@ -348,6 +377,10 @@ export default function HomePage() {
 
   return (
     <>
+      {/* Desktop-only Lenis smooth scroll — makes the scroll-scrubbed star animations below
+          smooth at all scroll speeds by feeding ScrollTrigger a continuous (rather than
+          browser-stepped) scroll value. Replaces RadiatesSection's former normalizeScroll. */}
+      <SmoothScroll />
       <SiteNav />
 
       <div
@@ -372,7 +405,12 @@ export default function HomePage() {
           // more than the absolute size) instead of letting it run away on narrow/tall
           // viewports; 84vh still wins on normal desktop aspect ratios since it's the smaller
           // value there.
-          height: "clamp(280px, min(84vh, 100vw), 940px)",
+          // 100vw -> 115vw bumps the mobile-only height cap (on desktop 84vh already wins this
+          // min() regardless, so this only affects narrow/portrait viewports where 100vw was the
+          // binding term) — gives the star's canvas box more vertical room, not a bigger model:
+          // Star3D's camera keeps a fixed vertical FOV, so a taller box just reveals more of the
+          // scene above/below, it doesn't rescale the star itself.
+          height: "clamp(280px, min(84vh, 125vw), 940px)",
           willChange: "transform",
         }}
       >

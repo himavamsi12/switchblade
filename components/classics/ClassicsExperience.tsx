@@ -331,7 +331,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const dl = new THREE.DirectionalLight(0xffffff, 2.4); dl.position.set(4, 8, 5); scene.add(dl);
       const dl2 = new THREE.DirectionalLight(0x9fb6ff, 1.2); dl2.position.set(-5, -2, -3); scene.add(dl2);
       const grp = new THREE.Group(); grp.position.set(0, 0, 0); scene.add(grp); centerStar = grp;
-      new GLTFLoader().load("/estar.glb", gltf => {
+      new GLTFLoader().load("/Compass.glb", gltf => {
         const m = gltf.scene;
         m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshStandardMaterial({ color: new THREE.Color("#cdd9ef"), metalness: 1, roughness: 0.1, envMapIntensity: 2.0, side: THREE.DoubleSide }); });
         const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
@@ -652,7 +652,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const dl = new THREE.DirectionalLight(0xffffff, 2.4); dl.position.set(4, 8, 5); starScene.add(dl);
       const dl2 = new THREE.DirectionalLight(0x9fb6ff, 1.2); dl2.position.set(-5, -2, -3); starScene.add(dl2);
       const grp = new THREE.Group(); starScene.add(grp); starModel = grp;
-      new GLTFLoader().load("/estar.glb", gltf => {
+      new GLTFLoader().load("/Compass.glb", gltf => {
         const m = gltf.scene;
         m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshStandardMaterial({ color: new THREE.Color("#cdd9ef"), metalness: 1, roughness: 0.1, envMapIntensity: 2.0, side: THREE.DoubleSide }); });
         const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
