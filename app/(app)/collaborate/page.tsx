@@ -103,13 +103,18 @@ export default function CollaboratePage() {
         gsap.set(star, { xPercent: -50, yPercent: -50, opacity: 0, transformOrigin: "50% 50%" });
 
         const travelTrigger = ScrollTrigger.create({
-          // History: "bottom 65%"→"top 55%" read too fast; "bottom 70%"→"bottom 25%" too slow;
-          // "bottom 70%"→"bottom 50%" still a bit slow; "bottom 70%"→"top 75%" then too fast.
-          // Settled between those last two at "top 30%".
+          // The star's travel speed IS this range: the tween is scrubbed, so the same journey
+          // spread over more scroll distance reads slower. Widened at BOTH ends (was "bottom 70%"
+          // → "top 30%") because the trip still read too fast — starting earlier, while the
+          // scenario section's bottom is still low in the viewport, and finishing later, once the
+          // collab section is higher up. Worth ~40vh of extra scroll for the same distance.
+          // History: "bottom 65%"→"top 55%" too fast; "bottom 70%"→"bottom 25%" too slow;
+          // "bottom 70%"→"bottom 50%" still a bit slow; "bottom 70%"→"top 75%" too fast;
+          // "bottom 70%"→"top 30%" still too fast.
           trigger: scenarioAnchor.closest("section") ?? scenarioAnchor,
-          start: "bottom 70%",
+          start: "bottom 95%",
           endTrigger: collabAnchor.closest("section") ?? collabAnchor,
-          end: "top 30%",
+          end: "top 15%",
         });
 
         const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2);
@@ -522,7 +527,11 @@ export default function CollaboratePage() {
           hard `height` CAP fighting minHeight, not by minHeight's own value — a floor only sets
           a MINIMUM, so content taller than it (the enlarged star) still grows past it exactly
           like before. */}
-      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ background: "#FFFFFF", padding: "clamp(12px,1.5vw,24px) 0", minHeight: "clamp(280px,30vw,460px)" }}>
+      {/* Bottom padding is much larger than the top's: the star's long lower spike reaches almost
+          the full height of its box, so with the symmetric clamp(12px,1.5vw,24px) it ended up
+          nearly touching the next section. The extra space below is measured from the star's tip,
+          not from the box, which is why it doesn't look symmetric in the code. */}
+      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ background: "#FFFFFF", padding: "clamp(12px,1.5vw,24px) 0 clamp(120px,14vw,240px)", minHeight: "clamp(280px,30vw,460px)" }}>
         <p className="rise text-center" style={{
           fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(22px,2.6vw,36px)",
           lineHeight: 1.3, letterSpacing: "-0.02em", color: "#0D0D0D", maxWidth: 700,

@@ -24,7 +24,7 @@ const LABELS: Placement[] = [
     // max-lg:/lg: (not max-md:/md:) — matches the isMobile JS threshold below (1024, not 768),
     // so tablet widths (768-1023) keep the same tuned label positions as phones instead of
     // jumping to values that were only ever tuned against real desktop widths.
-    posClass: "max-lg:top-[21%] lg:top-[13%] left-1/2",
+    posClass: "max-lg:top-[21%] lg:top-[20%] left-1/2",
     style: { transform: "translate(-50%, 0)" },
   },
   {
@@ -32,7 +32,7 @@ const LABELS: Placement[] = [
     word: "Compassion",
     dotFirst: true,
     justify: "flex-start",
-    posClass: "top-[38%] max-lg:left-[68%] lg:left-[62%]",
+    posClass: "max-lg:top-[38%] lg:top-[45%] max-lg:left-[68%] lg:left-[62%]",
     style: { transform: "translate(0, -50%)" },
   },
   {
@@ -40,7 +40,7 @@ const LABELS: Placement[] = [
     word: "Love",
     dotFirst: true,
     justify: "center",
-    posClass: "max-lg:top-[65%] lg:top-[74%] left-1/2",
+    posClass: "max-lg:top-[65%] lg:top-[81%] left-1/2",
     style: { transform: "translate(-50%, 0)" },
   },
   {
@@ -48,7 +48,7 @@ const LABELS: Placement[] = [
     word: "Kindness",
     dotFirst: false,
     justify: "flex-end",
-    posClass: "top-[38%] max-lg:left-[22%] lg:left-[38%]",
+    posClass: "max-lg:top-[38%] lg:top-[45%] max-lg:left-[22%] lg:left-[38%]",
     style: { transform: "translate(-100%, -50%)" },
   },
 ];
@@ -114,6 +114,10 @@ export function RadiatesSection({
     let wordmarkTrigger: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let starHideTrigger: any = null;
+    // Set while the entrance scroll-hold is active (see holdForEntrance); calling it resumes
+    // scrolling. Must be invoked from cleanup as well, so an unmount mid-hold can't strand the
+    // page with scrolling disabled.
+    let releaseHold: (() => void) | null = null;
     let rafId = 0;
 
     import("gsap").then(async ({ gsap }) => {
@@ -206,6 +210,41 @@ export function RadiatesSection({
       // (zero duration) rather than animated, so it can push the star down the moment the section
       // is entered without reintroducing motion-during-scroll — it just snaps to the correct
       // resting spot for this section, same as it would have looked once the old tween finished.
+      // Holds the page still for the length of the entrance (tlEnter) the FIRST time this section
+      // engages, then hands scrolling straight back.
+      //
+      // Why: tlEnter is time-based (~1.5s on its own clock) while every beat after it is
+      // scroll-SCRUBBED. So a hard scroll flick moves the scroll position deep into the section
+      // while the labels are still typing in — the reader lands at the wordmark's scrubbed range
+      // (40%) having never seen the star spin or the labels form. Freezing the scroll for that
+      // ~1.5s is what makes the entrance unskippable without making the section itself longer.
+      //
+      // Routed through Lenis (window.__lenis, desktop-only — see SmoothScroll.tsx) because Lenis
+      // owns the scroll on desktop: its .stop() discards wheel input outright rather than queuing
+      // it, so the page doesn't lurch forward by the buffered delta the moment it resumes.
+      // Skipped entirely on mobile/tablet: there's no Lenis there, and blocking a native momentum
+      // flick mid-gesture reads as the page having frozen/broken rather than as a deliberate hold.
+      //
+      // ONCE only (heldOnce): re-locking every time the reader scrolls back up and re-enters would
+      // feel like the page fighting them. And `releaseHold` is called from the effect cleanup too —
+      // unmounting mid-hold must never leave the page permanently unscrollable.
+      let heldOnce = false;
+      const holdForEntrance = () => {
+        if (isMobile || heldOnce) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const lenis = (window as any).__lenis;
+        if (!lenis?.stop) return;
+        heldOnce = true;
+        lenis.stop();
+        releaseHold = () => {
+          releaseHold = null;
+          lenis.start();
+        };
+        // +0.15s of settle after the last character lands, so scrolling doesn't resume on the
+        // exact frame the animation ends.
+        gsap.delayedCall(tlEnter.duration() + 0.15, () => releaseHold?.());
+      };
+
       let wasIntersecting = false;
       const checkIntersection = () => {
         if (killed) return;
@@ -215,6 +254,7 @@ export function RadiatesSection({
           wasIntersecting = isIntersecting;
           if (isIntersecting) {
             tlEnter.play();
+            holdForEntrance();
             // Desktop only — mobile's whole settle motion is owned by scaleTween alone (start:
             // "top 60%", see below), one continuous tween with no competing move here.
             // This used to be an INSTANT gsap.set rather than a tween — that snapped the star to
@@ -223,7 +263,16 @@ export function RadiatesSection({
             // dodge a race with scaleTween's own y tween, but that one only starts later (52%
             // top, well past this trigger point), so a short real tween is safe here now and
             // reads as a settle instead of a snap.
-            if (!isMobile) gsap.to(star, { y: "5vh", duration: 0.35, ease: "power2.out", overwrite: "auto" });
+            // 14vh (was 5vh) — moved down with the heading and labels so the whole composition
+            // sits centred in the viewport instead of hugging the top. Tuned so the star's
+            // CROSSING POINT lands near the Kindness/Compassion axis (lg:top-[45%]): the model is
+            // camera-framed rather than centred in its canvas, so its visual centre sits well
+            // above the element's middle. 12vh left the crossing high enough that the long upper
+            // spike hit the "Strength" label; 20vh dropped it below the axis and into "Love".
+            // Only the RESTING spot changes;
+            // scaleTween still takes the star to -6vh for its wordmark clearance later, so
+            // nothing downstream shifts.
+            if (!isMobile) gsap.to(star, { y: "14vh", duration: 0.35, ease: "power2.out", overwrite: "auto" });
           } else if (top > 0) {
             tlEnter.reverse();
             if (!isMobile) gsap.to(star, { y: 0, duration: 0.35, ease: "power2.out", overwrite: "auto" });
@@ -503,6 +552,9 @@ export function RadiatesSection({
 
     return () => {
       killed = true;
+      // Before anything else: if we unmount while the entrance hold is still active, scrolling
+      // must be handed back — otherwise the page stays frozen with nothing left alive to free it.
+      releaseHold?.();
       cancelAnimationFrame(rafId);
       tlEnter?.kill();
       fadeTrigger?.kill();
@@ -610,8 +662,13 @@ export function RadiatesSection({
       <div className="sticky top-0 h-screen overflow-hidden" style={{ zIndex: 25, marginTop: "-100vh" }}>
         <div
           ref={headingRef}
-          className="absolute left-1/2 flex items-center gap-2 select-none"
-          style={{ top: "3%", transform: "translateX(-50%)" }}
+          // Desktop `top` lives here as a class rather than in `style` so it can differ from
+          // mobile's: the whole group (heading + labels + star) used to sit in the upper ~78% of
+          // the viewport with dead space beneath it, so every desktop position below is shifted
+          // down ~7% to centre the composition. Mobile's percentages were tuned separately and
+          // are left alone.
+          className="absolute left-1/2 flex items-center gap-2 select-none max-lg:top-[11%] lg:top-[10%]"
+          style={{ transform: "translateX(-50%)" }}
         >
           <span
             style={{

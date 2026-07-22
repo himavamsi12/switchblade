@@ -5,17 +5,28 @@ import { Clock, ArrowUp, X } from "lucide-react";
 import Image from "next/image";
 import { Star3D } from "@/components/shared/Star3D";
 
-// Underline text field — same look as the collaborate page's pitch form fields.
+// Underline text field and uppercase mono label — kept byte-for-byte in sync with the pitch form
+// on the collaborate page (the `fieldStyle` at the bottom of app/(app)/collaborate/page.tsx and the
+// inline label style beside it), since this modal now reuses that exact form.
 const fieldStyle: React.CSSProperties = {
   display: "block", width: "100%", background: "none", border: "none",
-  borderBottom: "1px solid rgba(13,13,13,0.14)", padding: "0 0 10px",
+  borderBottom: "1px solid rgba(13,13,13,0.14)", padding: "0 0 8px",
   fontFamily: "var(--font-archivo)", fontWeight: 400, fontSize: 15,
-  color: "#0D0D0D", outline: "none", transition: "border-color 0.2s",
+  color: "#0D0D0D", outline: "none", resize: "none", transition: "border-color 0.2s",
 };
 
 const labelStyle: React.CSSProperties = {
-  fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 13,
-  textTransform: "uppercase", letterSpacing: "0.08em", color: "#000", opacity: 0.5,
+  fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14,
+  textTransform: "uppercase", color: "#000", opacity: 0.5,
+};
+
+// Same label, but for the BOOK A MEETING / OR / DROP A PITCH row, which has to fit three phrases
+// plus two rules on one line even on a narrow phone. Scales down with the viewport and never
+// breaks mid-phrase; capped at the form labels' 14px so it's identical to them on desktop.
+const dividerLabelStyle: React.CSSProperties = {
+  ...labelStyle,
+  fontSize: "clamp(9px,2.7vw,14px)",
+  whiteSpace: "nowrap",
 };
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -197,70 +208,92 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
               on a flex item absorb the free space equally top and bottom) instead of leaving it
               top-aligned above a tall empty band. When there's no free space the auto margins
               resolve to 0, so a tight viewport just falls back to top-aligned + scroll. */}
-          <div
-            className="flex flex-col shrink-0 lg:my-auto"
-            style={{
-              border: "1px solid #E4E4E7", borderRadius: 16,
-              padding: "clamp(18px,2.6vh,40px) clamp(24px,2.5vw,40px)",
-            }}
-          >
-          {/* Book a quick call card */}
-          <a
-            href="#"
-            className="flex items-center justify-between"
-            style={{
-              gap: 20, border: "1px solid #D8D8D8", borderRadius: 15,
-              padding: "clamp(14px,2.2vh,22px) 24px", flexShrink: 0,
-              marginBottom: "clamp(16px,2.6vh,40px)", textDecoration: "none",
-              transition: "border-color 0.15s",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#0456DD")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#D8D8D8")}
-          >
-            <div className="flex flex-col" style={{ gap: 14 }}>
-              <div className="flex items-center" style={{ gap: 14 }}>
-                <Image src="/collaborate/google-meet.svg" alt="Google Meet" width={40} height={33} />
-                <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: "clamp(18px,1.4vw,22px)", color: "#0D0D0D" }}>Book a quick call</span>
-              </div>
-              <div className="flex items-center" style={{ gap: 10 }}>
-                <Clock size={16} color="#666565" strokeWidth={2} />
-                <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 14, letterSpacing: "0.06em", textTransform: "uppercase", color: "#666565" }}>15 Minutes</span>
-              </div>
-            </div>
-            <ArrowUp size={22} color="#0D0D0D" style={{ transform: "rotate(45deg)" }} />
-          </a>
-
-          {/* Fields */}
-          {/* Natural height at every size now — Submit follows the last field with the form's own
-              gap, rather than being pushed to the bottom of a stretched card. */}
-          <form className="flex flex-col" style={{ gap: "clamp(14px,2.4vh,36px)" }} onSubmit={e => e.preventDefault()}>
-            {["Name", "E-mail", "Phone"].map(label => (
-              <div key={label} className="flex flex-col" style={{ gap: "clamp(6px,1.2vh,14px)" }}>
-                <label style={labelStyle}>{label}</label>
-                <input
-                  type="text"
-                  style={fieldStyle}
-                  onFocus={e => (e.target.style.borderBottomColor = "#0456DD")}
-                  onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")}
-                />
-              </div>
-            ))}
-
-            <button
-              type="submit"
+          {/* The collaborate page's pitch form, reused verbatim (see the "Drop a pitch" column in
+              app/(app)/collaborate/page.tsx): book-a-call card → BOOK A MEETING / OR / DROP A PITCH
+              divider → bordered form. Each of the three carries its own border there, so this
+              wrapper has none of its own — it exists only to group them and to centre the group
+              vertically (lg:my-auto). */}
+          <div className="flex flex-col shrink-0 lg:my-auto" style={{ gap: "clamp(20px,4vh,44px)" }}>
+            {/* Book a quick call card */}
+            <a
+              href="#"
               style={{
-                marginTop: "auto", height: "clamp(44px,6vh,52px)", flexShrink: 0,
-                background: "#000", color: "#fff", border: "none",
-                borderRadius: 4, fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 14,
-                letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
-                transition: "opacity 0.15s",
+                background: "#fff", border: "1px solid #D8D8D8", borderRadius: 15,
+                padding: "24px 24px 18px", textDecoration: "none", transition: "border-color 0.15s",
               }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
-              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "#0456DD")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = "#D8D8D8")}
             >
-              Submit
-            </button>
-          </form>
+              <div className="flex items-center justify-between gap-5">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-[14px]">
+                    <Image src="/collaborate/google-meet.svg" alt="Google Meet" width={44} height={36} />
+                    <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 24, color: "rgba(0,0,0,0.5)" }}>Book a quick call</span>
+                  </div>
+                  <div className="flex items-center gap-[10px]">
+                    <Clock size={18} color="#666565" strokeWidth={2} />
+                    <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "#666565" }}>15 Minutes</span>
+                  </div>
+                </div>
+                <ArrowUp size={22} color="#0D0D0D" style={{ transform: "rotate(48deg)" }} />
+              </div>
+            </a>
+
+            {/* BOOK A MEETING ——— OR ——— DROP A PITCH
+                Must stay on ONE line at every width. The collaborate page's version can afford
+                `flex-wrap` because it sits in a wide desktop column; inside this modal the row is
+                narrower than its own content on a phone, so wrapping dropped "DROP A PITCH" onto a
+                second line. Three defences instead: no wrapping, `whiteSpace: nowrap` so the labels
+                can't break mid-phrase, and a viewport-scaled font size — the two rules then absorb
+                whatever width is left over (they're flex:1 with a small min-width, so they shrink
+                to near-nothing before anything is forced to wrap). */}
+            <div className="flex items-center gap-2 sm:gap-4 flex-nowrap">
+              <span style={dividerLabelStyle}>Book a meeting</span>
+              <span style={{ flex: 1, minWidth: 12, height: 1, background: "#D8D8D8" }} />
+              <span style={dividerLabelStyle}>or</span>
+              <span style={{ flex: 1, minWidth: 12, height: 1, background: "#D8D8D8" }} />
+              <span style={dividerLabelStyle}>Drop a Pitch</span>
+            </div>
+
+            {/* Pitch form */}
+            <form
+              className="flex flex-col gap-[18px]"
+              style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }}
+              onSubmit={e => e.preventDefault()}
+            >
+              {[
+                "You OR Your Craft",
+                "Portfolio link",
+                "What would we make together",
+                "E-mail or phone number",
+              ].map(label => (
+                // The label→input gap is 44px on the collaborate page (gap-11). Here it's a
+                // height-aware clamp with the SAME 44px ceiling: identical to collab on a normal
+                // desktop viewport, but able to compress rather than pushing the last field and
+                // the send button out of a short modal.
+                <div key={label} className="flex flex-col" style={{ gap: "clamp(18px,4vh,44px)" }}>
+                  <label style={labelStyle}>{label}</label>
+                  <input
+                    type="text"
+                    style={fieldStyle}
+                    onFocus={e => (e.target.style.borderBottomColor = "#0456DD")}
+                    onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")}
+                  />
+                </div>
+              ))}
+              <button
+                type="submit"
+                style={{
+                  height: 40, background: "#000", color: "#fff", border: "none", borderRadius: 8,
+                  fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16,
+                  letterSpacing: "-0.02em", cursor: "pointer", transition: "opacity 0.15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
+                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              >
+                Send the pitch
+              </button>
+            </form>
           </div>
         </motion.div>
       </motion.div>
