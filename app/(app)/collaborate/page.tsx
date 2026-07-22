@@ -21,16 +21,16 @@ const VISION_TESTS = [
 ] as const;
 
 const STANDARD = [
-  { num: "(01)", tag: "Quality",  title: "Craft first",       desc: "We partner for the work, never teh reach. The Object has to be undeniable on its own" },
-  { num: "(02)", tag: "Winning",  title: "Mutual Elevation",  desc: "Every collaboration must take both names better - not just bigger. Greater than the sum" },
-  { num: "(03)", tag: "Interest", title: "Cultural fit",      desc: "Shared interests make it fun to work together and explore. Different interests makes it exciting" },
-  { num: "(04)", tag: "Rooted",   title: "Built to Last",     desc: "Considered objects over fast drops. We make fewer, better things - together" },
+  { num: "(01)", tag: "Quality",  title: "Craft first",       desc: "We partner for the work, never the reach. The Object has to be undeniable on its own." },
+  { num: "(02)", tag: "Winning",  title: "Mutual Elevation",  desc: "Every collaboration must take both names better - not just bigger. Greater than the sum." },
+  { num: "(03)", tag: "Interest", title: "Cultural fit",      desc: "Shared interests make it fun to work together and explore. Different interests makes it exciting." },
+  { num: "(04)", tag: "Rooted",   title: "Built to Last",     desc: "Considered objects over fast drops. We make fewer, better things - together." },
 ] as const;
 
 const CASES = [
-  { kind: "Sound & ART", title: "Shared - Archive Capsule",   desc: "A release across sound, image and motion - one story, many media",        chip: "#2755C5" },
-  { kind: "Object",      title: "One Made-TO-Last Object",    desc: "A single considered product, engineered to outlast trend",                 chip: "#0F0E0C" },
-  { kind: "Apparel",     title: "Shared - Archive Capsule",   desc: "Limited garments drawn from two design languages, made as one",             chip: "#2755C5" },
+  { kind: "Sound & ART", title: "Shared - Archive Capsule",   desc: "A release across sound, image and motion - one story, many media.",        chip: "#FF802B" },
+  { kind: "Object",      title: "One Made-TO-Last Object",    desc: "A single considered product, engineered to outlast trend.",                 chip: "#0F0E0C" },
+  { kind: "Apparel",     title: "The Switchblade\nTouch", desc: "Limited garments drawn from two design languages, made as one.",             chip: "#2755C5" },
 ] as const;
 
 const SCENARIO_TEXT = "wins only in one scenario: when what we build together helps people to stay and get inspired.";
@@ -66,6 +66,59 @@ export default function CollaboratePage() {
   // transform transition (no gsap), so it stays independent of the star choreography's own async
   // gsap setup below. The hero's falls on page OPEN; the Collaboration-Standard one falls when
   // that section scrolls INTO VIEW.
+
+  // Arriving at /collaborate#pitch (the homepage's "Request for collaboration" button) has to
+  // survive this page settling. That link is a plain <a>, so it's a full page load: the browser
+  // honours the hash once, at parse time, and THEN the hero's 3D star canvas, web fonts and images
+  // finish loading and grow the layout above #pitch — which slides the target down and leaves the
+  // reader looking at the hero instead. Nothing is wrong with the anchor; it's just resolved too
+  // early to mean anything.
+  //
+  // So re-assert it for a short window (~700ms) instead of trusting the one-shot native jump,
+  // giving up as soon as the reader touches the page — re-pinning under someone who has started
+  // scrolling would feel like the page fighting them. Instant (behavior:"auto"), never smooth:
+  // this is a correction of a landing position, not a journey the reader should watch.
+  useEffect(() => {
+    if (window.location.hash !== "#pitch") return;
+    let raf = 0;
+    let cancelled = false;
+    const deadline = performance.now() + 700;
+
+    const cancel = () => {
+      cancelled = true;
+      window.removeEventListener("wheel", cancel);
+      window.removeEventListener("touchstart", cancel);
+      window.removeEventListener("keydown", cancel);
+    };
+    window.addEventListener("wheel", cancel, { passive: true });
+    window.addEventListener("touchstart", cancel, { passive: true });
+    window.addEventListener("keydown", cancel);
+
+    // Scrolls the section's HEADING to just under the top of the viewport, ~56px down.
+    // Deliberately not scrollIntoView({block:"start"}): that aligns the section's BOX, which sits
+    // behind up to 80px of its own top padding plus its 62px scrollMarginTop — together a ~140px
+    // band of empty white above "LET'S COLLABORATE". Measuring the live padding and subtracting it
+    // lands on the content instead of the box, so the section fills the viewport.
+    const TOP_GAP = 56;
+    const pin = () => {
+      if (cancelled) return;
+      // Looked up every frame: the section can mount/remount as the page hydrates.
+      const el = document.getElementById("pitch");
+      if (el) {
+        const paddingTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
+        const y = el.getBoundingClientRect().top + window.scrollY + paddingTop - TOP_GAP;
+        window.scrollTo(0, Math.max(0, y));
+      }
+      if (performance.now() < deadline) raf = requestAnimationFrame(pin);
+      else cancel();
+    };
+    raf = requestAnimationFrame(pin);
+
+    return () => {
+      cancel();
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   useEffect(() => {
     let killed = false;
@@ -338,8 +391,8 @@ export default function CollaboratePage() {
 
           <div className="hero-rise flex flex-col items-start gap-[18px]" style={{ maxWidth: 560, flex: "1 1 420px" }}>
             <p style={{
-              fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(15px,1.5vw,16px)",
-              lineHeight: 1.4, color: "#363636", textTransform: "uppercase",
+              fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(14px,1.5vw,16px)",
+              lineHeight: 1.4, color: "#363636", 
             }}>
               A major part of <span style={{ color: "#0456DD" }}>Switchblade&apos;s vision</span> is to explore categories and get comfortable with something not yet done.<br/> This calls for people/brands to come together and make something together which has not been done yet and explore new boundaries
             </p>
@@ -351,7 +404,7 @@ export default function CollaboratePage() {
               >
                 Send Pitch
                 <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, background: "#fff", borderRadius: 8 }}>
-                  <SparkleMark className="h-[16px] w-auto shrink-0 text-[#0F0E0C]" />
+                  <SparkleMark className="h-[23px] w-auto shrink-0 text-[#0F0E0C]" />
                 </span>
               </a>
               <a
@@ -499,13 +552,21 @@ export default function CollaboratePage() {
               <Tag pill>{c.kind}</Tag>
               <div className="relative flex items-center justify-center" style={{ height: 156, margin: "24px 0" }}>
                 <div style={{ position: "absolute", width: 163, height: 156, borderRadius: 15, background: c.chip }} />
-                <div className="relative" style={{ width: 82, height: 122 }}>
-                  <Image src="/collaborate/collab-image.png" alt="" fill className="object-cover" sizes="82px" />
+                {/* star-card.png is the chrome star on a TRANSPARENT background (the source had an
+                    opaque white one), so the coloured chip behind it shows through instead of the
+                    star sitting in a white box. object-contain, not object-cover: the star's own
+                    aspect ratio (498/708) must be preserved rather than cropped to the slot. */}
+                <div className="relative" style={{ width: 86, height: 122 }}>
+                  <Image src="/collaborate/star-card.png" alt="" fill className="object-contain" sizes="86px" />
                 </div>
               </div>
               <div className="flex flex-col gap-3 uppercase" style={{ paddingBottom: 24 }}>
-                <h3 style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 24, lineHeight: 1.1, letterSpacing: "-0.02em", color: "#0F0E0C" }}>{c.title}</h3>
-                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16, lineHeight: 1.3, letterSpacing: "-0.02em", color: "#444", textTransform: "none" }}>{c.desc}</p>
+                {/* pre-line so a "\n" in a CASES title forces its own break — the other two titles wrap
+                    to two lines naturally at this width, and "The Switchblade Touch" is short enough
+                    to sit on one, which left the third card's description starting a line higher than
+                    its neighbours'. */}
+                <h3 style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 24, lineHeight: 1.1, letterSpacing: "-0.02em", color: "#0F0E0C", whiteSpace: "pre-line" }}>{c.title}</h3>
+                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16, lineHeight: 1.3, letterSpacing: "-0.01em", color: "#444", textTransform: "none" }}>{c.desc}</p>
               </div>
             </article>
           ))}
@@ -577,7 +638,7 @@ export default function CollaboratePage() {
             </h2>
             <div className="rise">
               <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, color: "#929292", maxWidth: 440 }}>
-                Tell us what we&apos;d make together. If it elevates both of us, we&apos;ll build it
+                Tell us what we&apos;d make together. If it elevates both of us, we&apos;ll build it.
               </p>
               {/* Layout anchor only (no Star3D) — see the matching comment on scenarioAnchorRef
                   above. The traveling star docks here (reading this box's live rect) and rides

@@ -19,7 +19,7 @@ export const ClassicsCards: CollectionConfig = {
       type: "text",
       required: true,
       admin: {
-        description: 'Shown as the detail popup title, e.g. "STILL LIFE I" (the leading "/" is added automatically).',
+        description: 'Shown as the detail popup title, e.g. "STILL LIFE I" (uppercased automatically).',
       },
     },
     {

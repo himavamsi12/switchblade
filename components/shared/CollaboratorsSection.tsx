@@ -5,9 +5,9 @@ import { SparkleMark } from "@/components/shared/SparkleMark";
 import { SweepText } from "@/components/shared/SweepText";
 
 const CARDS = [
-  { num: "(04)", title: "Shared\nStorytelling",   icon: "/collaborate/icon-shared-storytelling.svg", w: 33, h: 34, gridClass: "md:col-start-1 md:row-start-1" },
-  { num: "(02)", title: "A Co-Authored\nRelease",  icon: "/collaborate/icon-co-authored-release.svg", w: 38, h: 38, gridClass: "md:col-start-3 md:row-start-1" },
-  { num: "(05)", title: "A Real\nFriendship",      icon: "/collaborate/icon-real-friendship.svg",     w: 35, h: 31, gridClass: "md:col-start-2 md:row-start-2" },
+  { num: "(01)", title: "Shared\nStorytelling",   icon: "/collaborate/icon-shared-storytelling.svg", w: 33, h: 34, gridClass: "md:col-start-1 md:row-start-1" },
+  { num: "(03)", title: "A Co-Authored\nRelease",  icon: "/collaborate/icon-co-authored-release.svg", w: 38, h: 38, gridClass: "md:col-start-3 md:row-start-1" },
+  { num: "(02)", title: "A Real\nFriendship",      icon: "/collaborate/icon-real-friendship.svg",     w: 35, h: 31, gridClass: "md:col-start-2 md:row-start-2" },
 ] as const;
 
 export function CollaboratorsSection() {
@@ -124,7 +124,7 @@ export function CollaboratorsSection() {
         >
           Request for collaboration
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, background: "#fff", borderRadius: 6 }}>
-            <SparkleMark className="h-[14px] w-auto shrink-0 text-[#0D0D0D]" />
+            <SparkleMark className="h-[20px] w-auto shrink-0 text-[#0D0D0D]" />
           </span>
         </a>
       </div>

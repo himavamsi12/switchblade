@@ -153,7 +153,11 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
         >
           {/* Full logo lockup (mark + wordmark + ™) as one SVG, using currentColor so it follows
               the nav variant colour. w-auto keeps its ~6.8:1 aspect ratio from the height. */}
-          <SwitchbladeLogo className="h-[26px] md:h-[32px] w-auto shrink-0" />
+          {/* 27/34px, not 26/32 — SwitchbladeLogo's viewBox is 41 units tall rather than the
+              artwork's own 39, to fit its slightly enlarged star, so these are the base numbers
+              scaled by 41/39. The rendered WORDMARK therefore stays exactly the size it has always
+              been; only the star's size changes. */}
+          <SwitchbladeLogo className="h-[27px] md:h-[34px] w-auto shrink-0" />
         </Link>
 
         <Link
@@ -167,9 +171,9 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
               Left padding moves to the pl-* classes above so it can shrink to match (6px, same as
               the button's other padding) when the label is hidden, instead of leaving the 16px
               gap meant for text next to a now-empty space. */}
-          <span className="hidden sm:inline">Collab</span>
+          <span className="hidden sm:inline">Collaborate</span>
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, background: "#fff", borderRadius: 6 }}>
-            <SparkleMark className="h-[16px] w-auto shrink-0 text-[#0F0E0C]" />
+            <SparkleMark className="h-[21px] w-auto shrink-0 text-[#0F0E0C]" />
           </span>
         </Link>
       </motion.div>

@@ -32,7 +32,10 @@ const LABELS: Placement[] = [
     word: "Compassion",
     dotFirst: true,
     justify: "flex-start",
-    posClass: "max-lg:top-[38%] lg:top-[45%] max-lg:left-[68%] lg:left-[62%]",
+    // max-lg left nudged 68% → 71% to clear the star's right arm. Careful going much further:
+    // this label is left-anchored and "Compassion" is the longest word here (~25% of a small
+    // phone's width), so past ~72% it starts running off the right edge.
+    posClass: "max-lg:top-[39.5%] lg:top-[45%] max-lg:left-[74%] lg:left-[62%]",
     style: { transform: "translate(0, -50%)" },
   },
   {
@@ -48,7 +51,7 @@ const LABELS: Placement[] = [
     word: "Kindness",
     dotFirst: false,
     justify: "flex-end",
-    posClass: "max-lg:top-[38%] lg:top-[45%] max-lg:left-[22%] lg:left-[38%]",
+    posClass: "max-lg:top-[40%] lg:top-[45%] max-lg:left-[22%] lg:left-[38%]",
     style: { transform: "translate(-100%, -50%)" },
   },
 ];

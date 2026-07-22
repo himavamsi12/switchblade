@@ -5,46 +5,60 @@ import { AnimatePresence, motion } from "framer-motion";
 import { SweepText } from "@/components/shared/SweepText";
 import { SHOP_HIGHLIGHT_EVENT, SHOP_HIGHLIGHT_KEY } from "@/components/shared/SiteNav";
 
-const STORY_LEFT = [
-  "There’s a book I was reading, The Creative Act by Rick Rubin. He writes about how good ideas exist around us like signals in the air and the human antenna catches them. When you think of something and see it come to life later through someone else’s hands, you wonder.",
-  "But the truth is good ideas are bound to exist and they move towards the people willing to receive them and bring them to life.",
-  "I read that and something settled in me. This logo has lived with me since I was 11. Not in a drawer — in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn’t fully understand yet, I still don’t think I do, but I’ve carried it for over two decades — and at some point, carrying an idea this long becomes a responsibility.\nThat’s reason number one to establish Switchblade.\nReason number two is simpler. You get one life. I’ve spent enough time waiting to know everything before I begin. I don’t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I’ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.",
-  "I want to be honest from the start — that’s the only way I know how to do this.\nI am inspired by neatness, practicality & innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.\nAnd I owe transparency about something - when I drew this logo at age 11, I had no idea what Stone Island’s logo looked like and when I discovered the resemblance a couple of years ago, I had sleepless nights. I still think about it. But I believe the people at Stone Island would understand and I’m certain that Massimo Osti would.",
+// Every paragraph the expanded story is made of, ONE ENTRY PER PARAGRAPH — matching the reference
+// layout exactly, where each of these sits apart from its neighbours by the same single gap.
+// Previously several of these were packed into one string joined by "\n" and rendered with
+// `whiteSpace: pre-line`, which produced a tight LINE BREAK between them instead of a paragraph
+// gap — so e.g. "That's reason number one to establish Switchblade." ran hard against the
+// paragraph above it while others had full spacing. Splitting them into real entries means the
+// single `marginBottom` on the rendered <p> is the only thing setting the rhythm, so every gap is
+// identical by construction.
+//
+// That includes the closing Cosmos block: it used to be ONE entry whose three sentences were
+// joined by "\n" and split apart again by hand inside StoryFull, so they sat on tight line breaks
+// while every other pair of paragraphs had a full gap. They're three entries now, and the
+// highlight works off index instead (see COSMOS_START / COSMOS_END below).
+const STORY_PARAGRAPHS = [
+  "There\u2019s a book I was reading, The Creative Act by Rick Rubin. He writes about how good ideas exist around us like signals in the air and the human antenna catches them. When you think of something and see it come to life later through someone else\u2019s hands, you wonder. But the truth is good ideas are bound to exist and they move towards the people willing to receive them and bring them to life.",
+  "I read that and something settled in me. This logo has lived with me since I was 11. Not in a drawer \u2014 in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn\u2019t fully understand yet, I still don\u2019t think I do, but I\u2019ve carried it for over two decades \u2014 and at some point, carrying an idea this long becomes a responsibility.",
+  "That\u2019s reason number one to establish Switchblade.",
+  "Reason number two is simpler. You get one life. I\u2019ve spent enough time waiting to know everything before I begin. I don\u2019t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I\u2019ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.",
+  "I want to be honest from the start \u2014 that\u2019s the only way I know how to do this.",
+  "I am inspired by neatness, practicality & innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley \u2014 these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.",
+  "And I owe transparency about something - when I drew this logo at age 11, I had no idea what Stone Island\u2019s logo looked like and when I discovered the resemblance a couple of years ago, I had sleepless nights. I still think about it. But I believe the people at Stone Island would understand and I\u2019m certain that Massimo Osti would. They all will always be light years ahead of Switchblade. They will always keep inspiring me. And I genuinely hope someday we work together with them that have made possible for Switchblade to exist.",
+  "As a personal belief, at the depth of the human heart, there is no competition - only compassion, strength, kindness, and love. That is the core belief Switchblade is built on. It is not a strategy. It is who I am.",
+  "Switchblade is for people who carry competence without seeking validation.",
+  "Who are just as sharp as they are kind and know those are not opposites.",
+  "The builders, thinkers & doers who value depth & attention to detail.",
+  "Who choose the edge not because it\u2019s cool, but because something in them simply cannot settle for less.",
+  "And if anything about this gives you the courage to begin something you love \u2014 something you\u2019ve been carrying too long without acting on \u2014 that would be the highest thing this brand could ever achieve.",
+  "More than any product. More than any collaboration. More than anything.",
+  "This journey begins now \u2014 not fully formed, but fully committed.",
+  "The vision will take shape across three phases: Cosmos, Classic, and Evolution.",
+  "Each phase is a chapter of 1 to 2 years \u2014 of change, growth, and exploration.",
+  "We begin with Cosmos. The first products are being built. Apparel comes first.",
+  "To follow the inspiration and the ongoing research behind what\u2019s being made \u2014 explore Switchblade Classics.",
+  "Love you Mom & Dad!",
 ];
 
-const STORY_RIGHT = [
-  "They all will always be light years ahead of Switchblade. They will always keep inspiring me. And I genuinely hope someday we work together with all them that have made possible for Switchblade to exist.\nAs a personal belief, at the depth of the human heart, there is no competition - only compassion, strength, kindness, and love. That is the core belief Switchblade is built on. It is not a strategy. It is who I am.\nSwitchblade is for people who carry competence without seeking validation.\nWho are just as sharp as they are kind and know those are not opposites.\nThe builders, thinkers & doers who value depth & attention to detail.\nWho choose the edge not because it’s cool, but because something in them simply cannot settle for less.",
-  "And if anything about this gives you the courage to begin something you love — something you’ve been carrying too long without acting on — that would be the highest thing this brand could ever achieve.\nMore than any product. More than any collaboration. More than anything.\nThis journey begins now — not fully formed, but fully committed.\nThe vision will take shape across three phases: Cosmos, Classic, and Evolution.\nEach phase is a chapter of 1 to 2 years — of change, growth, and exploration.",
-  "We begin with Cosmos. The first products are being built. Apparel comes first.\nTo follow the inspiration and the ongoing research behind what’s being made — explore Switchblade Classics.\nLove you Mom & Dad!",
-];
+// The Cosmos block is the last three paragraphs; the Shop link highlights the first two of them
+// and leaves the "Love you Mom & Dad!" sign-off plain.
+const COSMOS_START = STORY_PARAGRAPHS.length - 3;
+const COSMOS_END   = STORY_PARAGRAPHS.length - 2;
 
-// The two paragraphs after the first AGE-11 tag ("Not in a drawer..." through the second
-// AGE-11 tag's trailing "....................."). On desktop these stay inline in the preview,
-// visible without clicking anything. On mobile they're hidden there (see the two usages below)
-// and instead only appear once "Read More" is clicked, at the top of StoryFull — reused as one
-// component so the text/images aren't duplicated between the two spots.
-function StoryContinuation() {
-  return (
-    <>
-      Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
-      <br />That&rsquo;s reason number one to establish Switchblade.
-      <br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
-      <p style={{ marginTop: "1.4em" }}>
-        I want to be honest from the start  that&rsquo;s the only way I know how to do this.
-        <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.
-        <br />And I owe transparency about something - when I drew this logo at{" "}
-        <Image
-          src="/age-11-tag.png"
-          alt="Age 11"
-          width={182}
-          height={127}
-          style={{ display: "inline-block", verticalAlign: "middle", height: "3.6em", width: "auto" }}
-        />
-        ,.....................
-      </p>
-    </>
-  );
-}
+// Where the MOBILE expanded story resumes. The preview reads all the way to "And I owe
+// transparency about something - when I ..." and cuts mid-sentence, so on a phone the expansion
+// starts at that very paragraph and continues — replaying the paragraphs already read would make
+// the reader hunt for where they left off. Desktop still shows the story in full: there the
+// expansion replaces the preview in place, so it reads as one continuous piece.
+// Derived from the text rather than hardcoded, so re-ordering STORY_PARAGRAPHS can't silently
+// point this at the wrong paragraph.
+const MOBILE_RESUME_AT = STORY_PARAGRAPHS.findIndex(p => p.startsWith("And I owe transparency"));
+
+// Desktop renders these in two columns, but there's no LEFT/RIGHT split here on purpose — the
+// paragraphs are handed to CSS `columns-2` as one list and the browser balances them (see
+// StoryFull). A hand-picked split index only lines the columns up by luck, and goes stale the
+// moment the copy is edited.
 
 function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
   return (
@@ -69,11 +83,19 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
         className="grid grid-cols-1 md:[grid-template-columns:0.8fr_1fr]"
         style={{ gap: "clamp(56px,8vw,128px)", alignItems: "stretch" }}
       >
-      <div style={{ position: "relative", minHeight: "280px", overflow: "hidden" }}>
-        <Image src="/founder-childhood.png" alt="Sanjam, founder of Switchblade, as a child" fill className="object-cover" sizes="530px" />
+      {/* max-md:aspect-[932/1166] — the source photo's own ratio. On mobile this column is a
+          single grid cell with nothing to stretch against, so it fell back to the 280px
+          min-height, which is far wider than tall relative to the photo: object-cover then had to
+          crop the top and bottom (cutting off the head). Giving the box the image's real ratio
+          means cover has nothing to crop. Desktop keeps stretching to match the text column
+          beside it, so its ratio is set by that instead. */}
+      <div className="max-md:aspect-[932/1166]" style={{ position: "relative", minHeight: "280px", overflow: "hidden" }}>
+        {/* .jpg, not .png — it's a photograph, so PNG's lossless encoding cost 1.6MB in the repo
+            for no visible benefit over a quality-94 JPEG at 197KB. */}
+        <Image src="/founder-childhood.jpg" alt="Sanjam, founder of Switchblade, as a child" fill className="object-cover" sizes="530px" />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0) 35%)" }} />
         <div style={{ position: "absolute", left: "clamp(16px,2vw,24px)", bottom: "clamp(16px,2vw,24px)" }}>
-          <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 600, fontSize: 13, letterSpacing: "0.06em", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>/FOUNDER</p>
+          <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 600, fontSize: 13, letterSpacing: "0.06em", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>FOUNDER</p>
           <p style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(24px,2.8vw,34px)", letterSpacing: "-0.01em", textTransform: "uppercase", color: "#fff" }}>SANJAM</p>
         </div>
       </div>
@@ -88,64 +110,84 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
           </p>
           <p>
             I read that and something settled in me. This logo has lived with me since I was{" "}
-            {/* Mobile: plain "......." instead of the AGE-11 tag image — the image is desktop-
-                only here (md:inline-block); mobile gets the dots (md:hidden) instead, by
-                request. Read More also moves inline right after the dots on mobile (see below)
-                instead of sitting as its own block underneath the paragraph. */}
-            <span className="md:hidden">.......</span>
+            {/* Shown at EVERY size now. Mobile used to swap this tag image for plain "......." and
+                cut the preview off here, with its own inline Read More — mobile now runs the same
+                preview as desktop, all the way to the "when I ..." cut-off below. */}
             <Image
               src="/age-11-tag.png"
               alt="Age 11"
               width={182}
               height={127}
-              className="hidden md:inline-block"
+              className="inline-block"
               style={{ verticalAlign: "middle", height: "3.6em", width: "auto" }}
             />
-            <span className="hidden md:inline">
+            <span>
               . Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
               <br />That&rsquo;s reason number one to establish Switchblade.
               <br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
-            </span>{" "}
+            </span>
+          </p>
+          <p style={{ marginTop: "1.4em" }}>
+            I want to be honest from the start  that&rsquo;s the only way I know how to do this.
+            <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.
+            {/* Desktop preview now CUTS OFF mid-sentence here, at "when I ...", with Read More
+                sitting inline right after the ellipsis rather than as its own block underneath.
+                The rest of the sentence ("drew this logo at [AGE 11], I had no idea what Stone
+                Island's logo looked like...") is not repeated here — it lives in the expanded
+                story only, as the tail of STORY_PARAGRAPHS' "And I owe transparency..." entry, so
+                opening Read More is what
+                completes the thought. */}
+            <br />And I owe transparency about something - when I&nbsp;&hellip;{" "}
             <button
               type="button"
               onClick={onReadMore}
-              className="md:hidden inline-flex items-center rounded-lg text-white font-medium hover:opacity-85 transition-opacity align-middle"
-              style={{ background: "#FF802B", fontFamily: "var(--font-archivo)", fontSize: 14, padding: "6px 16px", marginTop: 8, border: "none", cursor: "pointer" }}
+              // The top margin is MOBILE-ONLY (max-md:mt-5). There the button wraps onto its own
+              // line and needs lifting off the text above it. On desktop it sits inline at the end
+              // of the sentence, and a top margin still shifts it down there — an inline-flex
+              // element is an atomic inline-level box, so margin-top is not the no-op it would be
+              // on a pure inline. That's what knocked it out of line with the text.
+              className="inline-flex items-center rounded-lg text-white font-medium hover:opacity-85 transition-opacity align-middle max-md:mt-5"
+              style={{ background: "#FF802B", fontFamily: "var(--font-archivo)", fontSize: 15, padding: "6px 18px", border: "none", cursor: "pointer" }}
             >
               Read More
             </button>
           </p>
-          <p className="hidden md:block" style={{ marginTop: "1.4em" }}>
-            I want to be honest from the start  that&rsquo;s the only way I know how to do this.
-            <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.
-            <br />And I owe transparency about something - when I drew this logo at{" "}
-            <Image
-              src="/age-11-tag.png"
-              alt="Age 11"
-              width={182}
-              height={127}
-              style={{ display: "inline-block", verticalAlign: "middle", height: "3.6em", width: "auto" }}
-            />
-
-          </p>
         </div>
-
-        {/* Desktop only now — mobile's Read More moved inline into the paragraph above. */}
-        <button
-          type="button"
-          onClick={onReadMore}
-          className="hidden md:inline-flex items-center rounded-lg text-white font-medium hover:opacity-85 transition-opacity"
-          style={{ background: "#FF802B", fontFamily: "var(--font-archivo)", fontSize: 15, padding: "10px 22px", marginTop: "clamp(16px,2.5vw,28px)", border: "none", cursor: "pointer" }}
-        >
-          Read More
-        </button>
       </div>
       </div>
     </motion.div>
   );
 }
 
-function StoryFull({ highlightCosmos, cosmosRef, onClose }: { highlightCosmos: boolean; cosmosRef: React.RefObject<HTMLParagraphElement | null>; onClose: () => void }) {
+// The expanded story keeps its paragraphs as plain strings (STORY_PARAGRAPHS), but the
+// "…when I drew this logo at age 11, I had no idea what Stone Island's logo looked like…" sentence
+// should show the same orange AGE-11 tag image the preview uses, not the literal words. Swapping it
+// in at render time keeps the source text readable and searchable rather than splitting that
+// paragraph into fragments in the array itself. Only that one occurrence matches — the earlier
+// "since I was 11" line doesn't contain the "age 11" marker.
+const AGE_TAG_MARKER = "age 11";
+
+function withAgeTag(para: string) {
+  const idx = para.indexOf(AGE_TAG_MARKER);
+  if (idx === -1) return para;
+  return (
+    <>
+      {para.slice(0, idx)}
+      <Image
+        src="/age-11-tag.png"
+        alt="Age 11"
+        width={182}
+        height={127}
+        // Smaller multiple than the preview's 3.6em: this column's type is smaller and its
+        // line-height tighter (1.5), so a tag at that size would visibly push its own line apart.
+        style={{ display: "inline-block", verticalAlign: "middle", height: "3.1em", width: "auto" }}
+      />
+      {para.slice(idx + AGE_TAG_MARKER.length)}
+    </>
+  );
+}
+
+function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highlightCosmos: boolean; cosmosRef: React.RefObject<HTMLParagraphElement | null>; onClose: () => void; isMobile: boolean }) {
   return (
     <motion.div
       key="full"
@@ -174,59 +216,60 @@ function StoryFull({ highlightCosmos, cosmosRef, onClose }: { highlightCosmos: b
         </div>
 
         <div className="md:contents" style={{ overflowY: "auto" }}>
-          {/* Mobile-only: StoryPreview hides this same continuation text (see the hidden md:inline
-              span and hidden md:block paragraph there) so the collapsed preview ends right after the
-              first Age-11 tag on small screens — it reappears here instead, once Read More is opened. */}
-          <div className="block md:hidden" style={{ fontFamily: "var(--font-archivo)", fontWeight: 400, fontSize: "clamp(15px,1.15vw,18px)", lineHeight: 1.2, color: "#0D0D0D", padding: "8px 20px 0", marginBottom: "clamp(28px,4vw,64px)" }}>
-            <StoryContinuation />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 max-md:px-5 max-md:pb-7" style={{ gap: "clamp(28px,4vw,64px)" }}>
-        {[STORY_LEFT, STORY_RIGHT].map((col, colIdx) => (
-          <div key={colIdx} style={{ fontFamily: "var(--font-archivo)", fontWeight: 400, fontSize: "clamp(14px,1.05vw,17px)", lineHeight: 1.5, color: "#0D0D0D" }}>
-            {col.map((para, i) => (
+          {/* CSS multi-column, not two hand-split arrays. The story was previously sliced into a
+              fixed LEFT/RIGHT pair at a chosen index, which meant the two columns only lined up if
+              that index happened to balance them — it didn't, and any edit to the copy would throw
+              it off again. `columns-2` lets the browser fill and BALANCE the two columns itself,
+              so they always end at the same depth no matter how the paragraphs change.
+              break-inside-avoid on each paragraph stops one being split across the column gap. */}
+          <div
+            className="columns-1 md:columns-2 max-md:px-5 max-md:pb-7"
+            style={{
+              columnGap: "clamp(28px,4vw,64px)",
+              fontFamily: "var(--font-archivo)", fontWeight: 400,
+              fontSize: "clamp(14px,1.05vw,17px)", lineHeight: 1.5, color: "#0D0D0D",
+            }}
+          >
+            {STORY_PARAGRAPHS.map((para, i) => {
+              // Already shown in the mobile preview — see MOBILE_RESUME_AT.
+              if (isMobile && i < MOBILE_RESUME_AT) return null;
+              const isCosmos = i >= COSMOS_START && i <= COSMOS_END;
+              return (
               <motion.p
                 key={i}
-                ref={colIdx === 1 && i === STORY_RIGHT.length - 1 ? cosmosRef : undefined}
+                // Scroll target is the FIRST Cosmos paragraph, so the Shop link lands at the top
+                // of the highlighted block rather than partway through it.
+                ref={i === COSMOS_START ? cosmosRef : undefined}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: (colIdx * col.length + i) * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.4, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                className="break-inside-avoid"
                 style={{ marginBottom: "1.3em", whiteSpace: "pre-line" }}
               >
-                {/* Only the "We begin with Cosmos..." paragraph (STORY_RIGHT's last entry) can
-                    get a highlight — everything except its final "Love you Mom & Dad!" line,
-                    split off the shared array string rather than hardcoding the text a second
-                    time. Stays plain black by default; only turns blue when reached via the
-                    Shop link's auto-open-and-scroll flow (see OriginsSection). */}
-                {colIdx === 1 && i === STORY_RIGHT.length - 1 ? (() => {
-                  const lines = para.split("\n");
-                  const signOff = lines[lines.length - 1];
-                  const highlighted = lines.slice(0, -1).join("\n");
-                  return (
-                    <>
-                      <span
-                        style={{
-                          backgroundColor: highlightCosmos ? "rgba(4,86,221,0.22)" : "rgba(4,86,221,0)",
-                          // box-decoration-break keeps the "highlighter" padding consistent on
-                          // every wrapped line of this multi-line span, instead of only the
-                          // first/last line getting the extra breathing room.
-                          boxDecorationBreak: "clone",
-                          WebkitBoxDecorationBreak: "clone",
-                          padding: "0.05em 0.15em",
-                          borderRadius: 3,
-                          transition: "background-color 0.6s ease",
-                        }}
-                      >
-                        {highlighted}
-                      </span>
-                      {"\n"}{signOff}
-                    </>
-                  );
-                })() : para}
+                {/* Only the two Cosmos paragraphs get the highlight — the "Love you Mom & Dad!"
+                    sign-off after them stays plain, as does everything above. Black by default;
+                    turns blue only when reached via the Shop link's auto-open-and-scroll flow
+                    (see OriginsSection). */}
+                {isCosmos ? (
+                  <span
+                    style={{
+                      backgroundColor: highlightCosmos ? "rgba(4,86,221,0.22)" : "rgba(4,86,221,0)",
+                      // box-decoration-break keeps the "highlighter" padding consistent on every
+                      // wrapped line of this span, instead of only the first/last line getting
+                      // the extra breathing room.
+                      boxDecorationBreak: "clone",
+                      WebkitBoxDecorationBreak: "clone",
+                      padding: "0.05em 0.15em",
+                      borderRadius: 3,
+                      transition: "background-color 0.6s ease",
+                    }}
+                  >
+                    {para}
+                  </span>
+                ) : withAgeTag(para)}
               </motion.p>
-            ))}
-          </div>
-        ))}
+              );
+            })}
           </div>
 
           <p className="max-md:px-5 max-md:pb-7" style={{ fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: "clamp(18px,1.6vw,24px)", marginTop: "clamp(20px,2.5vw,32px)", color: "#0D0D0D" }}>
@@ -257,25 +300,40 @@ export function OriginsSection() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  // Closing the expanded story removes a LOT of in-flow height (desktop renders StoryFull inline),
-  // so the browser keeps the same scrollY and the viewport snaps upward — the reported "jump".
-  // Instead, on close, scroll back to the top of this section as one controlled motion: the
-  // collapse then happens at/below where the reader lands, so there's no abrupt jump. Routed
-  // through Lenis (window.__lenis) when present so it stays smooth and in sync with the homepage's
-  // smooth-scroll/ScrollTrigger; falls back to native scrollIntoView (mobile / no Lenis).
+  // Scroll position at the moment the story was opened, so closing can put the reader back exactly
+  // where they clicked "Read More" (see closeStory).
+  const openScrollYRef = useRef(0);
+
+  const openStory = () => {
+    openScrollYRef.current = window.scrollY;
+    setStoryOpen(true);
+  };
+
+  // Closing the expanded story removes a LOT of in-flow height (desktop renders StoryFull inline).
+  // Left alone the browser keeps the current scrollY, which is usually now past the end of the
+  // much shorter document — so it clamps, and the reader is thrown somewhere they never chose.
+  //
+  // This used to answer that by scrolling to the top of the section, which is the "it moves up"
+  // being reported: deliberate, but it discards where the reader actually was. Restoring the exact
+  // scrollY captured in openStory is better — the page collapses and the reader is left looking at
+  // the same thing they were looking at when they clicked Read More. That position is always valid
+  // for the collapsed layout, since it was recorded while collapsed.
+  //
+  // Instant, not animated: any easing here would read as the very drift this is meant to remove.
+  // Routed through Lenis (window.__lenis) when present so its internal target stays in sync — a
+  // bare window.scrollTo would be overwritten by Lenis on the next frame.
   const closeStory = () => {
-    // Only desktop needs the scroll-back: there StoryFull renders IN-FLOW, so collapsing it is
-    // what removes the height and causes the jump. On mobile it's a fixed bottom sheet with the
-    // page scroll-locked in place underneath, so it just closes where the reader already is.
+    // Only desktop needs the restore: there StoryFull renders IN-FLOW, so collapsing it is what
+    // removes the height. On mobile it's a fixed bottom sheet with the page scroll-locked in place
+    // underneath, so nothing moved and there's nothing to put back.
     setStoryOpen(false);
     if (isMobile) return;
+    const y = openScrollYRef.current;
     requestAnimationFrame(() => {
-      const el = document.getElementById("origins-section");
-      if (!el) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const lenis = (window as any).__lenis;
-      if (lenis?.scrollTo) lenis.scrollTo(el, { offset: -80 });
-      else el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (lenis?.scrollTo) lenis.scrollTo(y, { immediate: true, force: true });
+      else window.scrollTo(0, y);
     });
   };
 
@@ -312,6 +370,9 @@ export function OriginsSection() {
   // because it can be clicked from two different situations:
   useEffect(() => {
     const run = () => {
+      // Same capture as the Read More button (openStory): the Shop flow opens the story too, so
+      // without this, closing afterwards would restore a stale position from an earlier open.
+      openScrollYRef.current = window.scrollY;
       setStoryOpen(true);
       const id = window.setTimeout(() => {
         cosmosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -395,14 +456,14 @@ export function OriginsSection() {
           restore. */}
       <AnimatePresence>
         {storyOpen && !isMobile
-          ? <StoryFull key="full" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={closeStory} />
-          : <StoryPreview key="preview" onReadMore={() => setStoryOpen(true)} />}
+          ? <StoryFull key="full" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={closeStory} isMobile={false} />
+          : <StoryPreview key="preview" onReadMore={openStory} />}
       </AnimatePresence>
 
       {isMobile && (
         <AnimatePresence>
           {storyOpen && (
-            <StoryFull key="full-mobile" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={closeStory} />
+            <StoryFull key="full-mobile" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={closeStory} isMobile />
           )}
         </AnimatePresence>
       )}

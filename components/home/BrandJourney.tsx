@@ -25,7 +25,7 @@ const PHASES: { key: string; num: string; label: string; mode: Mode3D; lead: str
   },
   {
     key: "evolution", num: "03", label: "EVOLUTION", mode: "chrome",
-    lead: "The present phase.",
+    lead: "The final phase.",
     rest: " Precision meets restraint — the definitive Switchblade star. Balanced, confident and quietly understated, ready for everything that comes next.",
   },
 ];
@@ -160,7 +160,7 @@ export function BrandJourney() {
                   fontFamily: "var(--font-ibm-mono)", fontWeight: 700, whiteSpace: "nowrap",
                   fontSize: isActive ? 13 : 11, letterSpacing: "0.06em", padding: isActive ? "6px 14px" : "5px 10px",
                 }}>
-                  /{p.label}
+                  {p.label}
                 </span>
               </div>
             );
@@ -297,9 +297,14 @@ export function BrandJourney() {
       </div>
 
       <div className="flex items-end justify-between flex-wrap max-md:gap-8 md:gap-6 max-md:mt-16 md:mt-[clamp(16px,2.5vw,28px)]" style={{ flex: "0 0 auto" }}>
-        <span style={{
+        {/* md:mb-8 lifts the pill off the row's baseline — the row is items-end, so a bottom
+            margin is what raises it. md-only: below that the row wraps into a stack, where the
+            margin would just add a stray gap.
+            max-md:mx-auto centres the pill on its own wrapped line on mobile; auto margins on a
+            flex item absorb the free space either side of it. Desktop keeps it left-aligned. */}
+        <span className="md:mb-8 max-md:mx-auto" style={{
           display: "inline-flex", alignItems: "center", border: "1px solid rgba(13,13,13,0.2)", borderRadius: 8,
-          padding: "8px 16px", fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 12,
+          padding: "8px 16px ", fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 12,
           letterSpacing: "0.08em", textTransform: "uppercase", color: "#0D0D0D",
         }}>
           Three phase journey of logo &amp; brand
@@ -314,11 +319,15 @@ export function BrandJourney() {
             (the star card visibly jumping) every time the arrows were clicked. Replaces the old
             AnimatePresence mount/unmount swap — this crossfades all three in place instead,
             which also sidesteps any exit/enter timing gap between phases. */}
-        <div className="grid" style={{ maxWidth: 640 }}>
+        {/* max-md:mx-auto so this block itself centres on mobile once the row has wrapped —
+            without it the grid sits left while the pill above is centred. */}
+        <div className="grid max-md:mx-auto" style={{ maxWidth: 640 }}>
           {PHASES.map((p, i) => (
             <motion.div
               key={p.key}
-              className="flex items-start"
+              // Stacks into a centred column on mobile (the "(01) COSMOS" label above its
+              // paragraph, both centred) and returns to the side-by-side row from md up.
+              className="flex max-md:flex-col max-md:items-center max-md:text-center md:items-start"
               style={{ gridArea: "1 / 1", gap: "clamp(16px,2.5vw,32px)", pointerEvents: i === active ? "auto" : "none" }}
               initial={false}
               animate={{ opacity: i === active ? 1 : 0, y: i === active ? 0 : (i < active ? -12 : 12) }}

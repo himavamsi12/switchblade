@@ -36,8 +36,12 @@ const NAV_LINK_STYLE: React.CSSProperties = {
 // instead of duplicating this whole block.
 function InstagramLink({ className = "" }: { className?: string }) {
   return (
-    <a href="#" className={className} style={{
-      display:       "inline-flex",
+    // `inline-flex` is a CLASS, not an inline `display` style, so that callers' visibility
+    // utilities can actually win. As an inline style it beat the `md:hidden` on the copy beside
+    // "You got this..." — inline styles outrank any class — so the mobile-only pill kept
+    // rendering on desktop too, under the text. Any utility passed in (md:hidden, max-md:hidden)
+    // now overrides this the way it reads like it should.
+    <a href="#" className={"inline-flex " + className} style={{
       alignItems:    "center",
       gap:           8,
       height:        32,
@@ -141,7 +145,7 @@ export function SiteFooter() {
       // the "You got this" line — desktop (md: and up) keeps the original clamp untouched.
       className="site-px max-md:pt-20 md:pt-[clamp(64px,9vw,120px)]"
       style={{
-        background: "linear-gradient(180deg, #FFFFFF 2.2%, #E8EEF9 6.7%, #A8BCE6 20.3%, #7E9ADB 38.8%, #5174CC 55%, #2E51C0 75.8%, #143BB2 96%)",
+        background: "linear-gradient(180deg, #FFFFFF 2.2%, #E8EEF9 6.7%, #A8BCE6 15.3%, #7E9ADB 22.8%, #5174CC 38%, #2E51C0 75.8%, #143BB2 96%)",
         overflow:   "hidden",
         position:   "relative",
         // Establishes a stacking context so the gradient-mask overlay's z-index:-1 is scoped to
@@ -171,7 +175,7 @@ export function SiteFooter() {
             textTransform: "uppercase",
             color:         "#fefefe",
           }}>
-            You got this.<br />Keep going. <br />Never give up
+            You got this.<br />Keep going. <br />Never give up.
           </p>
           <InstagramLink className="md:hidden shrink-0" />
         </div>
@@ -287,19 +291,19 @@ export function SiteFooter() {
           </div>
 
           <div ref={wordmarkWrapRef} style={{ overflow: "hidden" }}>
+        {/* fontSize and letterSpacing live in CLASSES, not the inline style below, purely so they
+            can differ on mobile — an inline value would outrank any utility.
+            Mobile gets normal letter-spacing (the shared -0.02em is what read as cramped at phone
+            size) and a smaller 10vw instead of 12vw. Note the interaction with the scaleX
+            fit-to-width in the effect above: it always stretches this to the wrapper's exact
+            width, so font-size sets the wordmark's HEIGHT and how much it's stretched, never how
+            wide it ends up. Smaller font therefore = shorter, slightly wider-stretched letters. */}
         <p
           ref={wordmarkRef}
+          className="max-md:text-[clamp(24px,10vw,64px)] max-md:tracking-normal md:text-[clamp(28px,12vw,138px)] md:tracking-[-0.02em]"
           style={{
             fontFamily:    "var(--font-barlow)",
             fontWeight:    800,
-            // Floor lowered from 48px: at 12vw that used to hit its floor on any viewport
-            // narrower than ~400px, forcing "SWITCHBLADE" to a fixed 48px in a single
-            // `nowrap` line that no longer fit a phone-width viewport and got clipped by
-            // the site's global `overflow-x: hidden`. 28px still reads as a watermark at
-            // phone widths while actually fitting. The scaleX fit-to-width above (see
-            // useEffect) then stretches/compresses this exactly to the wrapper's width.
-            fontSize:      "clamp(28px,12vw,138px)",
-            letterSpacing: "-0.02em",
             textTransform: "uppercase",
             color:         "#ffffff",
             whiteSpace:    "nowrap",

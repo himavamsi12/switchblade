@@ -133,7 +133,13 @@
     flex-shrink: 0; touch-action: pan-y; width: calc(100vw - 2 * var(--margin) - 28px);
   }
   .classics-exp .detail__card--ghost { display: flex; pointer-events: none; }
-  .classics-exp .detail__img { height: 180px; }
+  /* The min-height:520px on .detail__media / .detail__img in the base (desktop) rules has to be
+     cleared here, not just overridden with a smaller `height` — min-height always beats height,
+     so the old `height:180px` alone did nothing and the image still rendered ~520px+ tall,
+     filling most of a phone screen. Height moves onto .detail__media (the positioning context);
+     .detail__img is absolutely inset:0 inside it, so it just fills whatever that box is. */
+  .classics-exp .detail__media { flex: 0 0 auto; height: 200px; min-height: 0; }
+  .classics-exp .detail__img { height: 100%; min-height: 0; }
   .classics-exp .detail__title { font-size: 1.28rem; }
   .classics-exp .detail__badge { align-self: center; margin: 14px 0 12px; }
   .classics-exp .detail__body { font-size: .84rem; line-height: 1.5; }

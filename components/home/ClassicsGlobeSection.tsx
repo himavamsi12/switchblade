@@ -411,7 +411,7 @@ export function ClassicsGlobeSection() {
         >
           Explore Classics
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, background: "#fff", borderRadius: 6 }}>
-            <SparkleMark className="h-[14px] w-auto shrink-0 text-[#0D0D0D]" />
+            <SparkleMark className="h-[20px] w-auto shrink-0 text-[#0D0D0D]" />
           </span>
         </a>
       </div>

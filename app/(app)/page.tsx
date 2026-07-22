@@ -34,7 +34,7 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
     const sts: any[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let hideTrigger: any = null;
-    let tickerFn: ((time: number, deltaTime: number) => void) | null = null;
+    let tickerFn: (() => void) | null = null;
     // Set alongside tickerFn — cleanup needs gsap.ticker.remove, but gsap itself only exists
     // inside the dynamic import below, so the remover closes over it.
     let removeTicker: (() => void) | null = null;
@@ -142,72 +142,53 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
         // "live" at that moment would sample a transient mid-flight position, poisoning the
         // whole path with a start point the star was only ever passing through.
         const DOCK_START_SHRINK = 0.7;
-        // Smoothed copy of the trigger's raw progress. Raw scroll progress arrives in discrete
-        // per-event steps (a wheel notch can move several % of this range at once) — mapping it
-        // straight to position/shrink made the star visibly step/jump whenever scrolling paused
-        // mid-travel. Every scrubbed animation on this page smooths this with `scrub: 0.3`; this
-        // ticker isn't a scrub, so it applies the equivalent itself: an exponential ease toward
-        // the raw value each frame (~0.15s time constant), frame-rate independent via deltaTime.
-        let smoothP = 0;
         // Whether the previous frame wrote to the star — lets the exit path below run its
         // one-time final write on the exact frame the range is left, then go fully idle.
         let wasActive = false;
-        // Smoothed copy of the O letter's own live position — smoothP above filters the SCROLL
-        // progress, but targetX/Y were read from getBoundingClientRect() completely raw, every
-        // frame, with no filtering at all. Any sub-pixel jitter in that live read (layout
-        // rounding, the scroll position still asymptotically settling, etc.) fed straight into
-        // the star's position — invisible while the star is moving fast (swamped by its own
-        // large frame-to-frame motion), but visible as a left/right wobble whenever scrolling is
-        // slow or paused and nothing else masks it (confirmed as exactly the reported pattern:
-        // fine on a fast scroll, wobbling on a slow/stopped one). Smoothing the target the same
-        // way progress already is filters that out regardless of its exact source.
-        let smoothTargetX: number | null = null;
-        let smoothTargetY: number | null = null;
 
-        tickerFn = (_time: number, deltaTime: number) => {
+        // The star's docked position is a PURE FUNCTION of the current scroll position and the O's
+        // current on-screen rect. No temporal smoothing, deliberately — this is the fix for the
+        // "star drifts sideways when I scroll slowly or stop" bug, and it's worth recording why,
+        // because the smoothing looked obviously correct:
+        //
+        // This ticker used to exponentially ease BOTH the trigger progress and the O's rect toward
+        // their live values. Any such filter lags behind its input by an amount proportional to
+        // input VELOCITY, and that lag decays to zero once the input stops changing. While
+        // scrolling fast the lag is invisible — it's swamped by the star's own large frame-to-frame
+        // motion. But when scrolling slowly or stopping, the decaying lag becomes the ONLY motion
+        // left, so the star kept sliding after the reader had stopped. Horizontally that's
+        // especially visible: wantX blends startX→targetX by `e`, so any post-stop change in
+        // progress moves the star sideways with nothing else going on to mask it.
+        //
+        // The smoothing was originally compensating for raw progress arriving in discrete
+        // per-wheel-notch steps under ScrollTrigger.normalizeScroll. That's stale: normalizeScroll
+        // was replaced by Lenis (components/shared/SmoothScroll.tsx), which interpolates scroll
+        // into a continuous per-frame stream BEFORE ScrollTrigger sees it. Progress read here is
+        // therefore already smooth, and filtering it a second time only re-introduced lag. Lenis is
+        // desktop-only (>= 1024) — exactly the same branch this whole dock is gated behind — so
+        // there is no viewport where this runs against unsmoothed scroll.
+        tickerFn = () => {
           const raw = dockTrigger.progress;
 
-          // Below the range: go idle IMMEDIATELY — do NOT let the smoothing tail keep decaying
-          // and writing for another ~0.5s. On a fast reverse scroll, globeTravel's own reverse
-          // pass finishes its catch-up within that window, and every frame it rendered was being
-          // clobbered by this ticker's later-in-frame write; once both settled, nothing ever
-          // re-rendered x again, leaving the star stuck at the globe-side offset all the way
-          // back up to the hero. One final write at exactly p=0 (the parked-beside-globe state,
-          // which is what the dead zone between this range and globeTravel's expects) and then
-          // full silence hands ownership back to globeTravel cleanly.
+          // Below the range: go idle immediately and hand ownership of x/y back to globeTravel.
+          // One final write at exactly p=0 (the parked-beside-globe state, which is what the dead
+          // zone between this range and globeTravel's expects), then full silence — otherwise this
+          // ticker keeps clobbering globeTravel's own reverse-scrub renders every frame, and once
+          // both settle nothing re-renders x again, leaving the star stuck at the globe-side
+          // offset all the way back up to the hero.
           if (raw <= 0) {
-            smoothP = 0;
-            // Reset too, not just smoothP — otherwise re-entering the range later would ease
-            // the target in from wherever the O last was, rather than snapping straight to its
-            // current (possibly moved, e.g. after a resize) live position.
-            smoothTargetX = null;
-            smoothTargetY = null;
             if (!wasActive) return;
             wasActive = false;
             // fall through once with p = 0 for the final parked-state write
           } else {
             wasActive = true;
-            const dt = Math.min(deltaTime / 1000, 0.1);
-            // 0.1s time constant (was 0.15) — just enough to round off per-wheel-notch steps,
-            // tight enough that shrink/position read as locked to the scroll rather than
-            // continuing to drift for a beat after scrolling stops. Roughly matches the feel of
-            // the scrub: 0.3 used by the page's other scrubbed animations.
-            smoothP += (raw - smoothP) * (1 - Math.exp(-dt / 0.1));
           }
-          // Snap the last imperceptible sliver so the docked state is EXACTLY glued to the O
-          // (otherwise the asymptote leaves the star a fraction of a pixel behind the O forever).
-          const p = raw >= 1 && smoothP > 0.995 ? 1 : smoothP;
+          const p = raw;
 
           const vw = window.innerWidth, vh = window.innerHeight;
           const oRect = oLetter.getBoundingClientRect();
-          const rawTargetX = oRect.left + oRect.width / 2;
-          const rawTargetY = oRect.top + oRect.height / 2;
-          // Same dt/time-constant as smoothP above — first frame snaps straight to the live
-          // value (nothing to smooth FROM yet) rather than easing in from 0.
-          const dtForTarget = Math.min(deltaTime / 1000, 0.1);
-          const targetAlpha = 1 - Math.exp(-dtForTarget / 0.1);
-          smoothTargetX = smoothTargetX === null ? rawTargetX : smoothTargetX + (rawTargetX - smoothTargetX) * targetAlpha;
-          smoothTargetY = smoothTargetY === null ? rawTargetY : smoothTargetY + (rawTargetY - smoothTargetY) * targetAlpha;
+          const targetX = oRect.left + oRect.width / 2;
+          const targetY = oRect.top + oRect.height / 2;
           const startX = 0.5 * vw + 0.24 * vw;
           const startY = 0.38 * vh + 0.08 * vh;
           // The wrapper's transform-less layout center — what a given gsap x/y is relative to.
@@ -215,14 +196,6 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
           const baseY = 0.38 * vh;
 
           const e = easeInOut(Math.min(1, Math.max(0, p)));
-          // Target blends from the SMOOTHED O position while travelling (e<1, kills the sub-pixel
-          // wobble on a slow/paused scroll during the approach) to the RAW live O position once
-          // docked (e→1). Using the smoothed target after docking made the star LAG/jump behind
-          // the O whenever the page scrolled — the O rides up/down fast with the heading, and the
-          // eased target trailed it. At full dock the star must be glued to the O's exact live
-          // position every frame so it rides perfectly still inside the letter, no trailing.
-          const targetX = smoothTargetX * (1 - e) + rawTargetX * e;
-          const targetY = smoothTargetY * (1 - e) + rawTargetY * e;
           // Convex blend between the fixed canonical start and the LIVE target: always lands
           // exactly on the O no matter how the O moves mid-travel, and can never overshoot (the
           // position is by construction between the two endpoints).
@@ -354,7 +327,9 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
               (1.3–2.3s) before this; the heading sweeps in once the star has visibly landed, just
               ahead of the tagline block (3.0s), not overlapping the star's reveal. */}
           <SweepText tone="dark" color="#0F0E0C" trigger="load" delay={2400}>
-            ANYTHING BUT<br />EVERYTHING
+            {/* &nbsp; plus the normal space = a double-width gap between the two words. A second
+                plain space would just be collapsed away by HTML whitespace handling. */}
+            ANYTHING&nbsp; BUT<br />EVERYTHING
           </SweepText>
         </h1>
 
@@ -371,9 +346,11 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
             opacity: 0,
           }}
         >
-          The superpower that you carry everywhere.{" "}
-          <span style={{ color: "var(--blue)" }}>Invisible, until the world demands it.</span>{" "}
-          A philosophy applied to whatever it touches.<br/> Maximum impact.
+          {/* Explicit breaks so each sentence gets its own line, rather than the three of them
+              flowing together and re-wrapping wherever maxWidth happens to land. */}
+          The superpower that you carry everywhere.<br />
+          <span style={{ color: "var(--blue)" }}>Invisible, until the world demands it.</span><br />
+          A philosophy applied to whatever it touches. Maximum impact.
         </p>
       </div>
     </section>

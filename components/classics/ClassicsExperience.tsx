@@ -774,11 +774,11 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const prevProj = allProjects[(currentProjectIndex - 1 + allProjects.length) % allProjects.length];
       const nextProj = allProjects[(currentProjectIndex + 1) % allProjects.length];
       if (detailGhostPrevImgRef.current) detailGhostPrevImgRef.current.src = prevProj.img;
-      if (detailGhostPrevTitleRef.current) detailGhostPrevTitleRef.current.textContent = "/" + prevProj.title.toUpperCase();
+      if (detailGhostPrevTitleRef.current) detailGhostPrevTitleRef.current.textContent = prevProj.title.toUpperCase();
       if (detailGhostPrevBadgeRef.current) detailGhostPrevBadgeRef.current.textContent = prevProj.cat.toUpperCase();
       if (detailGhostPrevBodyRef.current) detailGhostPrevBodyRef.current.innerHTML = detailBodyHtml(prevProj.body);
       if (detailGhostNextImgRef.current) detailGhostNextImgRef.current.src = nextProj.img;
-      if (detailGhostNextTitleRef.current) detailGhostNextTitleRef.current.textContent = "/" + nextProj.title.toUpperCase();
+      if (detailGhostNextTitleRef.current) detailGhostNextTitleRef.current.textContent = nextProj.title.toUpperCase();
       if (detailGhostNextBadgeRef.current) detailGhostNextBadgeRef.current.textContent = nextProj.cat.toUpperCase();
       if (detailGhostNextBodyRef.current) detailGhostNextBodyRef.current.innerHTML = detailBodyHtml(nextProj.body);
     }
@@ -818,7 +818,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const img = detailImgRef.current;
       if (!img || !detailTitleRef.current || !detailBadgeRef.current || !detailBodyRef.current) return;
       img.src = proj.img;
-      detailTitleRef.current.textContent = "/" + proj.title.toUpperCase();
+      detailTitleRef.current.textContent = proj.title.toUpperCase();
       detailBadgeRef.current.textContent = proj.cat.toUpperCase();
       detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
       renderThumbs(proj);
@@ -893,7 +893,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       img.style.opacity = "0";
       setTimeout(() => {
         img.src = proj.img;
-        detailTitleRef.current!.textContent = "/" + proj.title.toUpperCase();
+        detailTitleRef.current!.textContent = proj.title.toUpperCase();
         detailBadgeRef.current!.textContent = proj.cat.toUpperCase();
         detailBodyRef.current!.innerHTML = detailBodyHtml(proj.body);
         renderThumbs(proj);
@@ -977,7 +977,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           currentProjectIndex = (currentProjectIndex + dir + allProjects.length) % allProjects.length;
           const proj = allProjects[currentProjectIndex];
           if (detailImgRef.current) detailImgRef.current.src = proj.img;
-          if (detailTitleRef.current) detailTitleRef.current.textContent = "/" + proj.title.toUpperCase();
+          if (detailTitleRef.current) detailTitleRef.current.textContent = proj.title.toUpperCase();
           if (detailBadgeRef.current) detailBadgeRef.current.textContent = proj.cat.toUpperCase();
           if (detailBodyRef.current) detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
           renderThumbs(proj);

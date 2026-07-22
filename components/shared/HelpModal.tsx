@@ -83,7 +83,11 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
       <motion.div
         className="relative w-full flex flex-col lg:flex-row overflow-y-auto"
         style={{
-          height: "calc(100vh - clamp(40px,8vh,110px))",
+          // The subtracted value is the strip of backdrop left visible above the card — shrinking
+          // it is what makes the card taller. Floor kept at 24px so the card never reaches the
+          // very top edge: that gap is the visual cue that this is a sheet over the page, and it's
+          // also the tap target for closing via the backdrop.
+          height: "calc(100vh - clamp(24px,4vh,64px))",
           borderTopLeftRadius: 16, borderTopRightRadius: 16, background: "#ffffff",
         }}
         onClick={e => e.stopPropagation()}
