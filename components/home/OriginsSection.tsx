@@ -475,7 +475,7 @@ export function OriginsSection() {
           wrapped on mobile. Here it's just a normal block after the content, so it can't overlap
           anything regardless of viewport width. */}
       {storyOpen && (
-        <div className="hidden md:flex justify-center" style={{ marginTop: "clamp(24px,3vw,36px)" }}>
+        <div className="hidden md:flex justify-center" style={{ marginTop: "clamp(-16px,-1.5vw,-8px)" }}>
           <button
             type="button"
             onClick={closeStory}
