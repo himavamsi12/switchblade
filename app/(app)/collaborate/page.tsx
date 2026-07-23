@@ -624,15 +624,32 @@ export default function CollaboratePage() {
         paddingTop: "clamp(40px,5vw,80px)", paddingBottom: SECTION,
         scrollMarginTop: 62,
       }}>
-        <div className="grid gap-16 grid-cols-1 lg:grid-cols-[1.35fr_1fr]">
+        {/* minmax(0,...) on both tracks, not bare 1.35fr/1fr — an `fr` track's IMPLICIT MINIMUM is
+            its content's min-content width, and "Collaborate" is one unbreakable 11-character word
+            at a ~72px clamp size. At exactly 1024px (the narrowest width this two-column layout
+            ever runs at, right at the lg breakpoint) that word's rendered width is roughly equal to
+            the LEFT column's whole 1.35fr share — so the grid stretched that track to fit it
+            anyway, stealing the space meant for the right column. That's what collapsed "Book a
+            quick call" down to one word per line: its column was left with a sliver. Every wider
+            desktop width was fine because the word's min-content easily fit inside 1.35fr there.
+            minmax(0,Nfr) removes that implicit minimum, so each track is capped to its true fr
+            share regardless of content — paired with overflowWrap on the heading below, so if the
+            word ever doesn't fit its capped column it wraps instead of blowing the grid out again. */}
+        {/* min-[1024px]:max-[1279px] scoped to an even 50/50 split (by request) — real desktop
+            widths (1280px+) keep the original 1.35fr/1fr weighting via the min-[1280px] rule. */}
+        <div className="grid gap-16 grid-cols-1 min-[1024px]:max-[1279px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1280px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
           <div>
-            <h2 className="uppercase" style={{
+            <h2
+              className="uppercase max-lg:text-[clamp(30px,7vw,74px)] min-[1024px]:max-[1279px]:text-[clamp(24px,4vw,40px)] min-[1280px]:text-[clamp(30px,7vw,74px)]"
+              style={{
               fontFamily: "var(--font-barlow)", fontWeight: 900,
-              // Floor lowered from 40px: same overflow as the other headings on this page —
-              // "Collaborate" (11 characters, one unbreakable word) still didn't fit a phone
-              // viewport at 40px and got clipped past the edge.
-              fontSize: "clamp(30px,7vw,74px)",
               lineHeight: 0.92, letterSpacing: "-0.02em", marginBottom: "clamp(20px,2.5vw,32px)",
+              // Safety net for the minmax(0,...) fix above: now that the column can be capped
+              // narrower than this word's natural width, this lets "Collaborate" wrap mid-word in
+              // that case instead of overflowing past the column edge. Only engages in the narrow
+              // band of widths right around the lg breakpoint where the column is genuinely too
+              // tight for the whole word — everywhere else the word fits and this has no effect.
+              overflowWrap: "break-word",
             }}>
               <SweepText tone="dark" color="#0F0E0C">Let&rsquo;s<br />Collaborate</SweepText>
             </h2>
@@ -675,7 +692,11 @@ export default function CollaboratePage() {
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-[14px]">
                     <Image src="/collaborate/calendly.svg" alt="Calendly" width={38} height={38} />
-                    <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 24, color: "rgba(0,0,0,0.5)" }}>Book a quick call</span>
+                    {/* whiteSpace:nowrap as defense-in-depth alongside the grid fix above — with
+                        the column properly capped at its real fr share there's comfortably enough
+                        width for this on one line, so this only guards against it ever collapsing
+                        to one-word-per-line again the way it did before that fix. */}
+                    <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 24, color: "rgba(0,0,0,0.5)", whiteSpace: "nowrap" }}>Book a quick call</span>
                   </div>
                   <div className="flex items-center gap-[10px]">
                     <Clock size={18} color="#666565" strokeWidth={2} />

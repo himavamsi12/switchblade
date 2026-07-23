@@ -58,7 +58,17 @@
 .classics-exp .webgl.is-revealed { opacity: 1; }
 
 /* Bottom Dock (Experience Shift) */
-.classics-exp .sb-dock { align-items: center; background: #fff; border: 1px solid rgba(0, 0, 0, .10); border-radius: 16px; bottom: 28px; box-shadow: 0 12px 32px rgba(0, 0, 0, .12); display: flex; gap: 14px; left: 50%; opacity: 0; padding: 9px 10px 9px 18px; position: fixed; transform: translateX(-50%); transition: opacity .7s ease; z-index: 1100; }
+/* width:max-content (by request, fixes wrapping at ~1024-1280px) — a `position:fixed` box with
+   only `left` set (no `right`) and `width:auto` gets its shrink-to-fit width CAPPED at the CSS
+   spec's "available width" for that formula, which for left:50% works out to roughly HALF the
+   viewport regardless of the translateX(-50%) recentring applied after layout. At 1024px that cap
+   is ~512px — narrower than the dock's natural content width — so the browser was squeezing the
+   "Experience Shift" and "Surprise Me" labels down into that cap, wrapping them to two lines.
+   Comfortably wide viewports (half > content width) and the sub-768px mobile branch (own
+   max-width + hidden labels below) never hit the cap, which is why this only showed up in that
+   middle band. width:max-content overrides the auto-sizing algorithm entirely, sizing the dock by
+   its actual content instead of that viewport-relative cap. */
+.classics-exp .sb-dock { align-items: center; background: #fff; border: 1px solid rgba(0, 0, 0, .10); border-radius: 16px; bottom: 28px; box-shadow: 0 12px 32px rgba(0, 0, 0, .12); display: flex; gap: 14px; left: 50%; opacity: 0; padding: 9px 10px 9px 18px; position: fixed; transform: translateX(-50%); transition: opacity .7s ease; width: max-content; z-index: 1100; }
 .classics-exp .sb-dock.is-revealed { opacity: 1; }
 .classics-exp .sb-dock__exp { align-items: center; color: var(--color-ink); display: inline-flex; font-size: .95rem; gap: 8px; }
 .classics-exp .sb-seg { background: #f0f0f1; border-radius: 11px; display: inline-flex; gap: 2px; padding: 3px; }

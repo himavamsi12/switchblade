@@ -53,10 +53,11 @@ export function SmoothScroll() {
         // THE drag knob. wheelMultiplier scales every wheel delta before Lenis applies it, so a
         // hard flick contributes proportionally LESS distance — the input is resisted rather than
         // banked-and-replayed (which is what made the previous velocity cap feel like it scrolled
-        // for miles). 0.6 = a firm, deliberate drag. Lower = heavier/slower; 1 = native sensitivity.
-        // Reliable and Lenis-native — no input interception, so it can't fight the scene holds or
-        // programmatic scrolls.
-        wheelMultiplier: 0.6,
+        // for miles). 0.6 → 0.35 (by request, tightened further): even a hard/fast flick should
+        // only cover a short distance rather than banking a long glide. Lower = heavier/slower;
+        // 1 = native sensitivity. Reliable and Lenis-native — no input interception, so it can't
+        // fight the scene holds or programmatic scrolls.
+        wheelMultiplier: 0.35,
       });
 
       // Exposed so other components can do a Lenis-smooth programmatic scroll (e.g. OriginsSection

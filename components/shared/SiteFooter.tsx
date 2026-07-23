@@ -158,8 +158,15 @@ export function SiteFooter() {
           background but behind all the content (text/star, which are static → paint above a
           negative-z child), so it hides the gradient without hiding the content. Falls away
           downward the first time the footer scrolls into view, the same reveal the homepage hero
-          plays on load. */}
-      <GradientReveal trigger="scroll" />
+          plays on load.
+          triggerMarginBottom widened from the -15% default to -45%, and duration shortened
+          1.6s (was 2.2s): the footer's own box is tall enough (roughly viewport-height) that the
+          default margin didn't fire until the footer was nearly entirely on screen — on a page
+          that ends right after it, that's essentially the same moment the reader stops scrolling
+          at the very bottom, so the 2.2s fall was still mid-animation with nothing left to scroll
+          through, reading as the footer staying blank/stuck rather than revealing. Firing earlier
+          leaves scroll time for the (now quicker) fall to actually finish before they arrive. */}
+      <GradientReveal trigger="scroll" triggerMarginBottom="-45%" duration={1.6} />
 
       <div className="flex items-start justify-between flex-wrap" style={{ gap: 32, marginBottom: "clamp(48px,7vw,96px)" }}>
         {/* md:block collapses this back to a single stacked child on desktop (InstagramLink is

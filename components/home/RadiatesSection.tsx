@@ -24,7 +24,10 @@ const LABELS: Placement[] = [
     // max-lg:/lg: (not max-md:/md:) — matches the isMobile JS threshold below (1024, not 768),
     // so tablet widths (768-1023) keep the same tuned label positions as phones instead of
     // jumping to values that were only ever tuned against real desktop widths.
-    posClass: "max-lg:top-[21%] lg:top-[20%] left-1/2",
+    // 15% → 10% (by request, follows the model's own upward nudges above), but SCOPED to
+    // min-[1024px]:max-[1279px] only — by request this tablet-only tuning must not bleed into
+    // real desktop widths (1280px+), which keep the original 15%.
+    posClass: "max-lg:top-[21%] min-[1024px]:max-[1279px]:top-[10%] min-[1280px]:top-[15%] left-1/2",
     style: { transform: "translate(-50%, 0)" },
   },
   {
@@ -35,7 +38,10 @@ const LABELS: Placement[] = [
     // max-lg left nudged 68% → 71% to clear the star's right arm. Careful going much further:
     // this label is left-anchored and "Compassion" is the longest word here (~25% of a small
     // phone's width), so past ~72% it starts running off the right edge.
-    posClass: "max-lg:top-[39.5%] lg:top-[45%] max-lg:left-[74%] lg:left-[62%]",
+    // 65% → 72% and 40% → 28% (by request, pushed further from the star's right arm and lined up
+    // with it after the model's own upward nudge), but SCOPED to min-[1024px]:max-[1279px] only —
+    // real desktop widths (1280px+) keep the original 40%/65%.
+    posClass: "max-lg:top-[39.5%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[74%] min-[1024px]:max-[1279px]:left-[72%] min-[1280px]:left-[65%]",
     style: { transform: "translate(0, -50%)" },
   },
   {
@@ -43,7 +49,10 @@ const LABELS: Placement[] = [
     word: "Love",
     dotFirst: true,
     justify: "center",
-    posClass: "max-lg:top-[65%] lg:top-[81%] left-1/2",
+    // 75% → 70% → 60% (by request, further "little top" nudges): Love was sitting right at the
+    // bottom edge of the viewport with the star's tail — moving it up keeps it clear. SCOPED to
+    // min-[1024px]:max-[1279px] only — real desktop widths (1280px+) keep the original 75%.
+    posClass: "max-lg:top-[65%] min-[1024px]:max-[1279px]:top-[60%] min-[1280px]:top-[75%] left-1/2",
     style: { transform: "translate(-50%, 0)" },
   },
   {
@@ -51,7 +60,10 @@ const LABELS: Placement[] = [
     word: "Kindness",
     dotFirst: false,
     justify: "flex-end",
-    posClass: "max-lg:top-[40%] lg:top-[45%] max-lg:left-[22%] lg:left-[38%]",
+    // 35% → 28% and 40% → 28% (by request, pushed further from the star's left arm and lined up
+    // with it after the model's own upward nudge, matching Compassion's own push/top). SCOPED to
+    // min-[1024px]:max-[1279px] only — real desktop widths (1280px+) keep the original 40%/35%.
+    posClass: "max-lg:top-[40%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[22%] min-[1024px]:max-[1279px]:left-[28%] min-[1280px]:left-[35%]",
     style: { transform: "translate(-100%, -50%)" },
   },
 ];
@@ -140,6 +152,12 @@ export function RadiatesSection({
       // effect in page.tsx for why tablets (768-1023) take the "mobile" branch here too,
       // consistently with there and with ParagraphReveal.
       const isMobile = window.innerWidth < 1024;
+      // Narrow tablet/small-desktop band (1024-1279, i.e. up to but excluding Tailwind's xl
+      // breakpoint) that the label posClasses above now scope their own tuned positions to — the
+      // star's settle-y needs the same band so its crossing point keeps tracking the
+      // Kindness/Compassion row instead of drifting once real desktop (1280px+) reverts to the
+      // original values.
+      const isTabletBand = window.innerWidth >= 1024 && window.innerWidth < 1280;
 
       const star = starRef.current;
       const section = outerRef.current;
@@ -266,16 +284,22 @@ export function RadiatesSection({
             // dodge a race with scaleTween's own y tween, but that one only starts later (52%
             // top, well past this trigger point), so a short real tween is safe here now and
             // reads as a settle instead of a snap.
-            // 14vh (was 5vh) — moved down with the heading and labels so the whole composition
-            // sits centred in the viewport instead of hugging the top. Tuned so the star's
-            // CROSSING POINT lands near the Kindness/Compassion axis (lg:top-[45%]): the model is
-            // camera-framed rather than centred in its canvas, so its visual centre sits well
-            // above the element's middle. 12vh left the crossing high enough that the long upper
-            // spike hit the "Strength" label; 20vh dropped it below the axis and into "Love".
-            // Only the RESTING spot changes;
-            // scaleTween still takes the star to -6vh for its wordmark clearance later, so
-            // nothing downstream shifts.
-            if (!isMobile) gsap.to(star, { y: "14vh", duration: 0.35, ease: "power2.out", overwrite: "auto" });
+            // 9vh (was 14vh) — the whole composition (heading, labels) was moved up ~5 percentage
+            // points at lg: to sit higher in the viewport (by request, "make the second section
+            // content little up" at 1024px), so the star's resting spot moves up by the matching
+            // ~5vh to keep its CROSSING POINT lined up with the Kindness/Compassion axis (now
+            // lg:top-[40%], was 45%): the model is camera-framed rather than centred in its canvas,
+            // so its visual centre sits well above the element's middle. History: 12vh left the
+            // crossing high enough that the long upper spike hit "Strength"; 20vh dropped it below
+            // the axis into "Love"; 14vh was correct for the axis at ITS OLD 45% position.
+            // Only the RESTING spot changes; scaleTween still takes the star to -6vh for its
+            // wordmark clearance later, so nothing downstream shifts.
+            // 9vh → 6vh → 1vh → -4vh (by request, further "little top" nudges) — the model keeps
+            // climbing clear of the Love label below it, tracking Kindness/Compassion's own
+            // upward move so the crossing point stays lined up with their row. SCOPED to
+            // isTabletBand (1024-1279) only, matching the labels' own posClass scoping — real
+            // desktop widths (1280px+) keep the original 9vh.
+            if (!isMobile) gsap.to(star, { y: isTabletBand ? "-4vh" : "9vh", duration: 0.35, ease: "power2.out", overwrite: "auto" });
           } else if (top > 0) {
             tlEnter.reverse();
             if (!isMobile) gsap.to(star, { y: 0, duration: 0.35, ease: "power2.out", overwrite: "auto" });
@@ -670,7 +694,7 @@ export function RadiatesSection({
           // the viewport with dead space beneath it, so every desktop position below is shifted
           // down ~7% to centre the composition. Mobile's percentages were tuned separately and
           // are left alone.
-          className="absolute left-1/2 flex items-center gap-2 select-none max-lg:top-[11%] lg:top-[10%]"
+          className="absolute left-1/2 flex items-center gap-2 select-none max-lg:top-[11%] lg:top-[6%]"
           style={{ transform: "translateX(-50%)" }}
         >
           <span

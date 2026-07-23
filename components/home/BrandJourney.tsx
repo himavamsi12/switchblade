@@ -296,7 +296,14 @@ export function BrandJourney() {
         </button>
       </div>
 
-      <div className="flex items-end justify-between flex-wrap max-md:gap-8 md:gap-6 max-md:mt-16 md:mt-[clamp(16px,2.5vw,28px)]" style={{ flex: "0 0 auto" }}>
+      {/* min-[1024px]:max-[1279px]:flex-nowrap (by request) — the plain unprefixed flex-wrap
+          above was wide enough to keep the pill and phase text on one row at real desktop widths
+          (enough free space that wrapping never actually triggered there) but wrapped them into a
+          stack at 1024-1279, where the pill + the phase text's 640px cap together just exceeded
+          the available row width. Forcing nowrap in that band only makes it match the desktop row
+          layout — the phase text's own maxWidth:640 below still shrinks to fit the remaining
+          space via normal flex-shrink, so its paragraph just wraps across a couple more lines. */}
+      <div className="flex items-end justify-between flex-wrap min-[1024px]:max-[1279px]:flex-nowrap max-md:gap-8 md:gap-6 max-md:mt-16 md:mt-[clamp(16px,2.5vw,28px)]" style={{ flex: "0 0 auto" }}>
         {/* md:mb-8 lifts the pill off the row's baseline — the row is items-end, so a bottom
             margin is what raises it. md-only: below that the row wraps into a stack, where the
             margin would just add a stray gap.

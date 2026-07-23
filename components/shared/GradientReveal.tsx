@@ -20,6 +20,18 @@ type GradientRevealProps = {
    * negative level stays scoped to it.
    */
   zIndex?: number;
+  /**
+   * "scroll" trigger only — how far up from the viewport bottom the fall fires, as a percentage
+   * string for the IntersectionObserver's bottom rootMargin (e.g. "-15%" ≈ ScrollTrigger's
+   * "top 85%"). Default -15% is tuned for short hero-style gradient sections whose whole height
+   * comfortably fits inside that 85% window well before the page is scrolled to its end. Tall
+   * hosts whose own box is close to (or taller than) the viewport — like the site footer — need a
+   * much bigger margin: with the default, the observer doesn't fire until the host is nearly
+   * entirely on screen, which on a short/tall page is essentially the same moment the user hits
+   * the very bottom, leaving no scroll time left for `duration` to actually play out before they
+   * stop and look — reading as the content staying blank/stuck rather than revealing.
+   */
+  triggerMarginBottom?: string;
 };
 
 /**
@@ -45,6 +57,7 @@ export const GradientReveal = ({
   duration = 2.2,
   delay = 0,
   zIndex = -1,
+  triggerMarginBottom = "-15%",
 }: GradientRevealProps) => {
   const wrapRef  = useRef<HTMLDivElement>(null);
   const coverRef = useRef<HTMLDivElement>(null);
@@ -72,8 +85,9 @@ export const GradientReveal = ({
       return () => cancelAnimationFrame(id);
     }
 
-    // Bottom margin of -15% ≈ ScrollTrigger's "top 85%": fires once the section's top has come up
-    // past 85% of the viewport height.
+    // triggerMarginBottom ≈ ScrollTrigger's "top <100-N>%": fires once the section's top has come
+    // up past that much of the viewport height. See the prop's own doc comment for why tall hosts
+    // need a bigger margin than the -15% default.
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
@@ -81,11 +95,11 @@ export const GradientReveal = ({
           io.disconnect();
         }
       },
-      { rootMargin: "0px 0px -15% 0px", threshold: 0 }
+      { rootMargin: `0px 0px ${triggerMarginBottom} 0px`, threshold: 0 }
     );
     io.observe(wrap);
     return () => io.disconnect();
-  }, [trigger, duration, delay]);
+  }, [trigger, duration, delay, triggerMarginBottom]);
 
   return (
     <div
