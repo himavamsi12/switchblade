@@ -6,12 +6,16 @@ import { AnimatePresence } from "framer-motion";
 import { Star3D } from "@/components/shared/Star3D";
 import { HelpModal } from "@/components/shared/HelpModal";
 import { GradientReveal } from "@/components/shared/GradientReveal";
+import { triggerShopHighlight } from "@/components/shared/SiteNav";
 
 // "Help" has no href — it opens the HelpModal instead (see `action: "help"`); the rest are links.
+// Shop points at the homepage's Origins section (same as the navbar's own Shop link, see
+// SiteNav.tsx) instead of "/membership", and fires the same triggerShopHighlight() on click so it
+// auto-opens the "Read More" story and scrolls/highlights the Cosmos paragraph identically.
 const NAV_LINKS = [
   { label: "Home",          href: "/" },
   { label: "Classics",      href: "/classics" },
-  { label: "Shop",          href: "/membership" },
+  { label: "Shop",          href: "/#origins-section" },
   { label: "Collaboration", href: "/collaborate" },
   { label: "Help",          action: "help" as const },
 ];
@@ -237,6 +241,7 @@ export function SiteFooter() {
               <Link
                 key={link.label}
                 href={link.href}
+                onClick={link.label === "Shop" ? triggerShopHighlight : undefined}
                 style={NAV_LINK_STYLE}
                 onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = "#fff")}
                 onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)")}

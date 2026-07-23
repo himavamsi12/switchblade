@@ -27,7 +27,10 @@ export type SiteNavVariant = "dark" | "light";
 export const SHOP_HIGHLIGHT_KEY = "sb-shop-highlight-cosmos";
 export const SHOP_HIGHLIGHT_EVENT = "sb:shop-highlight-cosmos";
 
-function triggerShopHighlight() {
+// Exported so other Shop links elsewhere on the site (e.g. the footer) can trigger the exact same
+// homepage-landing/highlight flow as the navbar's own Shop link, instead of just doing a plain
+// navigation to "/#origins-section" that skips the auto-open-and-highlight behavior.
+export function triggerShopHighlight() {
   sessionStorage.setItem(SHOP_HIGHLIGHT_KEY, "1");
   window.dispatchEvent(new Event(SHOP_HIGHLIGHT_EVENT));
 }
