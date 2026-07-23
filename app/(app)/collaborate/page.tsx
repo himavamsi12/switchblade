@@ -592,7 +592,7 @@ export default function CollaboratePage() {
           the full height of its box, so with the symmetric clamp(12px,1.5vw,24px) it ended up
           nearly touching the next section. The extra space below is measured from the star's tip,
           not from the box, which is why it doesn't look symmetric in the code. */}
-      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ background: "#FFFFFF", padding: "clamp(12px,1.5vw,24px) 0 clamp(120px,14vw,240px)", minHeight: "clamp(280px,30vw,460px)" }}>
+      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ background: "#FFFFFF", padding: "clamp(64px,8vw,120px) 0 clamp(120px,14vw,240px)", minHeight: "clamp(280px,30vw,460px)" }}>
         <p className="rise text-center" style={{
           fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(22px,2.6vw,36px)",
           lineHeight: 1.3, letterSpacing: "-0.02em", color: "#0D0D0D", maxWidth: 700,
