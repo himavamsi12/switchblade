@@ -16,8 +16,8 @@ const Star3D = dynamic(
 );
 
 const VISION_TESTS = [
-  { num: "(03)", q: "Does this make both partners better?", icon: "/collaborate/vision-icon-03.svg", border: "#0456DD" },
-  { num: "(04)", q: "Does this help people get inspired?", icon: "/collaborate/vision-icon-04.svg", border: "#C7D1E2" },
+  { num: "(01)", q: "Does this make both partners better?", icon: "/collaborate/vision-icon-03.svg", border: "#0456DD" },
+  { num: "(02)", q: "Does this help people get inspired?", icon: "/collaborate/vision-icon-04.svg", border: "#C7D1E2" },
 ] as const;
 
 const STANDARD = [
