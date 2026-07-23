@@ -220,7 +220,9 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           <div className="flex flex-col shrink-0 lg:my-auto" style={{ gap: "clamp(20px,4vh,44px)" }}>
             {/* Book a quick call card */}
             <a
-              href="#"
+              href="https://calendly.com/sanjamthappa25/30min"
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 background: "#fff", border: "1px solid #D8D8D8", borderRadius: 15,
                 padding: "24px 24px 18px", textDecoration: "none", transition: "border-color 0.15s",
@@ -231,7 +233,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
               <div className="flex items-center justify-between gap-5">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-[14px]">
-                    <Image src="/collaborate/google-meet.svg" alt="Google Meet" width={44} height={36} />
+                    <Image src="/collaborate/calendly.svg" alt="Calendly" width={38} height={38} />
                     <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 24, color: "rgba(0,0,0,0.5)" }}>Book a quick call</span>
                   </div>
                   <div className="flex items-center gap-[10px]">

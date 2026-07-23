@@ -661,11 +661,20 @@ export default function CollaboratePage() {
           </div>
 
           <div className="rise-group flex flex-col gap-11">
-            <div className="rise-item" style={{ background: "#fff", border: "1px solid #D8D8D8", borderRadius: 15, padding: "24px 24px 18px" }}>
+            {/* Was a plain <div> with no href at all — the arrow icon implied a link that didn't
+                exist. Changed to <a> in place (not a wrapper) so the rise-item scroll-reveal class
+                and its layout are untouched. */}
+            <a
+              href="https://calendly.com/sanjamthappa25/30min"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rise-item block"
+              style={{ background: "#fff", border: "1px solid #D8D8D8", borderRadius: 15, padding: "24px 24px 18px", textDecoration: "none" }}
+            >
               <div className="flex items-center justify-between gap-5">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-[14px]">
-                    <Image src="/collaborate/google-meet.svg" alt="Google Meet" width={44} height={36} />
+                    <Image src="/collaborate/calendly.svg" alt="Calendly" width={38} height={38} />
                     <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 24, color: "rgba(0,0,0,0.5)" }}>Book a quick call</span>
                   </div>
                   <div className="flex items-center gap-[10px]">
@@ -675,7 +684,7 @@ export default function CollaboratePage() {
                 </div>
                 <ArrowUp size={22} color="#0D0D0D" style={{ transform: "rotate(48deg)" }} />
               </div>
-            </div>
+            </a>
 
             <div className="rise-item flex items-center justify-between gap-4 flex-wrap">
               <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Book a meeting</span>
