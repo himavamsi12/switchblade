@@ -61,6 +61,28 @@ const MOBILE_RESUME_AT = STORY_PARAGRAPHS.findIndex(p => p.startsWith("And I owe
 // moment the copy is edited.
 
 function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
+  // Desktop only: match the image's height to the text column's LIVE rendered height (measured,
+  // not guessed) instead of either extreme this went through before —
+  //   1) grid alignItems:stretch made the box match text height, but at the box's fixed COLUMN
+  //      WIDTH that ratio was far narrower than the photo's own (0.8), so object-cover had to
+  //      scale up to cover the height and crop deep into the sides (the original "cutting" bug).
+  //   2) aspect-[932/1166] fixed the crop but let the box grow to whatever height that ratio gives
+  //      at the column's width, which is TALLER than the text — the image ran on past it.
+  // Capping height to the measured text height, keeping the aspect-ratio class as the pre-measurement
+  // fallback (so there's no flash before JS runs), is what lets both hold at once: no crop bug (2),
+  // and no overshoot past the text (this fix). Any crop that DOES occur under this cap is anchored
+  // to the top via objectPosition below, so it trims from the bottom/feet, never the head.
+  const textColRef = useRef<HTMLDivElement>(null);
+  const [imgHeight, setImgHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (window.innerWidth < 768) return; // mobile stacks single-column; aspect-ratio class governs
+    const el = textColRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setImgHeight(entry.contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <motion.div
       key="preview"
@@ -83,16 +105,26 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
         className="grid grid-cols-1 md:[grid-template-columns:0.8fr_1fr]"
         style={{ gap: "clamp(56px,8vw,128px)", alignItems: "stretch" }}
       >
-      {/* max-md:aspect-[932/1166] — the source photo's own ratio. On mobile this column is a
-          single grid cell with nothing to stretch against, so it fell back to the 280px
-          min-height, which is far wider than tall relative to the photo: object-cover then had to
-          crop the top and bottom (cutting off the head). Giving the box the image's real ratio
-          means cover has nothing to crop. Desktop keeps stretching to match the text column
-          beside it, so its ratio is set by that instead. */}
-      <div className="max-md:aspect-[932/1166]" style={{ position: "relative", minHeight: "280px", overflow: "hidden" }}>
+      {/* aspect-[932/1166] (the photo's own ratio) is the pre-measurement / mobile fallback ONLY —
+          it's dropped entirely once imgHeight is known, not just overridden. Per spec, once one
+          axis (height) is definite, aspect-ratio computes the OTHER axis (width) from it rather
+          than letting grid's normal stretch fill the column — that's what shrank the box's width
+          and opened a gap before it reached the text column. width:"100%" (only once measured)
+          forces it back to the column's full track width regardless. alignSelf:"start" keeps it
+          pinned to the top of the row either way, never centered or stretched. */}
+      <div
+        className={imgHeight ? "" : "aspect-[932/1166]"}
+        style={{
+          position: "relative", alignSelf: "start", minHeight: "280px", overflow: "hidden",
+          height: imgHeight ? `${imgHeight}px` : undefined,
+          width: imgHeight ? "100%" : undefined,
+        }}
+      >
         {/* .jpg, not .png — it's a photograph, so PNG's lossless encoding cost 1.6MB in the repo
-            for no visible benefit over a quality-94 JPEG at 197KB. */}
-        <Image src="/founder-childhood.jpg" alt="Sanjam, founder of Switchblade, as a child" fill className="object-cover" sizes="530px" />
+            for no visible benefit over a quality-94 JPEG at 197KB. objectPosition "50% 0%" anchors
+            any crop (from the height cap above) to the TOP — so the crop trims off the bottom of
+            the photo, never the boy's head/face at the top. */}
+        <Image src="/founder-childhood.jpg" alt="Sanjam, founder of Switchblade, as a child" fill className="object-cover" style={{ objectPosition: "50% 0%" }} sizes="530px" />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0) 35%)" }} />
         <div style={{ position: "absolute", left: "clamp(16px,2vw,24px)", bottom: "clamp(16px,2vw,24px)" }}>
           <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 600, fontSize: 13, letterSpacing: "0.06em", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>FOUNDER</p>
@@ -100,7 +132,14 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
         </div>
       </div>
 
-      <div>
+      {/* alignSelf:"start" is the actual fix for the image still measuring too tall: the grid's
+          alignItems:"stretch" (set on the parent above) was stretching THIS column to match the
+          row height too — and the row height was set by the image's own tall pre-measurement
+          aspect-ratio box. So the ResizeObserver was reading back the STRETCHED height (which
+          already equalled the oversized image), not this column's true content height — a
+          feedback loop that pinned the image at its original size instead of shrinking it.
+          Un-stretching this column gives it its real, shorter, content-only height to measure. */}
+      <div ref={textColRef} style={{ alignSelf: "start" }}>
         <div style={{ fontFamily: "var(--font-archivo)", fontWeight: 400, fontSize: "clamp(15px,1.15vw,18px)", lineHeight: 1.2, color: "#0D0D0D" }}>
           <p style={{ marginBottom: "1.4em" }}>
             There&rsquo;s a book I was reading , The Creative Act by Rick Rubin. He writes about how good ideas exist around us like signals in the air and the human antenna catches them. When you think of something and see it come to life later through someone else&rsquo;s hands, you wonder.
