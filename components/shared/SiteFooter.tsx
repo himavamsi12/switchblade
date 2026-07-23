@@ -11,7 +11,9 @@ import { triggerShopHighlight } from "@/components/shared/SiteNav";
 // "Help" has no href — it opens the HelpModal instead (see `action: "help"`); the rest are links.
 // Shop points at the homepage's Origins section (same as the navbar's own Shop link, see
 // SiteNav.tsx) instead of "/membership", and fires the same triggerShopHighlight() on click so it
-// auto-opens the "Read More" story and scrolls/highlights the Cosmos paragraph identically.
+// auto-opens the "Read More" story and scrolls/highlights the Cosmos paragraph identically. Its
+// Link below also passes scroll={false} — see the matching comment on SiteNav's own Shop link for
+// why (avoids Next's own scroll-to-hash racing against OriginsSection's scrollIntoView).
 const NAV_LINKS = [
   { label: "Home",          href: "/" },
   { label: "Classics",      href: "/classics" },
@@ -204,7 +206,7 @@ export function SiteFooter() {
             Reach out / Let&rsquo;s collaborate
           </p>
           <a
-            href="mailto:hello@switchblade.com"
+            href="mailto:hello@switchbladeworld.com"
             style={{
               fontFamily:     "var(--font-archivo)",
               fontWeight:     700,
@@ -218,7 +220,7 @@ export function SiteFooter() {
             onMouseEnter={e => ((e.currentTarget as HTMLElement).style.opacity = "0.7")}
             onMouseLeave={e => ((e.currentTarget as HTMLElement).style.opacity = "1")}
           >
-            HELLO@WEARESWITCHBLADE.COM
+            HELLO@SWITCHBLADEWORLD.COM
           </a>
         </div>
       </div>
@@ -241,6 +243,7 @@ export function SiteFooter() {
               <Link
                 key={link.label}
                 href={link.href}
+                scroll={link.label === "Shop" ? false : undefined}
                 onClick={link.label === "Shop" ? triggerShopHighlight : undefined}
                 style={NAV_LINK_STYLE}
                 onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = "#fff")}

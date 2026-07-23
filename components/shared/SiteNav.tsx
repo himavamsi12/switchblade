@@ -118,6 +118,14 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
             <Link
               key={l.href}
               href={l.href}
+              // scroll={false} on Shop only: without it, Next's own scroll-to-hash (it targets
+              // "#origins-section" once that element exists, on its own timing) raced against
+              // OriginsSection's own scrollIntoView-to-the-Cosmos-paragraph below — whichever ran
+              // last won, so the landing spot was inconsistent (sometimes the plain section top,
+              // sometimes overshooting past it once more content above finished loading and
+              // reflowed the page). This disables just that automatic scroll for this link;
+              // OriginsSection's own effect (triggered by triggerShopHighlight) is what scrolls.
+              scroll={l.label === "Shop" ? false : undefined}
               onClick={l.label === "Shop" ? triggerShopHighlight : undefined}
               className={isActive(l.href) ? activeLinkColor : linkColor}
               style={{ fontSize: 14, cursor: light ? "pointer" : undefined }}
@@ -216,6 +224,9 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
                 >
                   <Link
                     href={l.href}
+                    // scroll={false} on Shop only — see the matching comment on the desktop Shop
+                    // Link above for why (avoids racing OriginsSection's own scrollIntoView).
+                    scroll={l.label === "Shop" ? false : undefined}
                     onClick={() => {
                       setMenuOpen(false);
                       if (l.label === "Shop") triggerShopHighlight();

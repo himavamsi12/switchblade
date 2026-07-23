@@ -413,32 +413,43 @@ export function OriginsSection() {
       // without this, closing afterwards would restore a stale position from an earlier open.
       openScrollYRef.current = window.scrollY;
       setStoryOpen(true);
-      const id = window.setTimeout(() => {
-        cosmosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-        setHighlightCosmos(true);
-      }, 350);
-      return id;
+      const scrollToCosmos = () => cosmosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Fires the scroll three times over ~1.4s instead of once: everything ABOVE the Cosmos
+      // paragraph (hero media, other section images, the founder photo, embedded 3D canvases,
+      // web fonts) can still be loading/reflowing well after this component mounts, and each
+      // reflow shifts where the paragraph actually sits. A single scroll at 350ms landed
+      // correctly for that instant but was then carried away from the target as more content
+      // above finished loading — reported as landing at the plain section top or even overshooting
+      // into the next section, depending on exactly when the last reflow happened to land. Calling
+      // scrollIntoView again later re-corrects for whatever shifted since the previous call; once
+      // layout has actually settled the extra calls are harmless no-ops (already there).
+      const ids = [
+        window.setTimeout(() => { scrollToCosmos(); setHighlightCosmos(true); }, 350),
+        window.setTimeout(scrollToCosmos, 900),
+        window.setTimeout(scrollToCosmos, 1400),
+      ];
+      return ids;
     };
 
     // 1. Clicked from another page: Link does a full navigation, so this component mounts
     //    fresh — sessionStorage (set right before that navigation) survives the reload, checked
     //    once here on mount.
-    let timeoutId: number | undefined;
+    let timeoutIds: number[] = [];
     if (sessionStorage.getItem(SHOP_HIGHLIGHT_KEY) === "1") {
       sessionStorage.removeItem(SHOP_HIGHLIGHT_KEY);
-      timeoutId = run();
+      timeoutIds = run();
     }
 
-    // 2. Clicked while already on the homepage: Next.js's <Link> does a client-side hash-scroll
+    // 2. Clicked while already on the homepage: Next.js's <Link> does a client-side navigation
     //    WITHOUT a full reload, so this component never remounts and the mount-only check above
     //    would silently never fire. Listening for the live event instead means it fires
     //    regardless of whether a reload happened, as long as this component is still mounted.
-    const onEvent = () => { timeoutId = run(); };
+    const onEvent = () => { timeoutIds = run(); };
     window.addEventListener(SHOP_HIGHLIGHT_EVENT, onEvent);
 
     return () => {
       window.removeEventListener(SHOP_HIGHLIGHT_EVENT, onEvent);
-      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutIds.forEach(window.clearTimeout);
     };
   }, []);
 
