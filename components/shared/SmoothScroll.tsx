@@ -44,12 +44,19 @@ export function SmoothScroll() {
       gsap.registerPlugin(ScrollTrigger);
 
       const lenis = new Lenis({
-        // Slightly quicker than Lenis's 1.2s default — long enough to bridge sparse slow-scroll
-        // wheel steps into continuous motion, short enough that the page still feels responsive
-        // and doesn't "float" after you stop.
-        duration: 0.9,
+        // Duration bumped from 0.9 → 1.15: a longer ease is heavier drag, so a hard flick decays
+        // onto its target over more time instead of snapping there — the scroll feels weightier and
+        // more controlled at speed. This is the smoothing/settle knob.
+        duration: 1.15,
         // Standard eased curve; the exact shape matters less than that it's a continuous stream.
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        // THE drag knob. wheelMultiplier scales every wheel delta before Lenis applies it, so a
+        // hard flick contributes proportionally LESS distance — the input is resisted rather than
+        // banked-and-replayed (which is what made the previous velocity cap feel like it scrolled
+        // for miles). 0.6 = a firm, deliberate drag. Lower = heavier/slower; 1 = native sensitivity.
+        // Reliable and Lenis-native — no input interception, so it can't fight the scene holds or
+        // programmatic scrolls.
+        wheelMultiplier: 0.6,
       });
 
       // Exposed so other components can do a Lenis-smooth programmatic scroll (e.g. OriginsSection

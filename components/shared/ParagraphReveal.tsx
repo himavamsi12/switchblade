@@ -26,6 +26,9 @@ export function ParagraphReveal() {
     let leftColTrigger: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let pinTrigger: any = null;
+    // Set while the scroll-hold below is active; calling it resumes scrolling. Invoked from
+    // cleanup too, so unmounting mid-hold can never strand the page unscrollable.
+    let releaseHold: (() => void) | null = null;
 
     import("gsap").then(async ({ gsap }) => {
       if (killed) return;
@@ -91,18 +94,41 @@ export function ParagraphReveal() {
       // releases almost immediately on continued scroll, so the section starts scrolling away in
       // sync with the star heading down to the "O".
       if (sectionRef.current && window.innerWidth >= 1024) {
+        // Freeze the page for a fixed beat the FIRST time this globe scene reaches the top of the
+        // viewport, so a fast flick can't blast straight through it — the same lenis.stop() hold
+        // RadiatesSection uses for its own entrance (see holdForEntrance there). The pin below keeps
+        // the scene visually fixed; this stop is what actually makes it unskippable regardless of
+        // scroll speed. Once only (heldOnce), so scrolling back up and re-entering doesn't re-freeze
+        // and feel like the page is fighting the reader. Routed through Lenis because on desktop it
+        // owns the scroll and its .stop() discards buffered wheel input rather than lurching forward
+        // on release.
+        let heldOnce = false;
+        const HOLD_SECONDS = 1.1;
+        const holdHere = () => {
+          if (heldOnce) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const lenis = (window as any).__lenis;
+          if (!lenis?.stop) return;
+          heldOnce = true;
+          lenis.stop();
+          releaseHold = () => { releaseHold = null; lenis.start(); };
+          gsap.delayedCall(HOLD_SECONDS, () => releaseHold?.());
+        };
+
         pinTrigger = ScrollTrigger.create({
           trigger: sectionRef.current,
           start: "top top",
           end: "+=25%",
           pin: true,
           pinSpacing: true,
+          onEnter: holdHere,
         });
       }
     });
 
     return () => {
       killed = true;
+      releaseHold?.();
       leftColTrigger?.kill();
       pinTrigger?.kill();
     };
