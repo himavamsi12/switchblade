@@ -1,9 +1,10 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Clock, ArrowUp, X } from "lucide-react";
 import Image from "next/image";
 import { Star3D } from "@/components/shared/Star3D";
+import { PitchToast } from "@/components/shared/PitchToast";
 
 // Underline text field and uppercase mono label — kept byte-for-byte in sync with the pitch form
 // on the collaborate page (the `fieldStyle` at the bottom of app/(app)/collaborate/page.tsx and the
@@ -42,6 +43,7 @@ const SLIDE = 0.5;
  */
 export function HelpModal({ onClose }: { onClose: () => void }) {
   const reduce = useReducedMotion();
+  const [pitchSent, setPitchSent] = useState(false);
 
   // Esc to close + lock background scroll while open.
   useEffect(() => {
@@ -265,22 +267,28 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             <form
               className="flex flex-col gap-[18px]"
               style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }}
-              onSubmit={e => e.preventDefault()}
+              onSubmit={e => {
+                e.preventDefault();
+                setPitchSent(true);
+                e.currentTarget.reset();
+                window.setTimeout(() => setPitchSent(false), 4000);
+              }}
             >
               {[
-                "You OR Your Craft",
-                "Portfolio link",
-                "What would we make together",
-                "E-mail or phone number",
-              ].map(label => (
+                { label: "You OR Your Craft", required: true },
+                { label: "Portfolio link" },
+                { label: "What would we make together" },
+                { label: "E-mail or phone number", required: true },
+              ].map(({ label, required }) => (
                 // The label→input gap is 44px on the collaborate page (gap-11). Here it's a
                 // height-aware clamp with the SAME 44px ceiling: identical to collab on a normal
                 // desktop viewport, but able to compress rather than pushing the last field and
                 // the send button out of a short modal.
                 <div key={label} className="flex flex-col" style={{ gap: "clamp(18px,4vh,44px)" }}>
-                  <label style={labelStyle}>{label}</label>
+                  <label style={labelStyle}>{label}{required && <span style={{ color: "#0456DD" }}> *</span>}</label>
                   <input
                     type="text"
+                    required={required}
                     style={fieldStyle}
                     onFocus={e => (e.target.style.borderBottomColor = "#0456DD")}
                     onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")}
@@ -303,6 +311,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           </div>
         </motion.div>
       </motion.div>
+      <PitchToast show={pitchSent} />
     </motion.div>
   );
 }

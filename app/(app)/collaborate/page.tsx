@@ -2,13 +2,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock, ArrowUp } from "lucide-react";
 import { SparkleMark } from "@/components/shared/SparkleMark";
 import { SiteFooter } from "@/components/shared/SiteFooter";
 import { SiteNav } from "@/components/shared/SiteNav";
 import { SweepText } from "@/components/shared/SweepText";
 import { GradientReveal } from "@/components/shared/GradientReveal";
+import { PitchToast } from "@/components/shared/PitchToast";
 
 const Star3D = dynamic(
   () => import("@/components/shared/Star3D").then(m => m.Star3D),
@@ -60,6 +61,7 @@ export default function CollaboratePage() {
   const scenarioAnchorRef = useRef<HTMLDivElement>(null);
   const collabAnchorRef   = useRef<HTMLDivElement>(null);
   const shrinkRef         = useRef<number>(1);
+  const [pitchSent, setPitchSent] = useState(false);
   // Both blue gradient areas on this page reveal through <GradientReveal> (see the JSX) — the
   // shared "the gradient falls in" overlay from the homepage hero: a white cover that slides down
   // out of view behind a feathered edge, rather than a flat opacity cross-fade. It's a pure CSS
@@ -409,6 +411,15 @@ export default function CollaboratePage() {
               </a>
               <a
                 href="#standard"
+                onClick={e => {
+                  // Plain in-page anchor jump was landing short here — see the note on the
+                  // #pitch re-pin effect above for the general shape of this bug. Driving the
+                  // scroll explicitly (scrollIntoView still honours the section's own
+                  // scroll-margin-top) is the reliable fix rather than trusting the native jump.
+                  e.preventDefault();
+                  document.getElementById("standard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  history.replaceState(null, "", "#standard");
+                }}
                 className="flex items-center gap-3 rounded-xl font-medium hover:opacity-70 transition-opacity"
                 style={{ border: "1px solid #0F0E0C", color: "#0F0E0C", fontFamily: "var(--font-archivo)", fontSize: 15, padding: "12px 16px 12px 20px" }}
               >
@@ -475,7 +486,7 @@ export default function CollaboratePage() {
       <section
         id="standard"
         style={{
-          padding: `${SECTION} ${PX}`, scrollMarginTop: 62,
+          padding: `${SECTION} ${PX}`, scrollMarginTop: 0,
           background: "linear-gradient(180deg,#0C40BE 0%,#0456DD 22%,#8FA6EA 48%,#FFFFFF 100%)",
           position: "relative",
           // Stacking context so the mask overlay's z-index:-1 stays above this section's gradient
@@ -531,9 +542,7 @@ export default function CollaboratePage() {
       {/* ── Where craft meets philosophy ── */}
       <section style={{ background: "#FFFFFF", padding: `${SECTION} ${PX}`, overflow: "hidden" }}>
         <div className="flex flex-col items-center text-center" style={{ marginBottom: "clamp(56px,7vw,96px)" }}>
-          <div className="rise" style={{ display: "inline-flex", border: "1px solid #D3D3D3", borderRadius: 6, padding: "4px 6px", marginBottom: 8 }}>
-            <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase", color: "#444" }}>Introducing</span>
-          </div>
+          
           <h2 className="uppercase" style={{
             fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(34px,6vw,74px)",
             lineHeight: 0.92, letterSpacing: "-0.02em", maxWidth: "22ch",
@@ -550,14 +559,14 @@ export default function CollaboratePage() {
               height: "100%", minHeight: 380,
             }}>
               <Tag pill>{c.kind}</Tag>
-              <div className="relative flex items-center justify-center" style={{ height: 156, margin: "24px 0" }}>
-                <div style={{ position: "absolute", width: 163, height: 156, borderRadius: 15, background: c.chip }} />
+              <div className="relative flex items-center justify-center" style={{ height: 182, margin: "24px 0" }}>
+                <div style={{ position: "absolute", width: 190, height: 182, borderRadius: 15, background: c.chip }} />
                 {/* star-card.png is the chrome star on a TRANSPARENT background (the source had an
                     opaque white one), so the coloured chip behind it shows through instead of the
                     star sitting in a white box. object-contain, not object-cover: the star's own
                     aspect ratio (498/708) must be preserved rather than cropped to the slot. */}
-                <div className="relative" style={{ width: 86, height: 122 }}>
-                  <Image src="/collaborate/star-card.png" alt="" fill className="object-contain" sizes="86px" />
+                <div className="relative" style={{ width: 130, height: 172 }}>
+                  <Image src="/collaborate/star-card.png" alt="" fill className="object-contain" sizes="130px" />
                 </div>
               </div>
               <div className="flex flex-col gap-3 uppercase" style={{ paddingBottom: 24 }}>
@@ -671,7 +680,7 @@ export default function CollaboratePage() {
               <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, color: "#929292" }}>
                 Not ready to pitch? Stay in the orbit -
               </span>
-              <Link href="/journal" style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, color: "#0456DD", textDecoration: "underline" }}>
+              <Link href="/classics" style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, color: "#0456DD", textDecoration: "underline" }}>
                 Follow the archive
               </Link>
             </div>
@@ -707,24 +716,34 @@ export default function CollaboratePage() {
               </div>
             </a>
 
-            <div className="rise-item flex items-center justify-between gap-4 flex-wrap">
-              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Book a meeting</span>
-              <span style={{ flex: 1, minWidth: 40, height: 1, background: "#D8D8D8" }} />
-              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>or</span>
-              <span style={{ flex: 1, minWidth: 40, height: 1, background: "#D8D8D8" }} />
-              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Drop a Pitch</span>
+            {/* BOOK A MEETING ——— OR ——— DROP A PITCH must stay on ONE line at every width — see
+                the matching row in HelpModal.tsx. flex-wrap dropped "DROP A PITCH" onto its own
+                line on a phone; flex-nowrap plus a viewport-scaled, non-breaking font size (same
+                dividerLabelStyle-equivalent numbers as HelpModal) keeps it on one line, with the
+                two rules (flex:1, small min-width) shrinking first instead of forcing a wrap. */}
+            <div className="rise-item flex items-center gap-2 sm:gap-4 flex-nowrap">
+              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Book a meeting</span>
+              <span style={{ flex: 1, minWidth: 12, height: 1, background: "#D8D8D8" }} />
+              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>or</span>
+              <span style={{ flex: 1, minWidth: 12, height: 1, background: "#D8D8D8" }} />
+              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Drop a Pitch</span>
             </div>
 
-            <form className="rise-item flex flex-col gap-[18px]" style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }} onSubmit={e => e.preventDefault()}>
+            <form className="rise-item flex flex-col gap-[18px]" style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }} onSubmit={e => {
+              e.preventDefault();
+              setPitchSent(true);
+              e.currentTarget.reset();
+              window.setTimeout(() => setPitchSent(false), 4000);
+            }}>
               {[
-                { label: "You OR Your Craft",             type: "input" },
+                { label: "You OR Your Craft",             type: "input", required: true },
                 { label: "Portfolio link",                type: "input" },
                 { label: "What would we make together",  type: "input" },
-                { label: "E-mail or phone number",        type: "input" },
+                { label: "E-mail or phone number",        type: "input", required: true },
               ].map(f => (
                 <div key={f.label} className="flex flex-col gap-11">
-                  <label style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>{f.label}</label>
-                  <input type="text" style={fieldStyle} onFocus={e => (e.target.style.borderBottomColor = "#0456DD")} onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")} />
+                  <label style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>{f.label}{f.required && <span style={{ color: "#0456DD" }}> *</span>}</label>
+                  <input type="text" required={f.required} style={fieldStyle} onFocus={e => (e.target.style.borderBottomColor = "#0456DD")} onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")} />
                 </div>
               ))}
               <button type="submit" style={{
@@ -743,6 +762,7 @@ export default function CollaboratePage() {
       </section>
 
       <SiteFooter />
+      <PitchToast show={pitchSent} />
     </>
   );
 }

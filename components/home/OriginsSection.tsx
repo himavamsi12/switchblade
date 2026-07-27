@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { SweepText } from "@/components/shared/SweepText";
 import { SHOP_HIGHLIGHT_EVENT, SHOP_HIGHLIGHT_KEY } from "@/components/shared/SiteNav";
@@ -17,15 +18,15 @@ import { SHOP_HIGHLIGHT_EVENT, SHOP_HIGHLIGHT_KEY } from "@/components/shared/Si
 // That includes the closing Cosmos block: it used to be ONE entry whose three sentences were
 // joined by "\n" and split apart again by hand inside StoryFull, so they sat on tight line breaks
 // while every other pair of paragraphs had a full gap. They're three entries now, and the
-// highlight works off index instead (see COSMOS_START / COSMOS_END below).
+// scroll target works off index instead (see COSMOS_START below).
 const STORY_PARAGRAPHS = [
   "There\u2019s a book I was reading, The Creative Act by Rick Rubin. He writes about how good ideas exist around us like signals in the air and the human antenna catches them. When you think of something and see it come to life later through someone else\u2019s hands, you wonder. But the truth is good ideas are bound to exist and they move towards the people willing to receive them and bring them to life.",
   "I read that and something settled in me. This logo has lived with me since I was 11. Not in a drawer \u2014 in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn\u2019t fully understand yet, I still don\u2019t think I do, but I\u2019ve carried it for over two decades \u2014 and at some point, carrying an idea this long becomes a responsibility.",
   "That\u2019s reason number one to establish Switchblade.",
   "Reason number two is simpler. You get one life. I\u2019ve spent enough time waiting to know everything before I begin. I don\u2019t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I\u2019ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.",
   "I want to be honest from the start \u2014 that\u2019s the only way I know how to do this.",
-  "I am inspired by neatness, practicality & innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley \u2014 these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.",
-  "And I owe transparency about something - when I drew this logo at age 11, I had no idea what Stone Island\u2019s logo looked like and when I discovered the resemblance a couple of years ago, I had sleepless nights. I still think about it. But I believe the people at Stone Island would understand and I\u2019m certain that Massimo Osti would. They all will always be light years ahead of Switchblade. They will always keep inspiring me. And I genuinely hope someday we work together with them that have made possible for Switchblade to exist.",
+  "I am inspired by neatness, practicality & innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley \u2014 these are brands I have immense respect for and they have shaped how I think about what a brand can be.",
+  "And I owe transparency about something - when I drew this logo at age 11,I had no idea what Stone Island\u2019s logo looked like and when I discovered the resemblance a couple of years ago,I had sleepless nights. I still think about it. But I believe the people at Stone Island would understand and I\u2019m certain that Massimo Osti would. They all will always be light years ahead of Switchblade. They will always keep inspiring me. And I genuinely hope someday we work together with them that have made possible for Switchblade to exist.",
   "As a personal belief, at the depth of the human heart, there is no competition - only compassion, strength, kindness, and love. That is the core belief Switchblade is built on. It is not a strategy. It is who I am.",
   "Switchblade is for people who carry competence without seeking validation.",
   "Who are just as sharp as they are kind and know those are not opposites.",
@@ -41,8 +42,9 @@ const STORY_PARAGRAPHS = [
   "Love you Mom & Dad!",
 ];
 
-// The Cosmos block is the last three paragraphs; the Shop link highlights the first two of them
-// and leaves the "Love you Mom & Dad!" sign-off plain.
+// The Cosmos block is the last two paragraphs before the "Love you Mom & Dad!" sign-off — the
+// Shop link's auto-open-and-scroll flow scrolls to COSMOS_START and turns this highlight on
+// (see highlightCosmos in OriginsSection/StoryFull); it stays off otherwise.
 const COSMOS_START = STORY_PARAGRAPHS.length - 3;
 const COSMOS_END   = STORY_PARAGRAPHS.length - 2;
 
@@ -54,6 +56,15 @@ const COSMOS_END   = STORY_PARAGRAPHS.length - 2;
 // Derived from the text rather than hardcoded, so re-ordering STORY_PARAGRAPHS can't silently
 // point this at the wrong paragraph.
 const MOBILE_RESUME_AT = STORY_PARAGRAPHS.findIndex(p => p.startsWith("And I owe transparency"));
+
+// A brief "start reading here" highlight for the sentence the mobile preview cut off at, so a
+// reader who's just opened the full story can find their place instead of re-reading from the
+// top. Only this span — not scroll/toggle-triggered like the Cosmos highlight — and it fades out
+// on its own after READ_HERE_MS (see the showReadHere state in StoryFull), it isn't a permanent
+// marker like the Cosmos one.
+const READ_HERE_START = "when I drew this logo at";
+const READ_HERE_END   = " understand";
+const READ_HERE_MS = 4000;
 
 // Desktop renders these in two columns, but there's no LEFT/RIGHT split here on purpose — the
 // paragraphs are handed to CSS `columns-2` as one list and the browser balances them (see
@@ -145,7 +156,7 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
             There&rsquo;s a book I was reading , The Creative Act by Rick Rubin. He writes about how good ideas exist around us like signals in the air and the human antenna catches them. When you think of something and see it come to life later through someone else&rsquo;s hands, you wonder.
           </p>
           <p style={{ marginBottom: "1.4em" }}>
-            But the truth is good ideas are bound to exist and they move towards the people willing to receive them and bring them to life.
+            But the truth is, good ideas are bound to exist and they move towards the people willing to receive them and bring them to life.
           </p>
           <p>
             I read that and something settled in me. This logo has lived with me since I was{" "}
@@ -158,17 +169,23 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
               width={182}
               height={127}
               className="inline-block"
-              style={{ verticalAlign: "middle", height: "3.6em", width: "auto" }}
+              // Negative vertical margins cancel the tag's height (2.8em) against this
+              // paragraph's own 1.2em line-height — without them the browser grows just this
+              // one line's box to fit the tag, reading as extra gap above/below only this line
+              // versus every other line in the paragraph (see the matching fix on the full-story
+              // version of this tag, `withAgeTag` below).
+              style={{ verticalAlign: "middle", height: "2.8em", width: "auto", marginTop: "-0.8em", marginBottom: "-0.8em" }}
             />
+            <br />
             <span>
-              . Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
-              <br />That&rsquo;s reason number one to establish Switchblade.
-              <br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
+              Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
+              <br /><br />That&rsquo;s reason number one to establish Switchblade.
+              <br /><br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
             </span>
           </p>
           <p style={{ marginTop: "1.4em" }}>
-            I want to be honest from the start  that&rsquo;s the only way I know how to do this.
-            <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be and mean.
+            I want to be honest from the start,  that&rsquo;s the only way I know how to do this.
+            <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be.
             {/* Desktop preview now CUTS OFF mid-sentence here, at "when I ...", with Read More
                 sitting inline right after the ellipsis rather than as its own block underneath.
                 The rest of the sentence ("drew this logo at [AGE 11], I had no idea what Stone
@@ -206,7 +223,25 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
 // "since I was 11" line doesn't contain the "age 11" marker.
 const AGE_TAG_MARKER = "age 11";
 
+// Same swap-at-render approach as the age tag above, for the "…explore Switchblade Classics."
+// sign-off — turns just that phrase into a link to the Classics page without splitting the
+// sentence apart in the source array.
+const CLASSICS_LINK_MARKER = "Switchblade Classics";
+
 function withAgeTag(para: string) {
+  const classicsIdx = para.indexOf(CLASSICS_LINK_MARKER);
+  if (classicsIdx !== -1) {
+    return (
+      <>
+        {para.slice(0, classicsIdx)}
+        <Link href="/classics" style={{ color: "#0456DD", textDecoration: "underline" }}>
+          {CLASSICS_LINK_MARKER}
+        </Link>
+        {para.slice(classicsIdx + CLASSICS_LINK_MARKER.length)}
+      </>
+    );
+  }
+
   const idx = para.indexOf(AGE_TAG_MARKER);
   if (idx === -1) return para;
   return (
@@ -218,8 +253,13 @@ function withAgeTag(para: string) {
         width={182}
         height={127}
         // Smaller multiple than the preview's 3.6em: this column's type is smaller and its
-        // line-height tighter (1.5), so a tag at that size would visibly push its own line apart.
-        style={{ display: "inline-block", verticalAlign: "middle", height: "3.1em", width: "auto" }}
+        // line-height tighter (1.5). Even at 3.1em the tag is still taller than the paragraph's
+        // own 1.5em line-height, so the browser was growing just THIS line's box to fit it —
+        // reading as extra gap above and below this one line versus every other line in the
+        // paragraph. Negative vertical margins cancel that growth (pulling the line box back down
+        // to its normal 1.5em) without shrinking the tag image itself, which keeps its visible
+        // size but stops it from disturbing the paragraph's rhythm.
+        style={{ display: "inline-block", verticalAlign: "middle", height: "3.1em", width: "auto", marginTop: "-0.8em", marginBottom: "-0.8em" }}
       />
       {para.slice(idx + AGE_TAG_MARKER.length)}
     </>
@@ -227,6 +267,14 @@ function withAgeTag(para: string) {
 }
 
 function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highlightCosmos: boolean; cosmosRef: React.RefObject<HTMLParagraphElement | null>; onClose: () => void; isMobile: boolean }) {
+  // On (fresh mount every time Read More opens), off after READ_HERE_MS — a one-shot "start
+  // reading here" cue, not a persistent marker.
+  const [showReadHere, setShowReadHere] = useState(true);
+  useEffect(() => {
+    const t = window.setTimeout(() => setShowReadHere(false), READ_HERE_MS);
+    return () => window.clearTimeout(t);
+  }, []);
+
   return (
     <motion.div
       key="full"
@@ -254,7 +302,13 @@ function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highligh
           </button>
         </div>
 
-        <div className="md:contents" style={{ overflowY: "auto" }}>
+        {/* min-h-0: without it, this flex child (in the flex-col sheet above) defaults to
+            min-height:auto — its own CONTENT height — so it never actually shrinks to fit the
+            sheet's maxHeight, and overflowY:auto never gets a bounded box to scroll within.
+            Content (like the "- Sanjam" sign-off at the very end) just overflowed silently past
+            the fixed sheet instead of being reachable by scrolling. Same fix as HelpModal.tsx's
+            lg:min-h-0 on its own form column. */}
+        <div className="md:contents min-h-0" style={{ overflowY: "auto" }}>
           {/* CSS multi-column, not two hand-split arrays. The story was previously sliced into a
               fixed LEFT/RIGHT pair at a chosen index, which meant the two columns only lined up if
               that index happened to balance them — it didn't, and any edit to the copy would throw
@@ -272,7 +326,32 @@ function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highligh
             {STORY_PARAGRAPHS.map((para, i) => {
               // Already shown in the mobile preview — see MOBILE_RESUME_AT.
               if (isMobile && i < MOBILE_RESUME_AT) return null;
+              // Only the "And I owe transparency..." paragraph carries the READ_HERE_START
+              // marker — the sentence the mobile preview cut off at, so this is where a reader
+              // opening the full story actually needs the "start here" cue.
+              const readHereIdx = para.indexOf(READ_HERE_START);
+              // box-decoration-break keeps the "highlighter" padding consistent on every wrapped
+              // line of a span, instead of only the first/last line getting the extra breathing
+              // room — shared by both highlight styles below.
+              const highlightBase: React.CSSProperties = {
+                boxDecorationBreak: "clone",
+                WebkitBoxDecorationBreak: "clone",
+                padding: "0.05em 0.15em",
+                borderRadius: 3,
+                transition: "background-color 0.6s ease",
+              };
+              const highlightStyle: React.CSSProperties = {
+                ...highlightBase,
+                backgroundColor: showReadHere ? "rgba(4,86,221,0.22)" : "rgba(4,86,221,0)",
+              };
+              // Only the two Cosmos paragraphs — highlighted only once the Shop link's
+              // auto-open-and-scroll flow has actually reached them (highlightCosmos), unlike
+              // the "read here" cue above which is on immediately and fades on its own.
               const isCosmos = i >= COSMOS_START && i <= COSMOS_END;
+              const cosmosStyle: React.CSSProperties = {
+                ...highlightBase,
+                backgroundColor: highlightCosmos ? "rgba(4,86,221,0.22)" : "rgba(4,86,221,0)",
+              };
               return (
               <motion.p
                 key={i}
@@ -285,35 +364,46 @@ function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highligh
                 className="break-inside-avoid"
                 style={{ marginBottom: "1.3em", whiteSpace: "pre-line" }}
               >
-                {/* Only the two Cosmos paragraphs get the highlight — the "Love you Mom & Dad!"
-                    sign-off after them stays plain, as does everything above. Black by default;
-                    turns blue only when reached via the Shop link's auto-open-and-scroll flow
-                    (see OriginsSection). */}
-                {isCosmos ? (
+                {readHereIdx !== -1 ? (
+                  // The highlighted span runs from READ_HERE_START up to (not including)
+                  // READ_HERE_END — everything before and after stays plain, so only the
+                  // sentence the mobile preview cut off at gets the "start here" cue.
+                  (() => {
+                    const endIdx = para.indexOf(READ_HERE_END, readHereIdx);
+                    const highlighted = endIdx === -1 ? para.slice(readHereIdx) : para.slice(readHereIdx, endIdx);
+                    const tail = endIdx === -1 ? "" : para.slice(endIdx);
+                    return (
+                      <>
+                        {para.slice(0, readHereIdx)}
+                        <span style={highlightStyle}>{withAgeTag(highlighted)}</span>
+                        {tail}
+                      </>
+                    );
+                  })()
+                ) : isCosmos ? (
+                  <span style={cosmosStyle}>{withAgeTag(para)}</span>
+                ) : withAgeTag(para)}
+                {/* Signature sits INSIDE the last paragraph's own block (not a separate element
+                    after the columns div) so it's guaranteed to render directly under "Love you
+                    Mom & Dad!" regardless of which column that line balances into — a standalone
+                    paragraph after the two-column block could land under whichever column ended
+                    up taller, not necessarily this one. */}
+                {i === STORY_PARAGRAPHS.length - 1 && (
                   <span
+                    className="uppercase"
                     style={{
-                      backgroundColor: highlightCosmos ? "rgba(4,86,221,0.22)" : "rgba(4,86,221,0)",
-                      // box-decoration-break keeps the "highlighter" padding consistent on every
-                      // wrapped line of this span, instead of only the first/last line getting
-                      // the extra breathing room.
-                      boxDecorationBreak: "clone",
-                      WebkitBoxDecorationBreak: "clone",
-                      padding: "0.05em 0.15em",
-                      borderRadius: 3,
-                      transition: "background-color 0.6s ease",
+                      display: "block", fontFamily: "var(--font-barlow)", fontWeight: 900,
+                      fontSize: "clamp(18px,1.6vw,24px)", letterSpacing: "-0.01em",
+                      marginTop: "clamp(20px,2.5vw,32px)", color: "#0D0D0D",
                     }}
                   >
-                    {para}
+                    - Sanjam
                   </span>
-                ) : withAgeTag(para)}
+                )}
               </motion.p>
               );
             })}
           </div>
-
-          <p className="max-md:px-5 max-md:pb-7" style={{ fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: "clamp(18px,1.6vw,24px)", marginTop: "clamp(20px,2.5vw,32px)", color: "#0D0D0D" }}>
-            - Sanjam
-          </p>
         </div>
       </div>
     </motion.div>
@@ -413,43 +503,127 @@ export function OriginsSection() {
       // without this, closing afterwards would restore a stale position from an earlier open.
       openScrollYRef.current = window.scrollY;
       setStoryOpen(true);
-      const scrollToCosmos = () => cosmosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Fires the scroll three times over ~1.4s instead of once: everything ABOVE the Cosmos
-      // paragraph (hero media, other section images, the founder photo, embedded 3D canvases,
-      // web fonts) can still be loading/reflowing well after this component mounts, and each
-      // reflow shifts where the paragraph actually sits. A single scroll at 350ms landed
-      // correctly for that instant but was then carried away from the target as more content
-      // above finished loading — reported as landing at the plain section top or even overshooting
-      // into the next section, depending on exactly when the last reflow happened to land. Calling
-      // scrollIntoView again later re-corrects for whatever shifted since the previous call; once
-      // layout has actually settled the extra calls are harmless no-ops (already there).
-      const ids = [
-        window.setTimeout(() => { scrollToCosmos(); setHighlightCosmos(true); }, 350),
-        window.setTimeout(scrollToCosmos, 900),
-        window.setTimeout(scrollToCosmos, 1400),
-      ];
-      return ids;
+      // Plain scrollIntoView fights Lenis on desktop (same issue closeStory routes around below,
+      // and the reason SmoothScroll.tsx exposes window.__lenis in the first place): Lenis owns
+      // scroll there and re-applies its OWN target every animation frame, so a native
+      // scrollIntoView call gets silently overwritten back to wherever Lenis last thought the
+      // scroll was — the highlight would turn on (a plain state update) but the viewport never
+      // actually moved. Asking Lenis itself to scroll to the element's position keeps it in sync
+      // instead of racing it. Mobile has no Lenis instance (see SmoothScroll.tsx), so the
+      // scrollIntoView fallback covers that case exactly as before.
+      // instant=true for every pass AFTER the first: an instant re-center is an imperceptible
+      // blip if the target barely moved, whereas re-triggering a full eased 1.2s animation on
+      // every corrective pass (the original bug here) reads as the scroll repeatedly decelerating
+      // and re-accelerating section by section — "sticky", not smooth. Only the very first pass
+      // should be the one animated journey the reader actually watches.
+      // Targets the HEADING ROW (#origins-heading-row), not cosmosRef centered in the viewport
+      // and not the outer #origins-section box either.
+      //   - cosmosRef sits deep in a tall single section (heading, hero photo, and most of the
+      //     story all come before it) — centering IT put roughly a section-and-a-half of content
+      //     above the target, landing in a mid-scroll no-man's-land with nothing reading as
+      //     "arrived" anywhere.
+      //   - The SECTION's own box has its own clamp(180px,14vw,320px) top padding baked in, so
+      //     landing on ITS top just moved the dead space from "above the section" to "still above
+      //     the heading, now inside it" — same gap, different box.
+      // The heading row is the first thing actually meant to be on screen, so landing there (with
+      // a small headroom for breathing room under the nav) shows the section the way a reader
+      // actually encounters it — heading and photo right away — with the highlighted Cosmos
+      // paragraphs simply somewhere further down in the same normal reading flow.
+      const HEADROOM = 24;
+      const scrollToCosmos = (instant = false) => {
+        const el = document.getElementById("origins-heading-row");
+        if (!el) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const lenis = (window as any).__lenis;
+        const targetY = el.getBoundingClientRect().top + window.scrollY - HEADROOM;
+        // openScrollYRef was captured BEFORE this scroll (right when the Shop flow opened the
+        // story), so it still pointed at the pre-scroll position — closeStory then restored
+        // there, throwing the reader back up near the hero instead of leaving them where they
+        // actually were reading (the Cosmos block). Keeping this in sync with every corrective
+        // pass means whichever position the reader is left at is the one Close returns to.
+        openScrollYRef.current = targetY;
+        if (lenis?.scrollTo) {
+          lenis.scrollTo(targetY, instant ? { duration: 0 } : { duration: 1.2 });
+        } else if (instant) {
+          window.scrollTo(0, targetY);
+        } else {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      };
+      // Polls the paragraph's DOCUMENT position (not viewport-relative — this section isn't
+      // scrolling yet during the poll, so window.scrollY is stable and rect.top + scrollY reads
+      // as a fixed page coordinate) instead of firing the scroll on a blind fixed delay.
+      // Everything ABOVE the Cosmos paragraph (hero media, other section images, the founder
+      // photo, embedded 3D canvases, web fonts) can still be loading/reflowing well after this
+      // component mounts, each reflow shifting where the paragraph actually sits — a fixed delay
+      // either fired too early (landed correctly for that instant, then got carried away from the
+      // target as more content above finished loading and pushed it further down) or, if long
+      // enough to be safe, made every click feel sluggish. Polling until the measured position
+      // stops moving between two consecutive checks means it scrolls the moment layout has
+      // ACTUALLY settled, whether that's 200ms or 3s in, and gives up after a generous 6s cap so a
+      // pathological page still always ends up scrolling somewhere rather than never firing.
+      let lastY: number | null = null;
+      let stableTicks = 0;
+      let elapsed = 0;
+      const POLL_MS = 150;
+      const STABLE_TICKS_NEEDED = 2;
+      const MAX_MS = 6000;
+      const poll = () => {
+        const el = cosmosRef.current;
+        if (!el) { window.setTimeout(poll, POLL_MS); elapsed += POLL_MS; return; }
+        const y = el.getBoundingClientRect().top + window.scrollY;
+        if (lastY !== null && Math.abs(y - lastY) < 1) {
+          stableTicks++;
+        } else {
+          stableTicks = 0;
+        }
+        lastY = y;
+        elapsed += POLL_MS;
+        if (stableTicks >= STABLE_TICKS_NEEDED || elapsed >= MAX_MS) {
+          scrollToCosmos();
+          setHighlightCosmos(true);
+          // Several corrective passes, not just one — on a COLD first load (uncached JS chunks,
+          // slower parse/hydrate) the sections above this one (RadiatesSection's pinned
+          // ScrollTriggers especially) can keep reflowing well past the point the poll judged
+          // things "stable", each reflow silently carrying the target further down the page. A
+          // single 800ms follow-up wasn't always late enough to catch the last of those shifts,
+          // which is why this only ever landed short on the very first load of the session (a
+          // second click right after has everything already warm/settled).
+          //
+          // All of these fire AFTER 1200ms — the initial scrollToCosmos() call above starts a
+          // 1.2s eased animation, and an instant snap landing WHILE that's still in flight was
+          // exactly what made the ride look like it kept stopping and restarting section by
+          // section (the snap cuts the ongoing animation off mid-motion). Waiting for it to
+          // finish first means every correction after is either a genuine no-op (nothing moved)
+          // or a small imperceptible nudge, never a visible interruption.
+          [1400, 2200, 3200, 4400, 6000].forEach(ms => window.setTimeout(() => scrollToCosmos(true), ms));
+        } else {
+          window.setTimeout(poll, POLL_MS);
+        }
+      };
+      // Deliberately not started synchronously — a beat to let setStoryOpen(true) actually commit
+      // and StoryFull mount before the first measurement, same reasoning the old fixed-delay
+      // version had for its initial wait.
+      window.setTimeout(poll, 200);
     };
 
     // 1. Clicked from another page: Link does a full navigation, so this component mounts
     //    fresh — sessionStorage (set right before that navigation) survives the reload, checked
     //    once here on mount.
-    let timeoutIds: number[] = [];
     if (sessionStorage.getItem(SHOP_HIGHLIGHT_KEY) === "1") {
       sessionStorage.removeItem(SHOP_HIGHLIGHT_KEY);
-      timeoutIds = run();
+      run();
     }
 
     // 2. Clicked while already on the homepage: Next.js's <Link> does a client-side navigation
     //    WITHOUT a full reload, so this component never remounts and the mount-only check above
     //    would silently never fire. Listening for the live event instead means it fires
     //    regardless of whether a reload happened, as long as this component is still mounted.
-    const onEvent = () => { timeoutIds = run(); };
+    const onEvent = () => { run(); };
     window.addEventListener(SHOP_HIGHLIGHT_EVENT, onEvent);
 
     return () => {
       window.removeEventListener(SHOP_HIGHLIGHT_EVENT, onEvent);
-      timeoutIds.forEach(window.clearTimeout);
     };
   }, []);
 
@@ -462,7 +636,11 @@ export function OriginsSection() {
       className="site-px max-md:pt-[160px] max-md:pb-[160px] md:pt-[clamp(180px,14vw,320px)] md:pb-[clamp(180px,14vw,320px)]"
       style={{ background: "#ffffff" }}
     >
-      <div className="flex items-end justify-center flex-wrap" style={{ gap: "clamp(8px,1vw,14px)", marginBottom: "clamp(48px,5vw,72px)" }}>
+      {/* id used as the Shop-flow's scroll target (see scrollToCosmos in the effect above) —
+          the SECTION's own box (#origins-section) includes its own clamp(180px,14vw,320px) top
+          padding, so landing on that box's top left that whole padding band as dead space above
+          the heading. This row is the first thing actually meant to be visible. */}
+      <div id="origins-heading-row" className="flex items-end justify-center flex-wrap" style={{ gap: "clamp(8px,1vw,14px)", marginBottom: "clamp(48px,5vw,72px)" }}>
         <h2 style={{
           position: "relative",
           fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(40px,7vw,96px)",
@@ -525,7 +703,7 @@ export function OriginsSection() {
           wrapped on mobile. Here it's just a normal block after the content, so it can't overlap
           anything regardless of viewport width. */}
       {storyOpen && (
-        <div className="hidden md:flex justify-center" style={{ marginTop: "clamp(-16px,-1.5vw,-8px)" }}>
+        <div className="hidden md:flex justify-center" style={{ marginTop: "clamp(24px,3vw,40px)" }}>
           <button
             type="button"
             onClick={closeStory}

@@ -23,9 +23,13 @@ const NAV_LINKS = [
 ];
 
 const NAV_LINK_STYLE: React.CSSProperties = {
-  fontFamily:     "var(--font-ibm-mono)",
+  fontFamily:     "var(--font-archivo)",
   fontWeight:     700,
-  fontSize:       12,
+  // Scales down on narrow phones (was a fixed 12px) so all five links — Home, Classics, Shop,
+  // Collaboration, Help — fit on one line instead of "Help" wrapping to its own row; caps at the
+  // original 12px everywhere wider, so desktop/tablet are unchanged.
+  fontSize:       "clamp(9px,2.6vw,12px)",
+  whiteSpace:     "nowrap",
   letterSpacing:  "0.1em",
   textTransform:  "uppercase",
   color:          "rgba(255,255,255,0.75)",
@@ -226,7 +230,10 @@ export function SiteFooter() {
       </div>
 
       <div className="flex items-center justify-between flex-wrap" style={{ gap: 20, marginBottom: "clamp(40px,6vw,72px)" }}>
-        <div className="flex flex-wrap items-center" style={{ gap: "clamp(20px,3vw,44px)" }}>
+        {/* flex-nowrap (was flex-wrap) — combined with NAV_LINK_STYLE's shrinking font-size and
+            this tighter, viewport-scaled gap, keeps all five links on one line even on a narrow
+            phone instead of "Help" wrapping onto its own row underneath. */}
+        <div className="flex flex-nowrap items-center" style={{ gap: "clamp(10px,3vw,44px)" }}>
           {NAV_LINKS.map(link =>
             "action" in link ? (
               <button

@@ -16,7 +16,7 @@ const PHASES: { key: string; num: string; label: string; mode: Mode3D; lead: str
   {
     key: "cosmos", num: "01", label: "COSMOS", mode: "wire",
     lead: "The birth phase.",
-    rest: " This is where the brand comes to life — the first products, the first mark made on the world. Everything is being learned & built from the ground up, with nothing but philosophy and conviction as the foundation.",
+    rest: " This is where the brand comes to life — the first products, the first mark made on the world. Everything is being learned & built from the ground up, with nothing but conviction as the foundation.",
   },
   {
     key: "classics", num: "02", label: "CLASSIC", mode: "classic",

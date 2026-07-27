@@ -231,9 +231,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     let cfg = getConfig();
 
     const canvas = canvasRef.current!;
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, alpha: true });
+    // antialias was disabled on mobile for performance, but that's what was making the star's
+    // (and every panel's) edges look jagged/pixelated there — turning it back on for all
+    // devices. The pixel ratio cap is also bumped to match desktop (2, up from 1.5) since a
+    // lower cap compounds the same blurriness on higher-density phone screens.
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.setClearColor(new THREE.Color(BG_COLOR), 0);

@@ -103,7 +103,11 @@ export function ParagraphReveal() {
         // owns the scroll and its .stop() discards buffered wheel input rather than lurching forward
         // on release.
         let heldOnce = false;
-        const HOLD_SECONDS = 1.1;
+        // Shortened from 1.1s (by request): the reader felt the section "stick" for too long
+        // after arriving before continuing scroll would do anything, on top of the pin's own
+        // dwell distance below. A shorter hold still guards against a fast flick blasting
+        // straight through the beat, without reading as unresponsive once they try to move on.
+        const HOLD_SECONDS = 0.35;
         const holdHere = () => {
           if (heldOnce) return;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,7 +122,10 @@ export function ParagraphReveal() {
         pinTrigger = ScrollTrigger.create({
           trigger: sectionRef.current,
           start: "top top",
-          end: "+=25%",
+          // Shortened from +=25% (by request): that much dwell distance on top of the hold above
+          // made the section feel stuck/sticky when the reader tried to keep scrolling past it —
+          // it should release on close to the very next scroll once the hold above ends.
+          end: "+=5%",
           pin: true,
           pinSpacing: true,
           onEnter: holdHere,

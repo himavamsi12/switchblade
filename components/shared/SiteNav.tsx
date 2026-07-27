@@ -173,6 +173,16 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
 
         <Link
           href="/collaborate"
+          onClick={e => {
+            // Next's client-side nav is a no-op when the target IS the current route (no
+            // navigation event fires), so clicking this while already on /collaborate looked
+            // broken — nothing happened. Forcing a full reload here gets the page back to its
+            // top-of-hero starting state, same as landing on it fresh from anywhere else.
+            if (pathname === "/collaborate") {
+              e.preventDefault();
+              window.location.href = "/collaborate";
+            }
+          }}
           className="flex items-center gap-2 rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-4"
           style={{ background: "#FF802B", fontSize: 14, paddingTop: 6, paddingRight: 6, paddingBottom: 6, cursor: light ? "pointer" : undefined }}
         >
