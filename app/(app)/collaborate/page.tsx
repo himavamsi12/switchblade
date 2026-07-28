@@ -396,7 +396,7 @@ export default function CollaboratePage() {
               fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(14px,1.5vw,16px)",
               lineHeight: 1.4, color: "#363636", 
             }}>
-              A major part of <span style={{ color: "#0456DD" }}>Switchblade&apos;s vision</span> is to explore categories and get comfortable with something not yet done.<br/> This calls for people/brands to come together and make something together which has not been done yet and explore new boundaries
+              A major part of <span style={{ color: "#0456DD" }}>Switchblade&apos;s vision</span> is to explore categories and get comfortable with something not yet done.<br/> This calls for people/brands to come together and make something together which has not been done yet and explore new boundaries.
             </p>
             <div className="flex items-center gap-[18px] flex-wrap">
               <a
@@ -709,7 +709,7 @@ export default function CollaboratePage() {
                   </div>
                   <div className="flex items-center gap-[10px]">
                     <Clock size={18} color="#666565" strokeWidth={2} />
-                    <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "#666565" }}>15 Minutes</span>
+                    <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "#666565" }}>30 Minutes</span>
                   </div>
                 </div>
                 <ArrowUp size={22} color="#0D0D0D" style={{ transform: "rotate(48deg)" }} />
