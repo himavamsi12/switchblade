@@ -37,13 +37,24 @@
 }
 
 /* Boot Loader */
-.classics-exp .boot-loader { position: fixed; inset: 0; z-index: 10000; display: grid; place-content: center; background: #fff; opacity: 1; filter: blur(0); pointer-events: all; transition: opacity .9s cubic-bezier(.22, 1, .36, 1), filter 1.1s cubic-bezier(.22, 1, .36, 1); }
-.classics-exp .boot-loader.is-fading { opacity: 0; filter: blur(28px); pointer-events: none; }
-.classics-exp .boot-loader.is-fading .boot-loader__stack { transform: scale(1.06); }
-.classics-exp .boot-loader__stack { aspect-ratio: 3/4; width: min(40vw, 420px); position: relative; transform: scale(1); transition: transform 2.4s cubic-bezier(.12, .9, .22, 1); will-change: transform; z-index: 2; }
-.classics-exp .boot-loader__layer { aspect-ratio: 3/4; background: #1500e1; border: 1px solid hsla(0, 0%, 5%, .08); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); overflow: hidden; width: 0; transition: width 1.85s cubic-bezier(.12, .9, .22, 1); }
-.classics-exp .boot-loader__layer.go { width: 100%; }
-.classics-exp .boot-loader__counter { position: absolute; bottom: 100%; left: calc(100% + 12px); color: #1500e1; font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: .02em; line-height: 1; white-space: nowrap; pointer-events: none; z-index: 11; }
+/* Boot reveal: the homepage hero's "gradient falls in" motion (see components/shared/
+   GradientReveal.tsx) used as this page's loading screen. Wrapper = fixed clipping viewport;
+   .classics-boot__cover = the gradient panel that slides down and off. */
+/* NOT scoped under .classics-exp — it is a SIBLING of it (see the markup comment): `position:
+   fixed` creates a stacking context, so nesting this inside .classics-exp trapped its z-index
+   there and the site navbar (z-1200, root level) painted over the falling gradient. At the root
+   level this z-index actually outranks the nav. */
+.classics-boot { position: fixed; inset: 0; z-index: 10000; overflow: hidden; pointer-events: all; box-sizing: border-box; }
+.classics-boot.is-done { pointer-events: none; }
+/* Overhangs above the viewport (top:-25%/height:125%) so the feathered — i.e. partly transparent —
+   top edge sits OFF-SCREEN at rest, leaving the viewport fully covered with gradient to spare as
+   it slides clear. Same gradient as the homepage hero. */
+.classics-boot__cover { position: absolute; left: 0; right: 0; top: -25%; height: 125%; background: linear-gradient(180deg, #1130A2 0%, #1C38AE 14%, #7088D0 38%, #BAC8E8 52%, #ffffff 73%, #FFFFFF 100%); transform: translateY(0); will-change: transform; -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%); mask-image: linear-gradient(to bottom, transparent 0%, #000 20%); }
+/* sine.inOut as a bezier — the same easing/duration the hero's own GSAP timeline uses. */
+.classics-boot__cover.is-falling { transition: transform 2.2s cubic-bezier(0.37, 0, 0.63, 1); transform: translateY(100%); }
+@media (prefers-reduced-motion: reduce) {
+  .classics-boot__cover.is-falling { transition: opacity .3s ease; transform: translateY(0); opacity: 0; }
+}
 
 /* App */
 .classics-exp .app-bg { background-color: var(--color-bg); background-image: radial-gradient(rgba(0, 0, 0, .16) 1.3px, transparent 1.3px); background-size: 30px 30px; background-position: 0 0; position: fixed; inset: 0; pointer-events: none; z-index: 0; }

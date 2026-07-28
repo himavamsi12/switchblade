@@ -61,7 +61,10 @@ const ENTRANCE_DELAY_MIN_MS = 840, ENTRANCE_DELAY_RANGE_MS = 980;
 const BEND_H_CLAMP = 0.25, BEND_V_CLAMP = 0.15;
 const BG_COLOR = 0xffffff;
 const FLIP_MS = 480;
-const BOOT_DUR = 2200;
+// Boot reveal timings. BOOT_FALL_MS must match the .classics-boot__cover.is-falling transition
+// duration in classics-experience.css — it's only used to know when the panel has fully cleared.
+const BOOT_HOLD_MS = 500;
+const BOOT_FALL_MS = 2200;
 
 interface ViewportConfig {
   fov: number; cameraZ: number; radius: number;
@@ -164,7 +167,6 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
   const bootLoaderRef  = useRef<HTMLDivElement>(null);
   const bootLayerRef   = useRef<HTMLDivElement>(null);
-  const bootCounterRef = useRef<HTMLDivElement>(null);
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1106,28 +1108,25 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     };
     window.addEventListener("resize", onResize);
 
-    const bootT0 = performance.now();
-    let bootRaf = 0;
-    requestAnimationFrame(() => bootLayerRef.current?.classList.add("go"));
-    (function tickBoot() {
-      const t = Math.min((performance.now() - bootT0) / BOOT_DUR, 1);
-      const e = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      if (bootCounterRef.current) bootCounterRef.current.textContent = `[${Math.floor(e * 100)}]`;
-      if (t < 1) bootRaf = requestAnimationFrame(tickBoot);
-      else {
-        if (bootCounterRef.current) bootCounterRef.current.textContent = "[100]";
-        setTimeout(endBoot, 240);
-      }
-    })();
-    function endBoot() {
-      bootLoaderRef.current?.classList.add("is-fading");
-      setTimeout(() => { if (bootLoaderRef.current) bootLoaderRef.current.style.display = "none"; }, 1200);
-      setTimeout(() => {
-        canvas.classList.add("is-revealed");
-        dockRef.current?.classList.add("is-revealed");
-        startEntrance();
-      }, 350);
-    }
+    // Boot reveal — see the .classics-boot markup/CSS. A brief hold on the full gradient (giving the
+    // 3D scene a beat to finish setting up), then the gradient panel falls away and the experience
+    // is uncovered from the top down.
+    const bootTimers: number[] = [];
+    bootTimers.push(window.setTimeout(() => {
+      bootLayerRef.current?.classList.add("is-falling");
+      // Reveal + start the scene's own entrance right as the fall begins, NOT after it finishes:
+      // the panel takes BOOT_FALL_MS to clear, so the content needs to already be live behind it
+      // to be progressively uncovered. Revealing afterwards would show a blank page for the whole
+      // fall and then pop the content in.
+      canvas.classList.add("is-revealed");
+      dockRef.current?.classList.add("is-revealed");
+      startEntrance();
+      // Once the panel is clear, stop it intercepting pointer events.
+      bootTimers.push(window.setTimeout(() => {
+        bootLoaderRef.current?.classList.add("is-done");
+        if (bootLoaderRef.current) bootLoaderRef.current.style.display = "none";
+      }, BOOT_FALL_MS));
+    }, BOOT_HOLD_MS));
 
     let lastT = performance.now(), totalT = 0;
     let bendHSmoothed = 0, bendVSmoothed = 0;
@@ -1202,7 +1201,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       document.body.style.overflow = prevOverflow;
 
       cancelAnimationFrame(mainRaf);
-      cancelAnimationFrame(bootRaf);
+      bootTimers.forEach(clearTimeout);
       cancelAnimationFrame(cursorRaf);
       cancelAnimationFrame(starRaf);
       if (resizeTimer) clearTimeout(resizeTimer);
@@ -1253,13 +1252,26 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
   }, []);
 
   return (
+    <>
+    {/* Boot reveal — the homepage hero's "gradient falls in" motion, reused here as the page's
+        loading screen (it replaced a blue growing-box + [0-100] counter). The wrapper is the
+        fixed, clipping viewport; the inner cover is the gradient panel that slides straight DOWN
+        and off, uncovering the experience from the top. Its top edge is feathered by a mask and
+        it starts overhanging above the viewport, so the soft edge is off-screen at rest and the
+        reveal reads as a wash rather than a hard sliding panel — same construction as
+        components/shared/GradientReveal.tsx.
+
+        Deliberately a SIBLING of .classics-exp, not a child: `position: fixed` creates a stacking
+        context, so .classics-exp traps any z-index used inside it. Nested here, the panel's
+        z-index was scoped within .classics-exp — which itself sits at z-auto in the root stacking
+        context — so the site navbar (z-1200, a root-level sibling) painted straight over the
+        falling gradient no matter how high the panel's own z-index went. As a sibling its z-index
+        competes at the root level, where it can actually cover the nav. */}
+    <div className="classics-boot" ref={bootLoaderRef} aria-hidden="true">
+      <div className="classics-boot__cover" ref={bootLayerRef} />
+    </div>
+
     <div ref={rootRef} className="classics-exp">
-      <div className="boot-loader" ref={bootLoaderRef} aria-hidden="true">
-        <div className="boot-loader__stack">
-          <div className="boot-loader__layer" ref={bootLayerRef} />
-          <div className="boot-loader__counter" ref={bootCounterRef}>[0]</div>
-        </div>
-      </div>
 
       <div className="app-bg" aria-hidden="true" />
       <div className="cursor" ref={cursorRef} aria-hidden="true" />
@@ -1442,5 +1454,6 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         </button>
       </div>
     </div>
+    </>
   );
 });
