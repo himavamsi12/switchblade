@@ -16,9 +16,14 @@ const Star3D = dynamic(
   { ssr: false, loading: () => null }
 );
 
+// iconSize is per-entry because the two source SVGs aren't drawn to the same optical scale — the
+// star (04) carries more internal padding, so at a shared box size it reads noticeably smaller
+// than the rocket (03). Sizing them independently makes them look evenly weighted on the page.
 const VISION_TESTS = [
-  { num: "(01)", q: "Does this make both partners better?", icon: "/collaborate/vision-icon-03.svg", border: "#0456DD" },
-  { num: "(02)", q: "Does this help people get inspired?", icon: "/collaborate/vision-icon-04.svg", border: "#C7D1E2" },
+  { num: "(01)", q: "Does this make both partners better?", icon: "/collaborate/vision-icon-03.svg", border: "#0456DD", iconSize: 30, iconMarginTop: 10 },
+  // Star sits higher than the rocket: it's the taller glyph of the two, so the same top margin
+  // pushed it visibly lower against the card's bottom edge.
+  { num: "(02)", q: "Does this help people get inspired?", icon: "/collaborate/vision-icon-04.svg", border: "#C7D1E2", iconSize: 38, iconMarginTop: 0 },
 ] as const;
 
 const STANDARD = [
@@ -475,7 +480,12 @@ export default function CollaboratePage() {
                   <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(7.5px,0.85vw,10px)" }}>{v.num}</span>
                   <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(15px,1.7vw,20px)" }}>{v.q}</span>
                 </div>
-                <Image src={v.icon} alt="" width={38} height={38} />
+                {/* Smaller than the original 38px and pushed down off the question above it —
+                    at 38px, with the question wrapping to two lines, the icon crowded the text.
+                    marginTop is needed on top of the flex `justify-between` because that only
+                    distributes whatever slack the fixed-height (69%) box has left, which is
+                    almost none once the text takes two lines. */}
+                <Image src={v.icon} alt="" width={v.iconSize} height={v.iconSize} style={{ marginTop: v.iconMarginTop }} />
               </div>
             </div>
           ))}
