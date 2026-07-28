@@ -12,6 +12,15 @@ const LINKS = [
   { href: "/#origins-section", label: "Shop" },
 ] as const;
 
+// Mobile drawer only (by request) — desktop's row keeps using LINKS above, unchanged. A separate
+// array rather than conditionally inserting into LINKS, so the desktop nav can never pick this up.
+const MOBILE_LINKS = [
+  { href: "/", label: "Home" },
+  { href: "/collaborate", label: "Collaboration" },
+  { href: "/classics", label: "Classics" },
+  { href: "/#origins-section", label: "Shop" },
+] as const;
+
 export type SiteNavVariant = "dark" | "light";
 
 // Read by OriginsSection — Shop needs to land on the homepage, auto-open the "Read More" story,
@@ -219,7 +228,7 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
             <div className="site-px" style={{ height: 72, flexShrink: 0 }} />
 
             <div className="flex-1 flex flex-col justify-center site-px" style={{ marginTop: "-10vh" }}>
-              {LINKS.map((l, i) => (
+              {MOBILE_LINKS.map((l, i) => (
                 <motion.div
                   key={l.href}
                   initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 28 }}
@@ -249,7 +258,17 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
                     }
                     style={{
                       fontFamily: "var(--font-barlow)", fontWeight: 800,
-                      fontSize: "clamp(32px,10vw,56px)", lineHeight: 1.15, letterSpacing: "-0.02em",
+                      // Reduced from clamp(32px,10vw,56px) (by request, applies to every link here
+                      // now, not just "Collaboration") — that floor was already tight for
+                      // "Collaboration" (13 characters, one unbreakable word) on a narrow phone,
+                      // clipped by this row's own overflow:hidden. Scaling every label down keeps
+                      // them all visually consistent with each other.
+                      fontSize: "clamp(24px,7.5vw,44px)",
+                      lineHeight: 1.15, letterSpacing: "-0.02em",
+                      // Safety net, not the primary fix: if a label is somehow still too wide for
+                      // a very narrow phone, this lets it wrap/break mid-word instead of silently
+                      // overflowing past the row and getting clipped again.
+                      overflowWrap: "break-word",
                     }}
                   >
                     {l.label}
