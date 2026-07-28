@@ -67,6 +67,23 @@ const READ_HERE_START = "when I drew this logo at";
 const READ_HERE_END   = " understand";
 const READ_HERE_MS = 4000;
 
+// The scroll position that frames this section the way a reader should first meet it: the heading
+// row sitting just under the top of the viewport, heading and founder photo on screen together.
+//
+// Targets the HEADING ROW rather than the #origins-section box, because the section carries its
+// own clamp(180px,14vw,320px) top padding — landing on the box's top just puts that whole padding
+// band on screen above the heading, i.e. the same dead space, only now inside the section.
+//
+// Shared by both places that need to "arrive" here: the Shop deep-link jump, and closing the
+// expanded story (which collapses a lot of in-flow height and otherwise leaves the reader
+// mid-section). Measure this AFTER any layout change, since it reads live geometry.
+const ORIGINS_HEADROOM = 24;
+function originsFramedScrollY(): number | null {
+  const el = document.getElementById("origins-heading-row");
+  if (!el) return null;
+  return Math.max(0, el.getBoundingClientRect().top + window.scrollY - ORIGINS_HEADROOM);
+}
+
 // Desktop renders these in two columns, but there's no LEFT/RIGHT split here on purpose — the
 // paragraphs are handed to CSS `columns-2` as one list and the browser balances them (see
 // StoryFull). A hand-picked split index only lines the columns up by luck, and goes stale the
@@ -164,19 +181,24 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
             {/* Shown at EVERY size now. Mobile used to swap this tag image for plain "......." and
                 cut the preview off here, with its own inline Read More — mobile now runs the same
                 preview as desktop, all the way to the "when I ..." cut-off below. */}
-            <Image
-              src="/age-11-tag.png"
-              alt="Age 11"
-              width={182}
-              height={127}
-              className="inline-block"
-              // Negative vertical margins cancel the tag's height (2.8em) against this
-              // paragraph's own 1.2em line-height — without them the browser grows just this
-              // one line's box to fit the tag, reading as extra gap above/below only this line
-              // versus every other line in the paragraph (see the matching fix on the full-story
-              // version of this tag, `withAgeTag` below).
-              style={{ verticalAlign: "middle", height: "2.8em", width: "auto", marginTop: "-0.8em", marginBottom: "-0.8em" }}
-            />
+            {/* nowrap wrapper keeps the sentence's closing period glued to the tag. The tag sits
+                at the very end of its line, so without this the browser is free to break between
+                the image and the ".", stranding a lone full stop at the start of the next line. */}
+            <span style={{ whiteSpace: "nowrap" }}>
+              <Image
+                src="/age-11-tag.png"
+                alt="Age 11"
+                width={182}
+                height={127}
+                className="inline-block"
+                // Negative vertical margins cancel the tag's height (2.8em) against this
+                // paragraph's own 1.2em line-height — without them the browser grows just this
+                // one line's box to fit the tag, reading as extra gap above/below only this line
+                // versus every other line in the paragraph (see the matching fix on the full-story
+                // version of this tag, `withAgeTag` below).
+                style={{ verticalAlign: "middle", height: "2.8em", width: "auto", marginTop: "-0.8em", marginBottom: "-0.8em" }}
+              />.
+            </span>
             <br />
             <span>
               Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
@@ -430,12 +452,7 @@ export function OriginsSection() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  // Scroll position at the moment the story was opened, so closing can put the reader back exactly
-  // where they clicked "Read More" (see closeStory).
-  const openScrollYRef = useRef(0);
-
   const openStory = () => {
-    openScrollYRef.current = window.scrollY;
     setStoryOpen(true);
   };
 
@@ -443,30 +460,36 @@ export function OriginsSection() {
   // Left alone the browser keeps the current scrollY, which is usually now past the end of the
   // much shorter document — so it clamps, and the reader is thrown somewhere they never chose.
   //
-  // This used to answer that by scrolling to the top of the section, which is the "it moves up"
-  // being reported: deliberate, but it discards where the reader actually was. Restoring the exact
-  // scrollY captured in openStory is better — the page collapses and the reader is left looking at
-  // the same thing they were looking at when they clicked Read More. That position is always valid
-  // for the collapsed layout, since it was recorded while collapsed.
+  // Re-frames the section (originsFramedScrollY) rather than restoring the scrollY captured when
+  // Read More was clicked. That restore looked right on paper — "put them back where they were" —
+  // but "Read More" sits at the BOTTOM of the preview, so reaching it means the reader has already
+  // scrolled the section's heading up off the top of the screen. Returning them to that exact
+  // offset left the collapsed section straddling the viewport with its heading cut off, which is
+  // the "not fit in screen" being reported. Framing it puts the heading and founder photo back on
+  // screen together, the same resting shot the Shop deep-link lands on.
+  //
+  // Measured inside the rAF, i.e. AFTER the collapse has been laid out — measuring before it would
+  // read the still-expanded geometry and land far too low.
   //
   // Instant, not animated: any easing here would read as the very drift this is meant to remove.
   // Routed through Lenis (window.__lenis) when present so its internal target stays in sync — a
   // bare window.scrollTo would be overwritten by Lenis on the next frame.
   const closeStory = () => {
-    // Only desktop needs the restore: there StoryFull renders IN-FLOW, so collapsing it is what
-    // removes the height. On mobile it's a fixed bottom sheet with the page scroll-locked in place
+    // Only desktop needs this: there StoryFull renders IN-FLOW, so collapsing it is what removes
+    // the height. On mobile it's a fixed bottom sheet with the page scroll-locked in place
     // underneath, so nothing moved and there's nothing to put back.
     setStoryOpen(false);
     if (isMobile) return;
-    const y = openScrollYRef.current;
     requestAnimationFrame(() => {
+      const y = originsFramedScrollY();
+      if (y === null) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const lenis = (window as any).__lenis;
       if (lenis?.scrollTo) lenis.scrollTo(y, { immediate: true, force: true });
       // Object form + explicit behavior:"instant" — the legacy (x, y) form here would silently
       // inherit globals.css's site-wide `scroll-behavior: smooth` and animate through every
       // pinned section between the current position and y, which is exactly the drift this
-      // restore is supposed to prevent (see the comment above closeStory).
+      // is supposed to prevent.
       else window.scrollTo({ top: y, behavior: "instant" });
     });
   };
@@ -539,9 +562,6 @@ export function OriginsSection() {
       // a blank white screen forever.
       window.setTimeout(reveal, 7000);
 
-      // Same capture as the Read More button (openStory): the Shop flow opens the story too, so
-      // without this, closing afterwards would restore a stale position from an earlier open.
-      openScrollYRef.current = window.scrollY;
       setStoryOpen(true);
       // Plain scrollIntoView fights Lenis on desktop (same issue closeStory routes around below,
       // and the reason SmoothScroll.tsx exposes window.__lenis in the first place): Lenis owns
@@ -556,32 +576,18 @@ export function OriginsSection() {
       // every corrective pass (the original bug here) reads as the scroll repeatedly decelerating
       // and re-accelerating section by section — "sticky", not smooth. Only the very first pass
       // should be the one animated journey the reader actually watches.
-      // Targets the HEADING ROW (#origins-heading-row), not cosmosRef centered in the viewport
-      // and not the outer #origins-section box either.
-      //   - cosmosRef sits deep in a tall single section (heading, hero photo, and most of the
-      //     story all come before it) — centering IT put roughly a section-and-a-half of content
-      //     above the target, landing in a mid-scroll no-man's-land with nothing reading as
-      //     "arrived" anywhere.
-      //   - The SECTION's own box has its own clamp(180px,14vw,320px) top padding baked in, so
-      //     landing on ITS top just moved the dead space from "above the section" to "still above
-      //     the heading, now inside it" — same gap, different box.
-      // The heading row is the first thing actually meant to be on screen, so landing there (with
-      // a small headroom for breathing room under the nav) shows the section the way a reader
-      // actually encounters it — heading and photo right away — with the highlighted Cosmos
-      // paragraphs simply somewhere further down in the same normal reading flow.
-      const HEADROOM = 24;
+      // Lands on the framed resting shot (originsFramedScrollY — see its own comment for why it
+      // targets the heading row rather than cosmosRef or the section box). Deliberately NOT
+      // cosmosRef centered in the viewport: that paragraph sits deep in a tall single section
+      // (heading, hero photo, and most of the story all come before it), so centering it put
+      // roughly a section-and-a-half of content above the target — a mid-scroll no-man's-land
+      // with nothing reading as "arrived". The highlighted Cosmos paragraphs are simply further
+      // down in the same normal reading flow from here.
       const scrollToCosmos = (instant = false) => {
-        const el = document.getElementById("origins-heading-row");
-        if (!el) return;
+        const targetY = originsFramedScrollY();
+        if (targetY === null) return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lenis = (window as any).__lenis;
-        const targetY = el.getBoundingClientRect().top + window.scrollY - HEADROOM;
-        // openScrollYRef was captured BEFORE this scroll (right when the Shop flow opened the
-        // story), so it still pointed at the pre-scroll position — closeStory then restored
-        // there, throwing the reader back up near the hero instead of leaving them where they
-        // actually were reading (the Cosmos block). Keeping this in sync with every corrective
-        // pass means whichever position the reader is left at is the one Close returns to.
-        openScrollYRef.current = targetY;
         if (lenis?.scrollTo) {
           // force:true is essential, not defensive — Lenis IGNORES scrollTo entirely while it is
           // stopped (its `force` option defaults to false), and this page deliberately calls
@@ -601,7 +607,7 @@ export function OriginsSection() {
           // anything in between.
           window.scrollTo({ top: targetY, behavior: "instant" });
         } else {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          window.scrollTo({ top: targetY, behavior: "smooth" });
         }
       };
       // Polls the paragraph's DOCUMENT position (not viewport-relative — this section isn't
