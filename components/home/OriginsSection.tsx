@@ -27,7 +27,7 @@ const STORY_PARAGRAPHS = [
   "Reason number two is simpler. You get one life. I\u2019ve spent enough time waiting to know everything before I begin. I don\u2019t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I\u2019ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.",
   "I want to be honest from the start \u2014 that\u2019s the only way I know how to do this.",
   "I am inspired by neatness, practicality & innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley \u2014 these are brands I have immense respect for and they have shaped how I think about what a brand can be.",
-  "And I owe transparency about something - when I drew this logo at age 11,I had no idea what Stone Island\u2019s logo looked like and when I discovered the resemblance a couple of years ago,I had sleepless nights. I still think about it. But I believe the people at Stone Island would understand and I\u2019m certain that Massimo Osti would. They all will always be light years ahead of Switchblade. They will always keep inspiring me. And I genuinely hope someday we work together with them that have made possible for Switchblade to exist.",
+  "And I owe transparency about something - when I drew this logo at age 11 I had no idea what Stone Island\u2019s logo looked like and when I discovered the resemblance a couple of years ago,I had sleepless nights. I still think about it. But I believe the people at Stone Island would understand and I\u2019m certain that Massimo Osti would. They all will always be light years ahead of Switchblade. They will always keep inspiring me. And I genuinely hope someday we work together with them that have made possible for Switchblade to exist.",
   "As a personal belief, at the depth of the human heart, there is no competition - only compassion, strength, kindness, and love. That is the core belief Switchblade is built on. It is not a strategy. It is who I am.",
   "Switchblade is for people who carry competence without seeking validation.",
   "Who are just as sharp as they are kind and know those are not opposites.",
@@ -81,6 +81,17 @@ const ORIGINS_HEADROOM = 24;
 function originsFramedScrollY(): number | null {
   const el = document.getElementById("origins-heading-row");
   if (!el) return null;
+  return Math.max(0, el.getBoundingClientRect().top + window.scrollY - ORIGINS_HEADROOM);
+}
+
+// Where the SHOP deep-link lands: the top of the expanded story's text body, one step further
+// down than the framed heading shot above. Shop's whole purpose is to drop the reader INTO the
+// story (it auto-opens it and highlights the Cosmos block further down), so landing on the
+// heading + founder photo meant an extra scroll before any of that was even on screen. Falls back
+// to the framed shot if the body isn't mounted yet — it only exists while the story is open.
+function originsStoryScrollY(): number | null {
+  const el = document.getElementById("origins-story-body");
+  if (!el) return originsFramedScrollY();
   return Math.max(0, el.getBoundingClientRect().top + window.scrollY - ORIGINS_HEADROOM);
 }
 
@@ -199,6 +210,7 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
                 style={{ verticalAlign: "middle", height: "2.8em", width: "auto", marginTop: "-0.8em", marginBottom: "-0.8em" }}
               />.
             </span>
+            <br/>
             <br />
             <span>
               Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
@@ -339,6 +351,9 @@ function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highligh
               so they always end at the same depth no matter how the paragraphs change.
               break-inside-avoid on each paragraph stops one being split across the column gap. */}
           <div
+            // Scroll target for the Shop deep-link — it lands on the story BODY rather than the
+            // section heading, so the reader arrives already reading (see originsStoryScrollY).
+            id="origins-story-body"
             className="columns-1 md:columns-2 max-md:px-5 max-md:pb-7"
             style={{
               columnGap: "clamp(28px,4vw,64px)",
@@ -576,15 +591,14 @@ export function OriginsSection() {
       // every corrective pass (the original bug here) reads as the scroll repeatedly decelerating
       // and re-accelerating section by section — "sticky", not smooth. Only the very first pass
       // should be the one animated journey the reader actually watches.
-      // Lands on the framed resting shot (originsFramedScrollY — see its own comment for why it
-      // targets the heading row rather than cosmosRef or the section box). Deliberately NOT
-      // cosmosRef centered in the viewport: that paragraph sits deep in a tall single section
-      // (heading, hero photo, and most of the story all come before it), so centering it put
-      // roughly a section-and-a-half of content above the target — a mid-scroll no-man's-land
-      // with nothing reading as "arrived". The highlighted Cosmos paragraphs are simply further
-      // down in the same normal reading flow from here.
+      // Lands on the story BODY (originsStoryScrollY — see its own comment), so Shop drops the
+      // reader straight into the text it just opened. Deliberately NOT cosmosRef centered in the
+      // viewport: that paragraph sits deep in a tall single section (heading, hero photo, and most
+      // of the story all come before it), so centering it put roughly a section-and-a-half of
+      // content above the target — a mid-scroll no-man's-land with nothing reading as "arrived".
+      // The highlighted Cosmos paragraphs are simply further down in the same reading flow.
       const scrollToCosmos = (instant = false) => {
-        const targetY = originsFramedScrollY();
+        const targetY = originsStoryScrollY();
         if (targetY === null) return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lenis = (window as any).__lenis;

@@ -630,7 +630,7 @@ export default function CollaboratePage() {
         background: "#FFFFFF", paddingLeft: PX, paddingRight: PX,
         // Top padding reduced from SECTION (clamp(80px,10vw,160px), matching bottom) — this
         // section sat with too much dead space above "Let's Collaborate" before reaching it.
-        paddingTop: "clamp(40px,5vw,80px)", paddingBottom: SECTION,
+        marginTop: "clamp(40px,5vw,80px)", paddingBottom: SECTION,
         scrollMarginTop: 62,
       }}>
         {/* minmax(0,...) on both tracks, not bare 1.35fr/1fr — an `fr` track's IMPLICIT MINIMUM is
