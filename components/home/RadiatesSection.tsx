@@ -42,7 +42,9 @@ const LABELS: Placement[] = [
     // 65% → 72% and 40% → 28% (by request, pushed further from the star's right arm and lined up
     // with it after the model's own upward nudge), but SCOPED to min-[1024px]:max-[1279px] only —
     // real desktop widths (1280px+) keep the original 40%/65%.
-    posClass: "max-lg:top-[39.5%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[74%] min-[1024px]:max-[1279px]:left-[72%] min-[1280px]:left-[65%]",
+    // max-lg left nudged 2px further left (by request) — calc() on top of the existing 74%
+    // anchor, not a new flat value, so it stays scoped to mobile only.
+    posClass: "max-lg:top-[39.5%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[calc(74%-2px)] min-[1024px]:max-[1279px]:left-[72%] min-[1280px]:left-[65%]",
     style: { transform: "translate(0, -50%)" },
   },
   {
@@ -745,10 +747,14 @@ export function RadiatesSection({
                 <span ref={(el) => { dotRefs.current[l.key] = el; }} style={DOT} />
               )}
               <span
+                // Font size moved out of `style` and into a class split so mobile (max-lg,
+                // matching this file's own isMobile JS threshold of 1024) can use its own floor —
+                // 14px vs. the clamp's normal 15px floor — without touching desktop/tablet, which
+                // keep the original clamp untouched via the lg: variant.
+                className="text-[14px] lg:text-[clamp(15px,1.35vw,19px)]"
                 style={{
                   fontFamily: "var(--font-archivo)",
                   fontWeight: 500,
-                  fontSize: "clamp(15px, 1.35vw, 19px)",
                   color: "#0D0D0D",
                   whiteSpace: "nowrap",
                 }}

@@ -236,8 +236,11 @@ export function SiteFooter() {
       <div className="flex items-center justify-between flex-wrap" style={{ gap: 20, marginBottom: "clamp(40px,6vw,72px)" }}>
         {/* flex-nowrap (was flex-wrap) — combined with NAV_LINK_STYLE's shrinking font-size and
             this tighter, viewport-scaled gap, keeps all five links on one line even on a narrow
-            phone instead of "Help" wrapping onto its own row underneath. */}
-        <div className="flex flex-nowrap items-center" style={{ gap: "clamp(10px,3vw,44px)" }}>
+            phone instead of "Help" wrapping onto its own row underneath.
+            w-full + justify-between on mobile spreads the five links edge-to-edge across the row
+            (evenly spaced) instead of clustering them at the left with `gap` as the only spacing —
+            desktop (md:) reverts to its own natural width + gap-based layout, unaffected. */}
+        <div className="flex flex-nowrap items-center justify-between w-full md:w-auto md:justify-start" style={{ gap: "clamp(10px,3vw,44px)" }}>
           {NAV_LINKS.map(link =>
             "action" in link ? (
               <button

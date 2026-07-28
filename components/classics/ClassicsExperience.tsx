@@ -1334,7 +1334,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
             </div>
             <div className="detail__content">
               <h2 className="detail__title" ref={detailGhostPrevTitleRef} />
-              <div>
+              {/* detail__textWrap: on mobile this becomes the REAL flex container that lets
+                  .detail__body shrink and scroll within a bounded height (see the CSS comment on
+                  .detail__textWrap) — without a class here (this used to be a bare <div>),
+                  .detail__body's own flex/min-height/overflow rules were inert, since a flex item's
+                  properties only take effect when its DIRECT parent is a flex container, and this
+                  div was plain display:block. */}
+              <div className="detail__textWrap">
                 <span className="detail__badge" ref={detailGhostPrevBadgeRef} />
                 <div className="detail__body" ref={detailGhostPrevBodyRef} />
                 <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>
@@ -1361,7 +1367,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
             </div>
             <div className="detail__content">
               <h2 className="detail__title" ref={detailTitleRef} />
-              <div>
+              <div className="detail__textWrap">
                 <span className="detail__badge" ref={detailBadgeRef} />
                 <div className="detail__body" ref={detailBodyRef} />
                 <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>
@@ -1379,7 +1385,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
             </div>
             <div className="detail__content">
               <h2 className="detail__title" ref={detailGhostNextTitleRef} />
-              <div>
+              <div className="detail__textWrap">
                 <span className="detail__badge" ref={detailGhostNextBadgeRef} />
                 <div className="detail__body" ref={detailGhostNextBodyRef} />
                 <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>

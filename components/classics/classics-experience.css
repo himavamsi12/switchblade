@@ -155,17 +155,73 @@
        actually crop into a peek. touch-action:pan-y lets vertical page scroll still work over
        the cards while horizontal drags are fully owned by the swipe handler. */
     flex-shrink: 0; touch-action: pan-y; width: calc(100vw - 2 * var(--margin) - 28px);
+    /* Shortened from unbounded (by request, "make the card height short") — caps the WHOLE card
+       so it can never grow past the viewport itself; only .detail__body (below) gets its own
+       scroll within whatever height that leaves it, everything else (image, title, badge,
+       instagram icon) stays fully visible and fixed in place, never scrolling. calc() leaves
+       --margin (20px) of breathing room top/bottom so the card never touches the viewport edges.
+       min-height:450px (by request) is the floor this needs regardless of the max-height above —
+       that cap left too little room for title+badge+instagram icon to render at all on some
+       viewports, clipping them along with the card's own overflow:hidden. Per the CSS spec,
+       min-height wins over a conflicting max-height, so this guarantees the card is never
+       shorter than 450px even if max-height would otherwise compute smaller. vh declared before
+       dvh as a fallback for browsers that don't support the dynamic-viewport unit — the later,
+       supported one simply overrides it. */
+    min-height: 450px;
+    max-height: calc(100vh - 2 * var(--margin));
+    max-height: calc(100dvh - 2 * var(--margin));
+    overflow: hidden;
   }
   .classics-exp .detail__card--ghost { display: flex; pointer-events: none; }
-  /* The min-height:520px on .detail__media / .detail__img in the base (desktop) rules has to be
-     cleared here, not just overridden with a smaller `height` — min-height always beats height,
-     so the old `height:180px` alone did nothing and the image still rendered ~520px+ tall,
-     filling most of a phone screen. Height moves onto .detail__media (the positioning context);
-     .detail__img is absolutely inset:0 inside it, so it just fills whatever that box is. */
-  .classics-exp .detail__media { flex: 0 0 auto; height: 200px; min-height: 0; }
+  /* Base rule gives .detail__mediaCol flex:1 1 0 — equal footing with .detail__content, so the
+     card's available height (see max-height above) split roughly 50/50 between them regardless
+     of whether the image side actually needed that much. .detail__media inside it is pinned to a
+     fixed 160px (flex:0 0 auto below) and never grows to use its share anyway, so that extra
+     height bought nothing but was taken directly out of .detail__content's side — exactly where
+     title/badge/instagram icon and the scrollable body needed it most. flex:0 0 auto here makes
+     mediaCol take only its own natural (image) height, so 100% of whatever the card doesn't use
+     on the image goes to .detail__content instead. */
+  .classics-exp .detail__mediaCol { flex: 0 0 auto; }
+  /* Shortened from 200px (by request, "make the card height short") — leaves more of the card's
+     own capped height (see max-height above) for the actual text. */
+  .classics-exp .detail__media { flex: 0 0 auto; height: 160px; min-height: 0; }
   .classics-exp .detail__img { height: 100%; min-height: 0; }
-  .classics-exp .detail__title { font-size: 1.28rem; }
-  .classics-exp .detail__badge { align-self: center; margin: 14px 0 12px; }
+  .classics-exp .detail__title { font-size: 1.28rem; flex-shrink: 0; }
+  /* min-height:0 on the flex column so it can actually SHRINK to whatever space the card's
+     max-height above leaves it, rather than growing to its content's natural height (a flex
+     item's default min-height is `auto`, i.e. its content size) — without this, the scrollable
+     body further down never gets a bounded box to scroll within, same underlying issue as
+     HelpModal.tsx's own lg:min-h-0 fix on its form column. */
+  .classics-exp .detail__content { min-height: 0; }
+  /* .detail__content's actual children are .detail__title and THIS wrapper (badge + body + ig
+     live inside it — see the JSX in ClassicsExperience.tsx) — a plain, unstyled <div> until this
+     class was added. That mattered a lot: flex properties on a child (flex/min-height/overflow
+     tricks below) only take effect when its DIRECT parent is itself a flex container. .detail__
+     body used to carry flex:1 1 auto + min-height:0 + overflow-y:auto directly, but its real
+     parent was this plain display:block div — none of that had any effect, block layout just
+     grows to fit content, so body silently rendered at its full natural text height regardless of
+     available space, pushing .detail__ig (and often the tail of body itself) past the CARD's own
+     overflow:hidden boundary — invisible, not just "hard to reach". Making THIS wrapper the real
+     flex container (and flex:1 1 auto + min-height:0 itself, to claim whatever height .detail__
+     content has left after title's fixed size) is what lets .detail__body's own flex/scroll rules
+     below actually take effect. */
+  .classics-exp .detail__textWrap { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .classics-exp .detail__badge { align-self: center; margin: 14px 0 12px; flex-shrink: 0; }
+  /* THIS is the only part of the card that scrolls — image/title/badge/instagram icon all stay
+     put. flex:1 1 auto claims whatever height .detail__textWrap (now a real flex container, see
+     above) has left after .detail__badge's fixed size; min-height:0 lets it shrink below its own
+     text's natural height so overflow-y can actually kick in instead of just pushing the card
+     taller. touch-action:pan-y on the CARD above already permits this vertical gesture (only
+     horizontal drags are grabbed by the card-swipe handler, and all its touch listeners are
+     registered passive: true — see onCardTouch* in ClassicsExperience.tsx — so they can't
+     preventDefault this native scroll). */
+  .classics-exp .detail__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .classics-exp .detail__ig { flex-shrink: 0; }
   .classics-exp .detail__body { font-size: .84rem; line-height: 1.5; }
   /* Thumbnail strip hidden on mobile — autoplay (see renderThumbs/startAutoplay in
      ClassicsExperience.tsx) and the swipe gesture on the image itself already cover browsing a

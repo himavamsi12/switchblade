@@ -213,13 +213,13 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
             <br/>
             <br />
             <span>
-              Not in a drawer  in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
+              Not in a drawer — in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
               <br /><br />That&rsquo;s reason number one to establish Switchblade.
               <br /><br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
             </span>
           </p>
           <p style={{ marginTop: "1.4em" }}>
-            I want to be honest from the start,  that&rsquo;s the only way I know how to do this.
+            I want to be honest from the start — that&rsquo;s the only way I know how to do this.
             <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be.
             {/* Desktop preview now CUTS OFF mid-sentence here, at "when I ...", with Read More
                 sitting inline right after the ellipsis rather than as its own block underneath.
@@ -301,14 +301,18 @@ function withAgeTag(para: string) {
   );
 }
 
-function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highlightCosmos: boolean; cosmosRef: React.RefObject<HTMLParagraphElement | null>; onClose: () => void; isMobile: boolean }) {
+function StoryFull({ highlightCosmos, enableReadHereCue, cosmosRef, onClose, isMobile }: { highlightCosmos: boolean; enableReadHereCue: boolean; cosmosRef: React.RefObject<HTMLParagraphElement | null>; onClose: () => void; isMobile: boolean }) {
   // On (fresh mount every time Read More opens), off after READ_HERE_MS — a one-shot "start
-  // reading here" cue, not a persistent marker.
-  const [showReadHere, setShowReadHere] = useState(true);
+  // reading here" cue, not a persistent marker. Disabled entirely when opened via Shop
+  // (enableReadHereCue=false): that flow has its OWN highlight target (the Cosmos block, via
+  // highlightCosmos) and scrolls further down to it — showing this cue too lit up both spans
+  // at once.
+  const [showReadHere, setShowReadHere] = useState(enableReadHereCue);
   useEffect(() => {
+    if (!enableReadHereCue) return;
     const t = window.setTimeout(() => setShowReadHere(false), READ_HERE_MS);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [enableReadHereCue]);
 
   return (
     <motion.div
@@ -343,7 +347,9 @@ function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highligh
             Content (like the "- Sanjam" sign-off at the very end) just overflowed silently past
             the fixed sheet instead of being reachable by scrolling. Same fix as HelpModal.tsx's
             lg:min-h-0 on its own form column. */}
-        <div className="md:contents min-h-0" style={{ overflowY: "auto" }}>
+        {/* id used by the Shop-flow's scrollToCosmos on mobile — see its own comment for why the
+            mobile branch needs to scroll THIS box specifically, not window. */}
+        <div id="origins-mobile-sheet-body" className="md:contents min-h-0" style={{ overflowY: "auto" }}>
           {/* CSS multi-column, not two hand-split arrays. The story was previously sliced into a
               fixed LEFT/RIGHT pair at a chosen index, which meant the two columns only lined up if
               that index happened to balance them — it didn't, and any edit to the copy would throw
@@ -451,6 +457,14 @@ function StoryFull({ highlightCosmos, cosmosRef, onClose, isMobile }: { highligh
 export function OriginsSection() {
   const [storyOpen, setStoryOpen] = useState(false);
   const [highlightCosmos, setHighlightCosmos] = useState(false);
+  // Which flow opened the story — controls whether StoryFull's "start reading here" cue (the
+  // READ_HERE_* span, meant to help someone who just clicked Read More find where the mobile
+  // preview cut off) is shown at all. Shop already has its OWN highlight target (the Cosmos
+  // block, via highlightCosmos) and its own scroll destination further down the story — showing
+  // the read-here cue too lit up BOTH spans at once, which is the bug being fixed here. "readMore"
+  // is the default since that's the more common path and the one every existing StoryFull mount
+  // predates this distinction.
+  const [openSource, setOpenSource] = useState<"readMore" | "shop">("readMore");
   const cosmosRef = useRef<HTMLParagraphElement>(null);
 
   // Mobile renders StoryFull as a fixed overlay ON TOP of a still-mounted StoryPreview, instead of
@@ -468,6 +482,7 @@ export function OriginsSection() {
   }, []);
 
   const openStory = () => {
+    setOpenSource("readMore");
     setStoryOpen(true);
   };
 
@@ -577,6 +592,7 @@ export function OriginsSection() {
       // a blank white screen forever.
       window.setTimeout(reveal, 7000);
 
+      setOpenSource("shop");
       setStoryOpen(true);
       // Plain scrollIntoView fights Lenis on desktop (same issue closeStory routes around below,
       // and the reason SmoothScroll.tsx exposes window.__lenis in the first place): Lenis owns
@@ -598,6 +614,26 @@ export function OriginsSection() {
       // content above the target — a mid-scroll no-man's-land with nothing reading as "arrived".
       // The highlighted Cosmos paragraphs are simply further down in the same reading flow.
       const scrollToCosmos = (instant = false) => {
+        // Mobile branch: the story is a FIXED bottom sheet with the page's own scroll locked
+        // (body overflow:hidden — see the storyOpen/isMobile effect above), so window.scrollTo
+        // below is a no-op there — nothing to scroll, since the page itself can't move. The sheet
+        // opened showing its own top (heading + founder photo) and just sat there, never reaching
+        // the highlighted Cosmos text further down — which is exactly the reported bug. The
+        // sheet's OWN inner content box (#origins-mobile-sheet-body, overflowY:auto) is the real
+        // scrollable element here; scroll THAT to bring cosmosRef into view within it.
+        //
+        // Read window.innerWidth at CALL time, not the `isMobile` React state: this whole effect
+        // only runs once (mount, deps []), so a closure over that state would be permanently
+        // stale at whatever it happened to be during that single render.
+        if (window.innerWidth < 768) {
+          const container = document.getElementById("origins-mobile-sheet-body");
+          const target = cosmosRef.current;
+          if (!container || !target) return;
+          const targetTop = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+          container.scrollTo({ top: Math.max(0, targetTop - 12), behavior: instant ? "auto" : "smooth" });
+          return;
+        }
+
         const targetY = originsStoryScrollY();
         if (targetY === null) return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -768,14 +804,14 @@ export function OriginsSection() {
           restore. */}
       <AnimatePresence>
         {storyOpen && !isMobile
-          ? <StoryFull key="full" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={closeStory} isMobile={false} />
+          ? <StoryFull key="full" highlightCosmos={highlightCosmos} enableReadHereCue={openSource === "readMore"} cosmosRef={cosmosRef} onClose={closeStory} isMobile={false} />
           : <StoryPreview key="preview" onReadMore={openStory} />}
       </AnimatePresence>
 
       {isMobile && (
         <AnimatePresence>
           {storyOpen && (
-            <StoryFull key="full-mobile" highlightCosmos={highlightCosmos} cosmosRef={cosmosRef} onClose={closeStory} isMobile />
+            <StoryFull key="full-mobile" highlightCosmos={highlightCosmos} enableReadHereCue={openSource === "readMore"} cosmosRef={cosmosRef} onClose={closeStory} isMobile />
           )}
         </AnimatePresence>
       )}
