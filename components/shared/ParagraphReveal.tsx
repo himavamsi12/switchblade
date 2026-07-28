@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { Globe3D } from "@/components/shared/Globe3D";
+import { isShopDeepLink } from "@/components/shared/shopDeepLink";
 
 function Highlighted({ text }: { text: string }) {
   const parts = text.split(/(Switchblade|thinkers & doers)/g);
@@ -110,6 +111,11 @@ export function ParagraphReveal() {
         const HOLD_SECONDS = 0.35;
         const holdHere = () => {
           if (heldOnce) return;
+          // Never freeze the page during a Shop deep-link landing — that flow jumps the scroll
+          // straight past this section to Origins, tripping this pin's onEnter on the way. The
+          // hold then locks scrolling mid-jump, which (together with RadiatesSection's own hold)
+          // is exactly the reported "stopping in each section". See shopDeepLink.ts.
+          if (isShopDeepLink()) return;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const lenis = (window as any).__lenis;
           if (!lenis?.stop) return;

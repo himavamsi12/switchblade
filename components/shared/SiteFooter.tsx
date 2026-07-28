@@ -51,7 +51,11 @@ function InstagramLink({ className = "" }: { className?: string }) {
     // "You got this..." — inline styles outrank any class — so the mobile-only pill kept
     // rendering on desktop too, under the text. Any utility passed in (md:hidden, max-md:hidden)
     // now overrides this the way it reads like it should.
-    <a href="#" className={"inline-flex " + className} style={{
+    <a
+      href="https://www.instagram.com/switchbladeworld?igsh=Mmw2dHBscHdnYzgx&utm_source=qr"
+      target="_blank"
+      rel="noopener noreferrer"
+      className={"inline-flex " + className} style={{
       alignItems:    "center",
       gap:           8,
       height:        32,

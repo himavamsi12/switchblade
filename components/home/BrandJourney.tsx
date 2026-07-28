@@ -108,8 +108,14 @@ export function BrandJourney() {
         <div style={{ position: "relative", height: "100%" }}>
           {PHASES.map((p, i) => {
             const offset = i - active;
-            const role = offset === 0 ? "active" : offset === 1 ? "next" : offset === -1 ? "previous" : "hidden";
+            // "far" (|offset|===2) only ever appears with N=3: at active===0 it's the 3rd phase
+            // peeking in on the right, at active===N-1 it's the 1st peeking in on the left — a
+            // hint that a third card exists at all, which was missing entirely before (that slot
+            // just rendered at opacity:0 as "hidden"). Doesn't generalize to N>3 as written (only
+            // one extra tier), but there are only 3 phases here.
+            const role = offset === 0 ? "active" : offset === 1 ? "next" : offset === -1 ? "previous" : Math.abs(offset) === 2 ? "far" : "hidden";
             const isActive = role === "active";
+            const isFar = role === "far";
             const onRightSide = offset > 0;
             // The card CHROME (border/background/badge) slides via `transform: scale()` — a
             // compositor-only property, so this animates smoothly regardless of how many cards
@@ -117,9 +123,15 @@ export function BrandJourney() {
             // there) because they can't live inside a scaled ancestor without breaking.
             const CARD_W = "clamp(220px,26vw,380px)";
             const SIDE_SCALE = 0.53; // ~ clamp(120px,14vw,200px) / clamp(220px,26vw,380px)
+            const FAR_SCALE = 0.36; // smaller again — reads as further away than the immediate side card
+            const scale = isFar ? FAR_SCALE : SIDE_SCALE;
             const gap = "calc(clamp(110px,13vw,190px) + clamp(64px,8vw,130px))";
-            const shift = `calc(${gap} + (${CARD_W} * ${SIDE_SCALE}) / 2)`;
-            const sideTransform = `translate(-50%,-50%) translateX(${onRightSide ? shift : `calc(-1 * (${shift}))`}) scale(${SIDE_SCALE})`;
+            const sideShift = `calc(${gap} + (${CARD_W} * ${SIDE_SCALE}) / 2)`;
+            // Far card sits past the FULL width of the side card (not just its half), plus a
+            // smaller extra gap, plus its own half-width.
+            const farShift = `calc(${gap} + (${CARD_W} * ${SIDE_SCALE}) + clamp(24px,3vw,48px) + (${CARD_W} * ${FAR_SCALE}) / 2)`;
+            const shift = isFar ? farShift : sideShift;
+            const sideTransform = `translate(-50%,-50%) translateX(${onRightSide ? shift : `calc(-1 * (${shift}))`}) scale(${scale})`;
             return (
               <div
                 key={p.key}
@@ -134,6 +146,12 @@ export function BrandJourney() {
                   borderRadius: 12,
                   background: "linear-gradient(135deg,#EDEDED 0%,#F6F6F6 45%,#FBFBFB 100%)",
                   border: isActive ? "1px solid rgba(13,13,13,0.1)" : "1px solid rgba(13,13,13,0.08)",
+                  // Fully opaque even when far — this card CHROME is what occludes the horizontal
+                  // timeline rule running behind it at top:50%. Dimming the whole card (it was
+                  // 0.6) made it translucent, so that line showed straight through the third
+                  // card's face while the nearer card correctly hid it. The "further away" read
+                  // comes from the smaller scale plus the dimmed star canvas (see its own opacity
+                  // below), neither of which has to occlude anything.
                   opacity: role === "hidden" ? 0 : 1,
                   pointerEvents: role === "hidden" ? "none" : undefined,
                   transition: "opacity 0.45s ease, transform 0.55s cubic-bezier(0.22,1,0.36,1)",
@@ -182,13 +200,20 @@ export function BrandJourney() {
               card instead of just crossfading in place. */}
           {PHASES.map((p, i) => {
             const offset = i - active;
-            const role = offset === 0 ? "active" : offset === 1 ? "next" : offset === -1 ? "previous" : "hidden";
+            // Same "far" tier as the card chrome above (see its comment) — only ever populated
+            // with N=3 phases, at either end of the sequence.
+            const role = offset === 0 ? "active" : offset === 1 ? "next" : offset === -1 ? "previous" : Math.abs(offset) === 2 ? "far" : "hidden";
             const isActive = role === "active";
+            const isFar = role === "far";
             const onRightSide = offset > 0;
             const CANVAS_W_ACTIVE = "clamp(220px,26vw,380px)";
             const CANVAS_W_SIDE = "clamp(120px,14vw,200px)";
+            const CANVAS_W_FAR = "clamp(80px,9.5vw,137px)"; // ~ same ratio to CANVAS_W_ACTIVE as FAR_SCALE above
+            const canvasW = isFar ? CANVAS_W_FAR : CANVAS_W_SIDE;
             const gap = "calc(clamp(110px,13vw,190px) + clamp(64px,8vw,130px))";
-            const shift = `calc(${gap} + ${CANVAS_W_SIDE} / 2)`;
+            const sideShift = `calc(${gap} + ${CANVAS_W_SIDE} / 2)`;
+            const farShift = `calc(${gap} + ${CANVAS_W_SIDE} + clamp(24px,3vw,48px) + ${CANVAS_W_FAR} / 2)`;
+            const shift = isFar ? farShift : sideShift;
             return (
               <div
                 key={p.key}
@@ -199,10 +224,10 @@ export function BrandJourney() {
                   transform: isActive
                     ? "translate(-50%,-50%)"
                     : `translate(-50%,-50%) translateX(${onRightSide ? shift : `calc(-1 * (${shift}))`})`,
-                  width: isActive ? CANVAS_W_ACTIVE : CANVAS_W_SIDE,
+                  width: isActive ? CANVAS_W_ACTIVE : canvasW,
                   maxHeight: "100%",
                   aspectRatio: "364/452",
-                  opacity: role === "hidden" ? 0 : isActive ? 1 : 0.5,
+                  opacity: role === "hidden" ? 0 : isActive ? 1 : isFar ? 0.35 : 0.5,
                   zIndex: isActive ? 1 : 0,
                   pointerEvents: "none",
                   transition: "opacity 0.45s ease, transform 0.55s cubic-bezier(0.22,1,0.36,1), width 0.55s cubic-bezier(0.22,1,0.36,1)",

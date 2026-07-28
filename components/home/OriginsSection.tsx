@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { SweepText } from "@/components/shared/SweepText";
 import { SHOP_HIGHLIGHT_EVENT, SHOP_HIGHLIGHT_KEY } from "@/components/shared/SiteNav";
+import { beginShopDeepLink, endShopDeepLink } from "@/components/shared/shopDeepLink";
 
 // Every paragraph the expanded story is made of, ONE ENTRY PER PARAGRAPH — matching the reference
 // layout exactly, where each of these sits apart from its neighbours by the same single gap.
@@ -462,7 +463,11 @@ export function OriginsSection() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const lenis = (window as any).__lenis;
       if (lenis?.scrollTo) lenis.scrollTo(y, { immediate: true, force: true });
-      else window.scrollTo(0, y);
+      // Object form + explicit behavior:"instant" — the legacy (x, y) form here would silently
+      // inherit globals.css's site-wide `scroll-behavior: smooth` and animate through every
+      // pinned section between the current position and y, which is exactly the drift this
+      // restore is supposed to prevent (see the comment above closeStory).
+      else window.scrollTo({ top: y, behavior: "instant" });
     });
   };
 
@@ -499,6 +504,41 @@ export function OriginsSection() {
   // because it can be clicked from two different situations:
   useEffect(() => {
     const run = () => {
+      // Tell the sections between here and the top to skip their scroll-freezing entrance holds
+      // for this landing — set BEFORE the jump below, which is what trips their triggers. This is
+      // the single entry point for the flow, so it covers both ways it can start (full navigation
+      // from another page, and a click while already on the homepage). See shopDeepLink.ts.
+      beginShopDeepLink();
+
+      // Jumping scrollY instantly (see scrollToCosmos below) does NOT mean the page instantly
+      // looks right. Every pinned section between the top of the page and Cosmos (Hero, "A Mark
+      // That Radiates", the SWITCHBLADE wordmark reveal, the globe travel) is driven by a
+      // scroll-SCRUBBED GSAP tween — several with a numeric `scrub` lag (their deliberate, tuned
+      // smoothing for normal scrolling). A scrub tween doesn't snap its own playhead to match a
+      // sudden scroll jump; it eases toward the new progress over that lag, same as it would for
+      // a real scroll. So an instant scrollY jump from the very top still played out as every one
+      // of those tweens visibly catching up in sequence — heading fading, star repositioning,
+      // wordmark revealing, globe travel — which is exactly the "stopping in each section" look,
+      // even though the scroll POSITION itself never animated. Retuning every scrub value across
+      // several independently-authored sections to react instantly would be invasive and risks
+      // breaking their normal-scroll feel. Simpler and non-invasive: hide the viewport behind a
+      // plain white cover for the brief moment all of that catch-up actually happens, then reveal
+      // once it's done — the reader never sees the in-between state, only the direct cut.
+      const cover = document.createElement("div");
+      cover.style.cssText = "position:fixed;inset:0;z-index:2500;background:#fff;opacity:0;transition:opacity 0.15s ease;pointer-events:none;";
+      document.body.appendChild(cover);
+      requestAnimationFrame(() => { cover.style.opacity = "1"; });
+      let revealed = false;
+      const reveal = () => {
+        if (revealed) return;
+        revealed = true;
+        cover.style.opacity = "0";
+        window.setTimeout(() => cover.remove(), 200);
+      };
+      // Absolute worst case (something above never settles) — never leave the reader staring at
+      // a blank white screen forever.
+      window.setTimeout(reveal, 7000);
+
       // Same capture as the Read More button (openStory): the Shop flow opens the story too, so
       // without this, closing afterwards would restore a stale position from an earlier open.
       openScrollYRef.current = window.scrollY;
@@ -543,9 +583,23 @@ export function OriginsSection() {
         // pass means whichever position the reader is left at is the one Close returns to.
         openScrollYRef.current = targetY;
         if (lenis?.scrollTo) {
-          lenis.scrollTo(targetY, instant ? { duration: 0 } : { duration: 1.2 });
+          // force:true is essential, not defensive — Lenis IGNORES scrollTo entirely while it is
+          // stopped (its `force` option defaults to false), and this page deliberately calls
+          // lenis.stop() from two different entrance holds on the way down (RadiatesSection,
+          // ParagraphReveal). Those are now skipped on a deep-link (see shopDeepLink.ts), but any
+          // future/edge-case stop would otherwise make these jumps silently no-op — the exact
+          // failure mode that left the reader stranded partway down the page.
+          lenis.scrollTo(targetY, instant ? { duration: 0, force: true } : { duration: 1.2, force: true });
         } else if (instant) {
-          window.scrollTo(0, targetY);
+          // The legacy (x, y) form of scrollTo always follows the page's CSS scroll-behavior —
+          // and globals.css sets `html { scroll-behavior: smooth }` site-wide. Calling it that
+          // way here silently turned this "instant" jump into a real native smooth-scroll THROUGH
+          // every pinned ScrollTrigger section on the way down (RadiatesSection, ParagraphReveal)
+          // — each pin holding the view still while the native scroll eats through its spacer is
+          // exactly what read as "stopping in each section." The object form's explicit
+          // behavior:"instant" overrides the CSS default and actually jumps, no travel through
+          // anything in between.
+          window.scrollTo({ top: targetY, behavior: "instant" });
         } else {
           el.scrollIntoView({ behavior: "smooth", block: "start" });
         }
@@ -580,23 +634,33 @@ export function OriginsSection() {
         lastY = y;
         elapsed += POLL_MS;
         if (stableTicks >= STABLE_TICKS_NEEDED || elapsed >= MAX_MS) {
-          scrollToCosmos();
+          // instant=true, always — by request. This flow is triggered from Shop, often from a
+          // full page navigation (another page → home), and an animated multi-second scroll
+          // through every intervening section (hero, "A Mark That Radiates", the wordmark, the
+          // globe...) read as "stopping in every section on the way" even once each individual
+          // leg was smooth — the reader doesn't want a guided tour, they want to just land on the
+          // Cosmos block immediately. A straight instant jump shows the destination directly, no
+          // scroll journey at all.
+          scrollToCosmos(true);
           setHighlightCosmos(true);
+          // Reveal once the jump has landed AND a brief buffer has let every scrub tween's own
+          // catch-up (see the cover's creation above) actually finish while still hidden. 350ms
+          // comfortably covers this page's scrub lag values (all well under 1s) without leaving
+          // the reader staring at blank white for long.
+          window.setTimeout(reveal, 350);
           // Several corrective passes, not just one — on a COLD first load (uncached JS chunks,
           // slower parse/hydrate) the sections above this one (RadiatesSection's pinned
           // ScrollTriggers especially) can keep reflowing well past the point the poll judged
           // things "stable", each reflow silently carrying the target further down the page. A
           // single 800ms follow-up wasn't always late enough to catch the last of those shifts,
           // which is why this only ever landed short on the very first load of the session (a
-          // second click right after has everything already warm/settled).
-          //
-          // All of these fire AFTER 1200ms — the initial scrollToCosmos() call above starts a
-          // 1.2s eased animation, and an instant snap landing WHILE that's still in flight was
-          // exactly what made the ride look like it kept stopping and restarting section by
-          // section (the snap cuts the ongoing animation off mid-motion). Waiting for it to
-          // finish first means every correction after is either a genuine no-op (nothing moved)
-          // or a small imperceptible nudge, never a visible interruption.
-          [1400, 2200, 3200, 4400, 6000].forEach(ms => window.setTimeout(() => scrollToCosmos(true), ms));
+          // second click right after has everything already warm/settled). All instant, same as
+          // the initial jump — never a re-animated scroll, just a silent re-snap if anything
+          // above has shifted since.
+          [400, 900, 1600, 2600, 4000].forEach(ms => window.setTimeout(() => scrollToCosmos(true), ms));
+          // Landing is over — let the rest of the session behave normally (the entrance holds
+          // this suppressed are "once only" anyway, so this mainly keeps the flag honest).
+          window.setTimeout(endShopDeepLink, 4200);
         } else {
           window.setTimeout(poll, POLL_MS);
         }

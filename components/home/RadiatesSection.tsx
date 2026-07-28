@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import type { RefObject } from "react";
+import { isShopDeepLink } from "@/components/shared/shopDeepLink";
 
 type Placement = {
   key: string;
@@ -252,6 +253,13 @@ export function RadiatesSection({
       let heldOnce = false;
       const holdForEntrance = () => {
         if (isMobile || heldOnce) return;
+        // Never freeze the page during a Shop deep-link landing. That flow jumps the scroll
+        // position straight past this section to Origins; this section's own top still crosses
+        // the trigger line on the way, so without this guard the hold fires and locks scrolling
+        // for ~1.65s mid-jump — the page visibly stalling here (and again at ParagraphReveal's
+        // own hold) is exactly the reported "stopping in each section". Nobody is reading this
+        // section on a deep-link, so there is nothing to protect from being skipped.
+        if (isShopDeepLink()) return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lenis = (window as any).__lenis;
         if (!lenis?.stop) return;
@@ -274,7 +282,13 @@ export function RadiatesSection({
         if (isIntersecting !== wasIntersecting) {
           wasIntersecting = isIntersecting;
           if (isIntersecting) {
-            tlEnter.play();
+            // On a Shop deep-link the reader is being jumped PAST this section, so its ~1.5s
+            // time-based entrance has no audience — playing it just leaves the scene visibly
+            // animating (heading fading, star spinning, labels typing) behind/through the jump.
+            // Snapping the timeline to its finished state keeps the section in a correct resting
+            // state without any of that motion.
+            if (isShopDeepLink()) tlEnter.progress(1).pause();
+            else tlEnter.play();
             holdForEntrance();
             // Desktop only — mobile's whole settle motion is owned by scaleTween alone (start:
             // "top 60%", see below), one continuous tween with no competing move here.

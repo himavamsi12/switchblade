@@ -1325,6 +1325,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               <div>
                 <span className="detail__badge" ref={detailGhostPrevBadgeRef} />
                 <div className="detail__body" ref={detailGhostPrevBodyRef} />
+                <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
+                </a>
               </div>
             </div>
           </div>
@@ -1349,6 +1352,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               <div>
                 <span className="detail__badge" ref={detailBadgeRef} />
                 <div className="detail__body" ref={detailBodyRef} />
+                <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
+                </a>
               </div>
             </div>
           </div>
@@ -1364,6 +1370,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               <div>
                 <span className="detail__badge" ref={detailGhostNextBadgeRef} />
                 <div className="detail__body" ref={detailGhostNextBodyRef} />
+                <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
+                </a>
               </div>
             </div>
           </div>

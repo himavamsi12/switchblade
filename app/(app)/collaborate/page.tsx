@@ -729,7 +729,7 @@ export default function CollaboratePage() {
               <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Drop a Pitch</span>
             </div>
 
-            <form className="rise-item flex flex-col gap-[18px]" style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }} onSubmit={e => {
+            <form className="rise-item flex flex-col gap-9" style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }} onSubmit={e => {
               e.preventDefault();
               setPitchSent(true);
               e.currentTarget.reset();
@@ -741,7 +741,7 @@ export default function CollaboratePage() {
                 { label: "What would we make together",  type: "input" },
                 { label: "E-mail or phone number",        type: "input", required: true },
               ].map(f => (
-                <div key={f.label} className="flex flex-col gap-11">
+                <div key={f.label} className="flex flex-col gap-3">
                   <label style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>{f.label}{f.required && <span style={{ color: "#0456DD" }}> *</span>}</label>
                   <input type="text" required={f.required} style={fieldStyle} onFocus={e => (e.target.style.borderBottomColor = "#0456DD")} onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")} />
                 </div>

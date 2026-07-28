@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ParagraphReveal } from "@/components/shared/ParagraphReveal";
 import { RadiatesSection } from "@/components/home/RadiatesSection";
 import { OriginsSection } from "@/components/home/OriginsSection";
@@ -358,6 +358,44 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
 }
 
 export default function HomePage() {
+  // Fixes an intermittent bug: navigate away (e.g. via a footer link) and back to the homepage,
+  // then scroll — the fixed-position star (RadiatesSection's "A Mark That Radiates" scene) ends
+  // up off-center, matching neither its hero-resting x nor its docked-beside-the-globe x. Root
+  // cause is a stale-measurement race, not anything wrong with the star's own animation math:
+  //
+  // This page has THREE independent effects (Hero's, RadiatesSection's, and the plain
+  // .scroll-entrance one below) each async-importing gsap and creating their own ScrollTriggers/
+  // scrubbed timelines. Several of those tweens (RadiatesSection's globeTravel especially) read
+  // the star's CURRENT x/y as their own implicit starting point rather than a hardcoded value —
+  // deliberate, so they can't visibly jump on activation (see that file's own comments). That's
+  // safe on a normal fresh load, where every trigger's first measurement happens at scrollY 0.
+  // But the BROWSER's own native scroll restoration (history.scrollRestoration) can restore a
+  // non-zero scrollY on returning via back/forward navigation BEFORE these effects' async gsap
+  // imports resolve and register their triggers — so a trigger can initialize already partway
+  // (or fully) inside its own active range, with GSAP ScrollTrigger's "onEnter" crossing-callback
+  // (which several of these tweens rely on to re-sync their start values) never firing at all,
+  // since no crossing ever happens if you start already inside the range. Whatever value got
+  // captured at that mistimed moment is then baked in as the tween's start, producing exactly the
+  // "stuck somewhere between two valid positions" bug reported.
+  //
+  // Two-part fix: opt this page out of the browser's native scroll restoration (so returning here
+  // always starts predictably at the top, matching every one of these effects' own assumption),
+  // and force scrollY to 0 synchronously before any child effect gets a chance to run. Restored on
+  // unmount so navigating to a page that DOES want native restoration isn't affected.
+  useLayoutEffect(() => {
+    const prev = typeof window !== "undefined" ? history.scrollRestoration : undefined;
+    if (typeof window !== "undefined" && "scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+    // Object form + explicit behavior:"instant" — the legacy (0, 0) form inherits globals.css's
+    // site-wide `scroll-behavior: smooth` and would animate down from wherever native restoration
+    // put the page, through every pinned section, instead of the instant reset this needs to be.
+    window.scrollTo({ top: 0, behavior: "instant" });
+    return () => {
+      if (prev) history.scrollRestoration = prev;
+    };
+  }, []);
+
   const globalStarRef   = useRef<HTMLDivElement>(null);
   const spinProgressRef = useRef<number>(0);
   // Extra rotation (radians), added on top of the star's own always-on spin, driven directly by

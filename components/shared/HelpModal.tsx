@@ -265,7 +265,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
 
             {/* Pitch form */}
             <form
-              className="flex flex-col gap-[18px]"
+              className="flex flex-col gap-9"
               style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }}
               onSubmit={e => {
                 e.preventDefault();
@@ -280,11 +280,11 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
                 { label: "What would we make together" },
                 { label: "E-mail or phone number", required: true },
               ].map(({ label, required }) => (
-                // The label→input gap is 44px on the collaborate page (gap-11). Here it's a
-                // height-aware clamp with the SAME 44px ceiling: identical to collab on a normal
-                // desktop viewport, but able to compress rather than pushing the last field and
-                // the send button out of a short modal.
-                <div key={label} className="flex flex-col" style={{ gap: "clamp(18px,4vh,44px)" }}>
+                // The label→input gap is 12px on the collaborate page (gap-3). Here it's a
+                // height-aware clamp with the SAME 12px ceiling: identical to collab on a normal
+                // desktop viewport, but able to compress further rather than pushing the last
+                // field and the send button out of a short modal.
+                <div key={label} className="flex flex-col" style={{ gap: "clamp(8px,2vh,12px)" }}>
                   <label style={labelStyle}>{label}{required && <span style={{ color: "#0456DD" }}> *</span>}</label>
                   <input
                     type="text"

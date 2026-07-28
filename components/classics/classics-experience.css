@@ -114,8 +114,11 @@
 .classics-exp .detail__badge { align-self: flex-start; background: #1d4ed8; border-radius: 999px; color: #fff; display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .7rem; letter-spacing: .08em; margin: 22px 0 18px; opacity: 0; padding: 7px 13px; text-transform: uppercase; transform: translateY(10px); transition: opacity .3s ease .37s, transform .3s cubic-bezier(.22, 1, .36, 1) .37s; }
 .classics-exp .detail__body { color: rgba(0, 0, 0, .78); font-size: .95rem; line-height: 1.62; opacity: 0; transform: translateY(10px); transition: opacity .3s ease .44s, transform .3s cubic-bezier(.22, 1, .36, 1) .44s; }
 .classics-exp .detail__body p + p { margin-top: 16px; }
+.classics-exp .detail__ig { align-items: center; color: #111; display: inline-flex; justify-content: center; margin-top: 20px; opacity: 0; transform: translateY(10px); transition: opacity .3s ease .5s, transform .3s cubic-bezier(.22, 1, .36, 1) .5s; }
+.classics-exp .detail.is-open .detail__ig:hover { opacity: .65; }
+.classics-exp .detail.is-open .detail__ig { opacity: 1; transform: translateY(0); }
 .classics-exp .detail.is-open .detail__title, .classics-exp .detail.is-open .detail__badge, .classics-exp .detail.is-open .detail__body { opacity: 1; transform: translateY(0); }
-.classics-exp .detail.is-closing .detail__title, .classics-exp .detail.is-closing .detail__badge, .classics-exp .detail.is-closing .detail__body { opacity: 0; transform: translateY(8px); transition: opacity .18s ease, transform .18s ease; }
+.classics-exp .detail.is-closing .detail__title, .classics-exp .detail.is-closing .detail__badge, .classics-exp .detail.is-closing .detail__body, .classics-exp .detail.is-closing .detail__ig { opacity: 0; transform: translateY(8px); transition: opacity .18s ease, transform .18s ease; }
 .classics-exp .detail.is-closing { transition: opacity .45s ease; }
 .classics-exp.detail-open { cursor: auto; }
 .classics-exp.detail-open .cursor { display: none; }
