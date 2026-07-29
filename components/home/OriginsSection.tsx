@@ -380,7 +380,14 @@ function StoryFull({ highlightCosmos, enableReadHereCue, cosmosRef, onClose, isM
               const highlightBase: React.CSSProperties = {
                 boxDecorationBreak: "clone",
                 WebkitBoxDecorationBreak: "clone",
-                padding: "0.05em 0.15em",
+                // Horizontal padding removed (was 0.05em 0.15em) — box-decoration-break:clone
+                // applies this padding to EVERY wrapped line, including ones that are pure
+                // continuations of the sentence (not the highlight's actual start/end). The
+                // 0.15em LEFT padding on those lines pushed their text right of the paragraph's
+                // normal left edge — visibly out of alignment with the plain (unhighlighted)
+                // lines above and below. Vertical-only padding still gives the highlight some
+                // breathing room top/bottom without touching horizontal position.
+                padding: "0.05em 0",
                 borderRadius: 3,
                 transition: "background-color 0.6s ease",
               };
