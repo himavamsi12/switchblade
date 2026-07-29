@@ -479,12 +479,12 @@ export function RadiatesSection({
           // above doesn't touch y on mobile at all) — one continuous scrubbed move from the
           // Hero baseline (0) straight to its final resting spot. ease:"none" for the same
           // scrubbed-tween reason as the shrink above — linear w.r.t. scroll.
-          // 6vh → 12vh (by request, "should go a little down") — 6vh was a leftover flat value
-          // from an old instant gsap.set, never actually re-tuned against the labels' own mobile
-          // position (Kindness/Compassion sit at top-45%, see LABELS' posClass above); it stopped
-          // short of that row, which read as an abrupt correction/jump right as the star settled
-          // rather than a continuous glide down to it.
-          y: isMobile ? "12vh" : "-6vh",
+          // 6vh → 12vh → 10vh (by request) — 6vh was a leftover flat value from an old instant
+          // gsap.set, never actually re-tuned against the labels' own mobile position
+          // (Kindness/Compassion sit at top-45%, see LABELS' posClass above); it stopped short of
+          // that row, reading as an abrupt correction/jump right as the star settled rather than a
+          // continuous glide down to it. 12vh overshot past it; 10vh is the current tuned value.
+          y: isMobile ? "10vh" : "-6vh",
           ease: "none",
           force3D: true,
         }, 0);
