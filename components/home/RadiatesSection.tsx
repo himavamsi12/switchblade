@@ -46,7 +46,7 @@ const LABELS: Placement[] = [
     // anchor, not a new flat value, so it stays scoped to mobile only.
     // max-lg top 39.5% → 44% (by request, "little down" on mobile) — SCOPED to max-lg only, real
     // tablet/desktop widths keep their own already-tuned values.
-    posClass: "max-lg:top-[44.6%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[calc(74%-2px)] min-[1024px]:max-[1279px]:left-[72%] min-[1280px]:left-[65%]",
+    posClass: "max-lg:top-[45%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[calc(74%-2px)] min-[1024px]:max-[1279px]:left-[72%] min-[1280px]:left-[65%]",
     style: { transform: "translate(0, -50%)" },
   },
   {
@@ -421,7 +421,21 @@ export function RadiatesSection({
           // instead of dumped at entry; untouched by this change.
           start: isMobile ? "top 60%" : "27% top",
           end: isMobile ? "top top" : "33% top",
-          scrub: 0.3,
+          // Tightened for mobile only (0.3 → 0.15). scrub is a DAMPED follow, not an exact 1:1
+          // tracking of scroll — it lags the raw scroll position by roughly its own value in
+          // seconds and then keeps interpolating to catch up even after scrolling has stopped.
+          // Mobile's range ends exactly at "top top" — the same instant the sticky pin locks in
+          // — so with the old 0.3s lag the shrink+y move was still visibly catching up to its
+          // final value for a moment AFTER the pin (and the labels, via the separate time-based
+          // tlEnter above) had already settled: the reported "model jumps/settles down, THEN the
+          // labels show" instead of everything landing together. A smaller lag shrinks that
+          // trailing window close to imperceptible while still smoothing mobile's raw (unsmoothed
+          // — Lenis is desktop-only, see SmoothScroll.tsx) per-notch touch-scroll input. Desktop's
+          // own 0.3 is untouched — its range ends well before any pin-lock moment (33% top, not
+          // top top), and its ENTRANCE settle is a separate short discrete tween fired exactly at
+          // the pin crossing (see checkIntersection above), not this scrub, so it was never
+          // exposed to this same failure mode.
+          scrub: isMobile ? 0.15 : 0.3,
         },
       })
         .to(shrinkProxy, {
