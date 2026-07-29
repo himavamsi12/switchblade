@@ -431,18 +431,24 @@ export function RadiatesSection({
           // labels appear, the star is already sitting still.
           start: isMobile ? "top 60%" : "27% top",
           end: isMobile ? "top 8%" : "33% top",
-          // Mobile gets scrub:true (exact, zero-lag tracking), not the damped 0.3 desktop uses.
-          // Damped scrub doesn't map 1:1 to scroll position — it's a time-based follow that keeps
-          // interpolating toward the target for a while AFTER the raw scroll position already
-          // reached it. The "top 8%" end (instead of "top 0%") was an earlier attempt to fix this
-          // by giving that lag some scroll DISTANCE to resolve in before checkIntersection's hard
-          // "top <= 0" trigger fires the labels. But the lag resolves over TIME, not distance — a
-          // fast mobile flick (the normal way people scroll on a phone) can cross that whole 8%
-          // buffer in well under the time 0.3s-scrub needs to settle, so the star was still
-          // mid-catch-up exactly when the labels snapped in: the reported jump/stick. Desktop
-          // doesn't have this race (Lenis already smooths its raw input, so light damping here is
-          // just polish, not load-bearing), so only mobile switches to exact tracking.
-          scrub: isMobile ? true : 0.3,
+          // Mobile gets a LIGHT scrub (0.12), not the heavier 0.3 desktop uses, and not scrub:true
+          // either — both extremes were tried and both read as jumpy, for opposite reasons:
+          //   - 0.3 (too much damping): a time-based lag that keeps interpolating toward the
+          //     target for a while after the raw scroll position already passed it. A fast flick
+          //     could cross the whole "top 8%" buffer below in less time than 0.3s needs to
+          //     settle, so the star was still visibly mid-catch-up the instant checkIntersection's
+          //     hard "top <= 0" trigger fired the labels in.
+          //   - true (zero damping, exact tracking): removes that lag entirely, but then tracks
+          //     RAW touch-scroll input exactly — and native mobile scroll (momentum/fling) doesn't
+          //     report position in smooth per-frame steps, it can arrive in coarse jumps. With
+          //     nothing smoothing that out, the star visibly snapped in sync with the input's own
+          //     choppiness instead of gliding.
+          // 0.12 is a middle ground: enough damping to smooth over that raw-input coarseness, but
+          // light enough to still fully resolve well within the "top 8%" buffer's scroll distance
+          // for essentially any realistic flick speed — unlike 0.3, which needed more time to
+          // settle than that buffer reliably gives it. Desktop keeps 0.3 (Lenis already smooths its
+          // raw input there, so heavier damping is just polish, not covering for choppy input).
+          scrub: isMobile ? 0.12 : 0.3,
           // Re-record the .to() tweens' start values every time this range is (re-)entered by
           // scrolling down into it — same fix, same reasoning as globeTravel's own onEnter
           // further below (see its comment for the full explanation). A .to() records its start
@@ -479,12 +485,13 @@ export function RadiatesSection({
           // above doesn't touch y on mobile at all) — one continuous scrubbed move from the
           // Hero baseline (0) straight to its final resting spot. ease:"none" for the same
           // scrubbed-tween reason as the shrink above — linear w.r.t. scroll.
-          // 6vh → 12vh → 10vh (by request) — 6vh was a leftover flat value from an old instant
-          // gsap.set, never actually re-tuned against the labels' own mobile position
+          // 6vh → 12vh → 10vh → 7vh (by request) — 6vh was a leftover flat value from an old
+          // instant gsap.set, never actually re-tuned against the labels' own mobile position
           // (Kindness/Compassion sit at top-45%, see LABELS' posClass above); it stopped short of
           // that row, reading as an abrupt correction/jump right as the star settled rather than a
-          // continuous glide down to it. 12vh overshot past it; 10vh is the current tuned value.
-          y: isMobile ? "10vh" : "-6vh",
+          // continuous glide down to it. 12vh and 10vh both overshot; 7vh is the current tuned
+          // value.
+          y: isMobile ? "7vh" : "-6vh",
           ease: "none",
           force3D: true,
         }, 0);
