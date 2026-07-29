@@ -414,28 +414,24 @@ export function RadiatesSection({
           // top below) — percentages are of this section's own scroll height. Re-anchored here
           // (was 52%→58%, back when tlExit itself ended at 56%) to stay in the same relative
           // spot — after the labels clear, before SWITCHBLADE appears — now that both of those
-          // moved much earlier to kill a long dead scroll hold. Mobile shrinks DURING the
-          // incoming transition from Hero ("top 60%" = section top at 60% viewport, still
-          // scrolling up into view), finishing exactly as the sticky pin locks in ("top top") —
-          // same envelope the old play/reverse version covered, now distributed across it
-          // instead of dumped at entry; untouched by this change.
+          // moved much earlier to kill a long dead scroll hold.
+          //
+          // Mobile shrinks/settles DURING the incoming transition from Hero. Its end point used
+          // to be "top top" — the EXACT same instant checkIntersection's poll fires tlEnter
+          // (heading fade + spin + the labels typing in) and the section's sticky pin locks. A
+          // scrub tween is a DAMPED follow, not exact 1:1 tracking — it lags the raw scroll
+          // position and keeps interpolating to catch up even after scrolling stops (or, since
+          // holdForEntrance is a no-op on mobile — see its own comment — even while the reader
+          // KEEPS scrolling further into the section). Ending exactly at the pin-lock instant
+          // meant this tween was, by construction, ALWAYS still mid-flight the moment the labels
+          // started appearing: the reported "star jumps toward the labels' center instead of
+          // already being settled when they show up". "top 8%" ends the range a small buffer of
+          // scroll distance BEFORE that instant, giving the scrub room to fully resolve its lag
+          // and actually REACH its target before tlEnter/the pin ever fire — so by the time the
+          // labels appear, the star is already sitting still.
           start: isMobile ? "top 60%" : "27% top",
-          end: isMobile ? "top top" : "33% top",
-          // Tightened for mobile only (0.3 → 0.15). scrub is a DAMPED follow, not an exact 1:1
-          // tracking of scroll — it lags the raw scroll position by roughly its own value in
-          // seconds and then keeps interpolating to catch up even after scrolling has stopped.
-          // Mobile's range ends exactly at "top top" — the same instant the sticky pin locks in
-          // — so with the old 0.3s lag the shrink+y move was still visibly catching up to its
-          // final value for a moment AFTER the pin (and the labels, via the separate time-based
-          // tlEnter above) had already settled: the reported "model jumps/settles down, THEN the
-          // labels show" instead of everything landing together. A smaller lag shrinks that
-          // trailing window close to imperceptible while still smoothing mobile's raw (unsmoothed
-          // — Lenis is desktop-only, see SmoothScroll.tsx) per-notch touch-scroll input. Desktop's
-          // own 0.3 is untouched — its range ends well before any pin-lock moment (33% top, not
-          // top top), and its ENTRANCE settle is a separate short discrete tween fired exactly at
-          // the pin crossing (see checkIntersection above), not this scrub, so it was never
-          // exposed to this same failure mode.
-          scrub: isMobile ? 0.15 : 0.3,
+          end: isMobile ? "top 8%" : "33% top",
+          scrub: 0.3,
         },
       })
         .to(shrinkProxy, {
