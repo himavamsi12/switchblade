@@ -17,7 +17,7 @@ const fieldStyle: React.CSSProperties = {
 };
 
 const labelStyle: React.CSSProperties = {
-  fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 14,
+  fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14,
   textTransform: "uppercase", color: "#000", opacity: 0.5,
 };
 
@@ -132,7 +132,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             aria-hidden
             style={{
               position: "relative", zIndex: 1,
-              fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 13,
+              fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 13,
               letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(20,40,120,0.28)",
             }}
           >
@@ -155,7 +155,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             
             <h2
               style={{
-                fontFamily: "var(--font-archivo)", fontWeight: 900,
+                fontFamily: "var(--font-barlow)", fontWeight: 900,
                 fontSize: "clamp(38px,6vw,88px)", lineHeight: 0.92, letterSpacing: "-0.02em",
                 textTransform: "uppercase", color: "#ffffff",
               }}
@@ -198,7 +198,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
               className="inline-flex items-center"
               style={{
                 gap: 8, background: "none", border: "none", cursor: "pointer",
-                fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 13,
+                fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 13,
                 letterSpacing: "0.12em", textTransform: "uppercase", color: "#0D0D0D",
               }}
             >
@@ -242,7 +242,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
                   </div>
                   <div className="flex items-center gap-[10px]">
                     <Clock size={18} color="#666565" strokeWidth={2} />
-                    <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "#666565" }}>30 Minutes</span>
+                    <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 18, textTransform: "uppercase", color: "#666565" }}>30 Minutes</span>
                   </div>
                 </div>
                 <ArrowUp size={22} color="#0D0D0D" style={{ transform: "rotate(48deg)" }} />

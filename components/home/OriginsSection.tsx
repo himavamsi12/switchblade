@@ -134,7 +134,7 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
       <div className="flex items-center gap-3" style={{ marginBottom: "clamp(5px,3vw,10px)" }}>
         <span style={{ width: 10, height: 10, background: "#0456DD", flexShrink: 0 }} />
         <p style={{
-          fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(13px,1vw,15px)",
+          fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: "clamp(13px,1vw,15px)",
           lineHeight: 1.3, textTransform: "uppercase", color: "#0456DD", maxWidth: "40ch",
         }}>
           Long before Switchblade became a brand, it was a way of seeing the world
@@ -167,8 +167,8 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
         <Image src="/founder-childhood.jpg" alt="Sanjam, founder of Switchblade, as a child" fill className="object-cover" style={{ objectPosition: "50% 0%" }} sizes="530px" />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0) 35%)" }} />
         <div style={{ position: "absolute", left: "clamp(16px,2vw,24px)", bottom: "clamp(16px,2vw,24px)" }}>
-          <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 13, letterSpacing: "0.06em", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>FOUNDER</p>
-          <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 900, fontSize: "clamp(24px,2.8vw,34px)", letterSpacing: "-0.01em", textTransform: "uppercase", color: "#fff" }}>SANJAM</p>
+          <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 600, fontSize: 13, letterSpacing: "0.06em", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>FOUNDER</p>
+          <p style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(24px,2.8vw,34px)", letterSpacing: "-0.01em", textTransform: "uppercase", color: "#fff" }}>SANJAM</p>
         </div>
       </div>
 
@@ -499,7 +499,7 @@ function StoryFull({ highlightCosmos, enableReadHereCue, cosmosRef, onClose, isM
                   <span
                     className="uppercase"
                     style={{
-                      display: "block", fontFamily: "var(--font-archivo)", fontWeight: 900,
+                      display: "block", fontFamily: "var(--font-barlow)", fontWeight: 900,
                       fontSize: "clamp(18px,1.6vw,24px)", letterSpacing: "-0.01em",
                       marginTop: "clamp(20px,2.5vw,32px)", color: "#0D0D0D",
                     }}
@@ -826,7 +826,7 @@ export function OriginsSection() {
       <div id="origins-heading-row" className="flex items-end justify-center flex-wrap" style={{ gap: "clamp(8px,1vw,14px)", marginBottom: "clamp(48px,5vw,72px)" }}>
         <h2 style={{
           position: "relative",
-          fontFamily: "var(--font-archivo)", fontWeight: 900, fontSize: "clamp(40px,7vw,96px)",
+          fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(40px,7vw,96px)",
           lineHeight: 0.92, letterSpacing: "-0.02em", textTransform: "uppercase",
         }}>
           {/* The "O" of "Origins" gets its own id so page.tsx's star-tracking effect can measure
@@ -893,7 +893,7 @@ export function OriginsSection() {
             className="inline-flex items-center"
             style={{
               gap: 6, background: "#FF802B", color: "#fff",
-              fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 14,
+              fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 14,
               borderRadius: 10, padding: "10px 18px", border: "none", cursor: "pointer",
             }}
           >

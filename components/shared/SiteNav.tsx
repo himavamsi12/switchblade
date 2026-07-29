@@ -315,7 +315,7 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
                         : (light ? " text-[#090909]" : " text-white"))
                     }
                     style={{
-                      fontFamily: "var(--font-archivo)", fontWeight: 800,
+                      fontFamily: "var(--font-barlow)", fontWeight: 800,
                       // Reduced from clamp(32px,10vw,56px) (by request, applies to every link here
                       // now, not just "Collaboration") — that floor was already tight for
                       // "Collaboration" (13 characters, one unbreakable word) on a narrow phone,

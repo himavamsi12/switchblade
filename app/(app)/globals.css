@@ -29,13 +29,12 @@ html.lenis, html.lenis body { height: auto; }
 body {
   background-color: #ffffff;
   color: var(--ink);
-  /* var(--font-archivo), not a literal 'Archivo' string: the variable is what next/font actually
-     binds to the loaded @font-face — a hardcoded name stops matching anything the moment the
-     underlying font changes, silently falling through to Inter for every element that relies on
-     this inherited body font-family instead of setting fontFamily: var(--font-archivo) explicitly.
-     Sitewide switch from Barlow to Archivo (by request) — every other var(--font-barlow) /
-     var(--font-ibm-mono) reference across the codebase was updated to var(--font-archivo) too. */
-  font-family: var(--font-archivo), 'Inter', system-ui, sans-serif;
+  /* var(--font-barlow), not a literal 'Barlow' string: the variable is what next/font actually
+     binds to a loaded @font-face (Google Barlow before, now the local TBJ One More Demo file) —
+     a hardcoded 'Barlow' name stops matching anything the moment the underlying font changes,
+     silently falling through to Inter for every element that relies on this inherited body
+     font-family instead of setting fontFamily: var(--font-barlow) explicitly. */
+  font-family: var(--font-barlow), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   /* clip, not hidden: they visually do the same thing here (cut off horizontal overflow), but
      `hidden` turns body into a potential scroll container, and Chrome on Android disables the

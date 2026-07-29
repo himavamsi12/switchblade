@@ -69,7 +69,7 @@ export function MembershipPreview() {
         borderBottom: "1px solid rgba(255,255,255,0.12)",
       }}>
         {["MEMBERSHIP — SWITCHBLADE", "100 MAX · EARLY ACCESS ONLY", "EST. 2006"].map(t => (
-          <span key={t} style={{ fontFamily: "var(--font-archivo)", fontSize: 9, letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
+          <span key={t} style={{ fontFamily: "var(--font-ibm-mono)", fontSize: 9, letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>
             {t}
           </span>
         ))}
@@ -86,7 +86,7 @@ export function MembershipPreview() {
         <div>
           <div ref={leftTopRef}>
             <p style={{
-              fontFamily: "var(--font-archivo)", fontSize: 10,
+              fontFamily: "var(--font-ibm-mono)", fontSize: 10,
               letterSpacing: "0.22em", textTransform: "uppercase",
               color: "rgba(255,255,255,0.45)", marginBottom: "clamp(16px,2vw,24px)",
             }}>
@@ -95,7 +95,7 @@ export function MembershipPreview() {
           </div>
 
           <h2 style={{
-            fontFamily:    "var(--font-archivo)",
+            fontFamily:    "var(--font-barlow)",
             fontWeight:    900,
             fontSize:      "clamp(56px,10vw,144px)",
             letterSpacing: "-0.03em",
@@ -112,7 +112,7 @@ export function MembershipPreview() {
           <div style={{ marginBottom: "clamp(32px,4vw,52px)", maxWidth: 380 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "clamp(12px,1.5vw,20px)", paddingBottom: "clamp(14px,1.8vw,24px)" }}>
               <span style={{
-                fontFamily:    "var(--font-archivo)",
+                fontFamily:    "var(--font-barlow)",
                 fontWeight:    900,
                 fontSize:      "clamp(44px,6vw,88px)",
                 letterSpacing: "-0.04em",
@@ -124,7 +124,7 @@ export function MembershipPreview() {
               </span>
               <div>
                 <p style={{
-                  fontFamily:    "var(--font-archivo)",
+                  fontFamily:    "var(--font-ibm-mono)",
                   fontSize:      "clamp(10px,0.85vw,12px)",
                   fontWeight:    700,
                   letterSpacing: "0.16em",
@@ -141,7 +141,7 @@ export function MembershipPreview() {
 
             <div style={{ display: "flex", alignItems: "center", gap: "clamp(12px,1.5vw,20px)" }}>
               <span style={{
-                fontFamily:    "var(--font-archivo)",
+                fontFamily:    "var(--font-barlow)",
                 fontWeight:    900,
                 fontSize:      "clamp(44px,6vw,88px)",
                 letterSpacing: "-0.04em",
@@ -153,7 +153,7 @@ export function MembershipPreview() {
               </span>
               <div>
                 <p style={{
-                  fontFamily:    "var(--font-archivo)",
+                  fontFamily:    "var(--font-ibm-mono)",
                   fontSize:      "clamp(10px,0.85vw,12px)",
                   fontWeight:    700,
                   letterSpacing: "0.16em",
@@ -168,7 +168,7 @@ export function MembershipPreview() {
           </div>
 
           <p style={{
-            fontFamily:    "var(--font-archivo)",
+            fontFamily:    "var(--font-ibm-mono)",
             fontSize:      "clamp(14px,1.2vw,17px)",
             letterSpacing: "0.04em",
             lineHeight:    1.9,
@@ -184,7 +184,7 @@ export function MembershipPreview() {
           </p>
 
           <p style={{
-            fontFamily: "var(--font-archivo)", fontSize: 10,
+            fontFamily: "var(--font-ibm-mono)", fontSize: 10,
             letterSpacing: "0.2em", textTransform: "uppercase",
             color: "rgba(255,255,255,0.38)", marginBottom: 14,
           }}>
@@ -205,7 +205,7 @@ export function MembershipPreview() {
                 border:        "1px solid rgba(255,255,255,0.22)",
                 borderRadius:  999,
                 color:         "#ffffff",
-                fontFamily:    "var(--font-archivo)",
+                fontFamily:    "var(--font-ibm-mono)",
                 fontSize:      14,
                 letterSpacing: "0.03em",
                 padding:       "0 22px",
@@ -226,7 +226,7 @@ export function MembershipPreview() {
                 border:        "none",
                 background:    "#F97316",
                 color:         "#ffffff",
-                fontFamily:    "var(--font-archivo)",
+                fontFamily:    "var(--font-ibm-mono)",
                 fontWeight:    700,
                 fontSize:      12,
                 letterSpacing: "0.1em",
@@ -245,7 +245,7 @@ export function MembershipPreview() {
           </form>
 
           <p style={{
-            fontFamily: "var(--font-archivo)", fontSize: 10, letterSpacing: "0.06em",
+            fontFamily: "var(--font-ibm-mono)", fontSize: 10, letterSpacing: "0.06em",
             color: status === "error" ? "#F87171" : "rgba(255,255,255,0.3)", marginTop: 12,
           }}>
             {status === "error" ? "Something went wrong — please try again." : "No spam. When it's time, you'll hear from us first."}
@@ -256,7 +256,7 @@ export function MembershipPreview() {
             alignItems:     "center",
             gap:            8,
             marginTop:      "clamp(28px,3.5vw,48px)",
-            fontFamily:     "var(--font-archivo)",
+            fontFamily:     "var(--font-ibm-mono)",
             fontWeight:     700,
             fontSize:       11,
             letterSpacing:  "0.14em",
@@ -275,7 +275,7 @@ export function MembershipPreview() {
 
         <div ref={rightRef}>
           <p style={{
-            fontFamily: "var(--font-archivo)", fontWeight: 700,
+            fontFamily: "var(--font-ibm-mono)", fontWeight: 700,
             fontSize: 12, letterSpacing: "0.08em",
             color: "rgba(255,255,255,0.7)", marginBottom: 14,
           }}>
@@ -305,7 +305,7 @@ export function MembershipPreview() {
           </div>
 
           <p style={{
-            fontFamily: "var(--font-archivo)", fontSize: 9,
+            fontFamily: "var(--font-ibm-mono)", fontSize: 9,
             letterSpacing: "0.16em", textTransform: "uppercase",
             color: "rgba(255,255,255,0.3)", marginTop: 12, textAlign: "right",
           }}>
@@ -326,14 +326,14 @@ export function MembershipPreview() {
             borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.12)" : "none",
           }}>
             <p style={{
-              fontFamily: "var(--font-archivo)", fontWeight: 900,
+              fontFamily: "var(--font-barlow)", fontWeight: 900,
               fontSize: "clamp(28px,3.5vw,52px)", letterSpacing: "-0.03em",
               color: "#FFFFFF", lineHeight: 1, marginBottom: 6,
             }}>
               {s.num}
             </p>
             <p style={{
-              fontFamily: "var(--font-archivo)", fontSize: 10,
+              fontFamily: "var(--font-ibm-mono)", fontSize: 10,
               letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)", textTransform: "uppercase",
             }}>
               {s.label}

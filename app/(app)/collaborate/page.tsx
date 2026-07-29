@@ -378,7 +378,7 @@ export default function CollaboratePage() {
             layout deterministically, with no risk of a word overflowing its box. */}
         <h1
           style={{
-            fontFamily: "var(--font-archivo)", fontWeight: 900,
+            fontFamily: "var(--font-barlow)", fontWeight: 900,
             // Floor lowered from 44px: at that size "Collaborations" (one unbreakable word, 14
             // characters) rendered wider than a phone viewport's available width, overflowing
             // and getting clipped by this section's own overflow-hidden (the cut-off "S"/"TIONS").
@@ -445,7 +445,7 @@ export default function CollaboratePage() {
             <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase", color: "#363636" }}>Vision</span>
           </div>
           <h2 className="uppercase" style={{
-            fontFamily: "var(--font-archivo)", fontWeight: 900, fontSize: "clamp(32px,5vw,64px)",
+            fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(32px,5vw,64px)",
             lineHeight: 1, letterSpacing: "-0.02em", width: "100%"
           }}>
             {/* Non-breaking space (not a plain " ") between "a" and "single": the reference
@@ -516,7 +516,7 @@ export default function CollaboratePage() {
             depending on this font's actual glyph widths vs. its "0" glyph. Explicit break instead
             of relying on ch-unit wrapping. */}
         <h2 style={{
-          fontFamily: "var(--font-archivo)", fontWeight: 900,
+          fontFamily: "var(--font-barlow)", fontWeight: 900,
           // Floor lowered from 40px: same overflow as the Hero heading above — "Collaboration"
           // (13 characters, one unbreakable word) still didn't fit a phone viewport at 40px and
           // got clipped by this section's lack of horizontal room (no overflow-hidden here even,
@@ -556,7 +556,7 @@ export default function CollaboratePage() {
         <div className="flex flex-col items-center text-center" style={{ marginBottom: "clamp(56px,7vw,96px)" }}>
           
           <h2 className="uppercase" style={{
-            fontFamily: "var(--font-archivo)", fontWeight: 900, fontSize: "clamp(34px,6vw,74px)",
+            fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(34px,6vw,74px)",
             lineHeight: 0.92, letterSpacing: "-0.02em", maxWidth: "22ch",
           }}>
             <SweepText tone="dark" color="#0F0E0C">Where Craft meets Philosophy</SweepText>
@@ -663,7 +663,7 @@ export default function CollaboratePage() {
             <h2
               className="uppercase max-lg:text-[clamp(30px,7vw,74px)] min-[1024px]:max-[1279px]:text-[clamp(24px,4vw,40px)] min-[1280px]:text-[clamp(30px,7vw,74px)]"
               style={{
-              fontFamily: "var(--font-archivo)", fontWeight: 900,
+              fontFamily: "var(--font-barlow)", fontWeight: 900,
               lineHeight: 0.92, letterSpacing: "-0.02em", marginBottom: "clamp(20px,2.5vw,32px)",
               // Safety net for the minmax(0,...) fix above: now that the column can be capped
               // narrower than this word's natural width, this lets "Collaborate" wrap mid-word in
@@ -734,11 +734,11 @@ export default function CollaboratePage() {
                 dividerLabelStyle-equivalent numbers as HelpModal) keeps it on one line, with the
                 two rules (flex:1, small min-width) shrinking first instead of forcing a wrap. */}
             <div className="rise-item flex items-center gap-2 sm:gap-4 flex-nowrap">
-              <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Book a meeting</span>
+              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Book a meeting</span>
               <span style={{ flex: 1, minWidth: 12, height: 1, background: "#D8D8D8" }} />
-              <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>or</span>
+              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>or</span>
               <span style={{ flex: 1, minWidth: 12, height: 1, background: "#D8D8D8" }} />
-              <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Drop a Pitch</span>
+              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Drop a Pitch</span>
             </div>
 
             <form className="rise-item flex flex-col gap-9" style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }} onSubmit={async e => {
@@ -776,7 +776,7 @@ export default function CollaboratePage() {
                 { label: "E-mail or phone number",        name: "contact",       required: true },
               ].map(f => (
                 <div key={f.label} className="flex flex-col gap-3">
-                  <label style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>{f.label}{f.required && <span style={{ color: "#0456DD" }}> *</span>}</label>
+                  <label style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>{f.label}{f.required && <span style={{ color: "#0456DD" }}> *</span>}</label>
                   <input name={f.name} type="text" required={f.required} style={fieldStyle} onFocus={e => (e.target.style.borderBottomColor = "#0456DD")} onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")} />
                 </div>
               ))}

@@ -19,7 +19,7 @@ const MONO = (size = "9px", opacity = 1): React.CSSProperties => ({
 });
 
 const HERO: React.CSSProperties = {
-  fontFamily: "var(--font-archivo)",
+  fontFamily: "var(--font-barlow)",
   fontWeight: 900,
   letterSpacing: "-0.03em",
   lineHeight: 0.86,

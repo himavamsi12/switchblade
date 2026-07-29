@@ -13,7 +13,7 @@ const averiaSerif = Averia_Serif_Libre({
 });
 
 // Site-wide replacement for Barlow — kept on the same --font-barlow CSS variable so every
-// existing `var(--font-archivo)` / `font-barlow` reference across the site picks it up with no
+// existing `var(--font-barlow)` / `font-barlow` reference across the site picks it up with no
 // other changes. This is a single-weight display font (no 300-900 range like Barlow had), so it
 // renders at its own native weight regardless of any font-weight the CSS asks for.
 const barlow = localFont({
@@ -68,7 +68,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     // See node_modules/next/dist/docs/01-app/02-guides/upgrading/version-16.md → "Scroll Behavior
     // Override".
     <html lang="en" data-scroll-behavior="smooth" className={`${barlow.variable} ${ibmPlex.variable} ${ibmPlexMono.variable} ${averiaSerif.variable} ${inter.variable} ${archivo.variable}`}>
-      <body suppressHydrationWarning className="bg-[#F2EDE4] text-[#0D0D0D] font-[family-name:var(--font-archivo)] antialiased">
+      <body suppressHydrationWarning className="bg-[#F2EDE4] text-[#0D0D0D] font-[family-name:var(--font-barlow)] antialiased">
         <CustomCursor />
         <main>{children}</main>
       </body>

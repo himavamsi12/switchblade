@@ -99,7 +99,7 @@ export default function JournalPage() {
         >
           <div style={{ overflow: "hidden", marginBottom: "0.04em" }}>
             <div className="jt-line" style={{
-              fontFamily: "var(--font-archivo)",
+              fontFamily: "var(--font-barlow)",
               fontWeight: 900,
               fontSize: "clamp(72px, 12.5vw, 168px)",
               letterSpacing: "-0.03em",
@@ -113,7 +113,7 @@ export default function JournalPage() {
 
           <div style={{ overflow: "hidden", marginBottom: "0.02em" }}>
             <div className="jt-line" style={{
-              fontFamily: "var(--font-archivo)",
+              fontFamily: "var(--font-ibm-mono)",
               fontWeight: 700,
               fontSize: "clamp(52px, 9vw, 124px)",
               letterSpacing: "-0.01em",
@@ -127,7 +127,7 @@ export default function JournalPage() {
 
           <div style={{ overflow: "hidden" }}>
             <div className="jt-line" style={{
-              fontFamily: "var(--font-archivo)",
+              fontFamily: "var(--font-ibm-mono)",
               fontWeight: 700,
               fontSize: "clamp(44px, 7.5vw, 104px)",
               letterSpacing: "-0.005em",

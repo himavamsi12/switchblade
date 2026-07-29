@@ -322,7 +322,7 @@ export function ClassicsGlobeSection() {
           ref={introRef}
           style={{
             display:       "inline-flex",
-            fontFamily:    "var(--font-archivo)",
+            fontFamily:    "var(--font-ibm-mono)",
             fontWeight:    700,
             fontSize:      "clamp(10px, 0.9vw, 13px)",
             letterSpacing: "0.28em",
@@ -341,7 +341,7 @@ export function ClassicsGlobeSection() {
 
         <h2
           style={{
-            fontFamily:    "var(--font-archivo)",
+            fontFamily:    "var(--font-barlow)",
             fontWeight:    900,
             fontSize:      "clamp(40px, 7vw, 96px)",
             lineHeight:    1,
