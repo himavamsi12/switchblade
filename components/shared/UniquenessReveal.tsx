@@ -2,7 +2,7 @@
 import { SweepText } from "@/components/shared/SweepText";
 
 const ANNO: React.CSSProperties = {
-  fontFamily:    "var(--font-ibm-mono)",
+  fontFamily:    "var(--font-archivo)",
   fontSize:      "clamp(13px, 1.15vw, 18px)",
   fontWeight:    700,
   letterSpacing: "0.10em",

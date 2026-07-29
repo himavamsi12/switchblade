@@ -61,6 +61,11 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
   // (see Hero in app/(app)/page.tsx). Off (default) everywhere else, and skipped under reduced
   // motion, so the bar is simply present at rest.
   const navIntro = animateIn && !shouldReduceMotion;
+  // Becomes true once the staged intro's own animate target has actually been reached (see
+  // onAnimationComplete below) — the hide-on-scroll-down/reveal-on-scroll-up behavior further
+  // down must not engage before then, or a scroll during the intro would fight its timed reveal.
+  // Starts true when there's no intro to wait for (every non-homepage mount).
+  const [entranceSettled, setEntranceSettled] = useState(!navIntro);
   const pathname = usePathname();
   // "/" only matches the literal home route; every other link matches on prefix so nested
   // routes (e.g. a future /classics/[slug]) still highlight "Classics" as active.
@@ -86,6 +91,54 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
     return () => window.removeEventListener("scroll", onScroll);
   }, [light]);
 
+  // Hide-on-scroll-down / reveal-on-scroll-up, by request — the bar used to be `position:absolute`
+  // (positioned against the page's own initial containing block), which scrolls away with the
+  // document like any other in-flow content once you scroll past it, with nothing to ever bring it
+  // back. Now `fixed` (see the className below) so it stays pinned to the viewport, with THIS
+  // effect deciding whether it's slid up out of view or not.
+  //
+  // Reveals on ANY upward scroll movement, however small (matching "on a little scroll up, show
+  // it" exactly) — only HIDES once scrolled down past the bar's own height, so it doesn't vanish
+  // on the first few px of scroll right at the top of the page, and never while the mobile drawer
+  // is open (hiding the bar that owns the now-open hamburger/X button mid-interaction would read as
+  // broken). Skipped entirely under reduced motion — the bar just stays put, matching how the
+  // staged intro above is also skipped there.
+  const [hiddenByScroll, setHiddenByScroll] = useState(false);
+  useEffect(() => {
+    if (shouldReduceMotion) return;
+    let lastY = window.scrollY;
+    const NAV_HEIGHT = 72;
+    const onScroll = () => {
+      if (menuOpen) return;
+      const y = window.scrollY;
+      if (y > lastY && y > NAV_HEIGHT) setHiddenByScroll(true);
+      else if (y < lastY) setHiddenByScroll(false);
+      lastY = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [shouldReduceMotion, menuOpen]);
+  // Opening the drawer while the bar happens to be scroll-hidden would strand the hamburger/X
+  // button off-screen with no way to close it — force the bar back on screen the moment it opens.
+  useEffect(() => {
+    if (menuOpen) setHiddenByScroll(false);
+  }, [menuOpen]);
+
+  // The bar's animate target, unified across both features it now drives:
+  //  - During the staged intro (navIntro && not yet settled), this must stay exactly {y:0,
+  //    opacity:1} — the FIXED target the entrance's own initial→animate interpolation (with its
+  //    long delay/duration, see the transition below) is already animating toward. Changing the
+  //    target mid-flight would cut that timed reveal short.
+  //  - Afterwards (or immediately, for pages with no intro at all), it tracks hiddenByScroll.
+  const navAnimate = navIntro && !entranceSettled
+    ? { y: 0, opacity: 1 }
+    : { y: hiddenByScroll ? "-100%" : "0%", opacity: 1 };
+  // Only the intro gets the long delay — once settled, scroll-triggered hide/reveal must react
+  // immediately (no delay) and quickly, or it reads as sluggish against the reader's own scrolling.
+  const navTransition = navIntro && !entranceSettled
+    ? { duration: 0.6, delay: 3.5, ease: [0.22, 1, 0.36, 1] as const }
+    : { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
+
   const linkColor = light
     ? "text-[#090909] hover:opacity-60 transition-opacity"
     : "text-white/80 font-normal hover:text-white transition-colors";
@@ -101,9 +154,14 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
           and Collaborate have nothing near that z-index, so this is a no-op there. */}
       <motion.div
         initial={navIntro ? { y: "-100%", opacity: 0 } : false}
-        animate={navIntro ? { y: 0, opacity: 1 } : false}
-        transition={navIntro ? { duration: 0.6, delay: 3.5, ease: [0.22, 1, 0.36, 1] } : undefined}
-        className={"absolute top-0 inset-x-0 z-[1200] site-px flex items-center justify-between" + (light ? " border-b border-black/8" : "")}
+        animate={navAnimate}
+        transition={navTransition}
+        onAnimationComplete={() => setEntranceSettled(true)}
+        // fixed (was absolute) — pinned to the viewport regardless of scroll, which the
+        // hide-on-scroll-down/reveal-on-scroll-up behavior above requires: an absolutely
+        // positioned bar scrolls away with the document like any other in-flow content, with
+        // nothing to ever bring it back once you've scrolled past it.
+        className={"fixed top-0 inset-x-0 z-[1200] site-px flex items-center justify-between" + (light ? " border-b border-black/8" : "")}
         style={{
           height: 72,
           background: light ? "#ffffff" : scrolled ? "#1130A2" : "transparent",
@@ -257,7 +315,7 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
                         : (light ? " text-[#090909]" : " text-white"))
                     }
                     style={{
-                      fontFamily: "var(--font-barlow)", fontWeight: 800,
+                      fontFamily: "var(--font-archivo)", fontWeight: 800,
                       // Reduced from clamp(32px,10vw,56px) (by request, applies to every link here
                       // now, not just "Collaboration") — that floor was already tight for
                       // "Collaboration" (13 characters, one unbreakable word) on a narrow phone,

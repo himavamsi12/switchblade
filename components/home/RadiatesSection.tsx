@@ -28,7 +28,7 @@ const LABELS: Placement[] = [
     // 15% → 10% (by request, follows the model's own upward nudges above), but SCOPED to
     // min-[1024px]:max-[1279px] only — by request this tablet-only tuning must not bleed into
     // real desktop widths (1280px+), which keep the original 15%.
-    posClass: "max-lg:top-[21%] min-[1024px]:max-[1279px]:top-[10%] min-[1280px]:top-[15%] left-1/2",
+    posClass: "max-lg:top-[25%] min-[1024px]:max-[1279px]:top-[10%] min-[1280px]:top-[15%] left-1/2",
     style: { transform: "translate(-50%, 0)" },
   },
   {
@@ -44,7 +44,9 @@ const LABELS: Placement[] = [
     // real desktop widths (1280px+) keep the original 40%/65%.
     // max-lg left nudged 2px further left (by request) — calc() on top of the existing 74%
     // anchor, not a new flat value, so it stays scoped to mobile only.
-    posClass: "max-lg:top-[39.5%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[calc(74%-2px)] min-[1024px]:max-[1279px]:left-[72%] min-[1280px]:left-[65%]",
+    // max-lg top 39.5% → 44% (by request, "little down" on mobile) — SCOPED to max-lg only, real
+    // tablet/desktop widths keep their own already-tuned values.
+    posClass: "max-lg:top-[44.6%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[calc(74%-2px)] min-[1024px]:max-[1279px]:left-[72%] min-[1280px]:left-[65%]",
     style: { transform: "translate(0, -50%)" },
   },
   {
@@ -55,7 +57,9 @@ const LABELS: Placement[] = [
     // 75% → 70% → 60% (by request, further "little top" nudges): Love was sitting right at the
     // bottom edge of the viewport with the star's tail — moving it up keeps it clear. SCOPED to
     // min-[1024px]:max-[1279px] only — real desktop widths (1280px+) keep the original 75%.
-    posClass: "max-lg:top-[65%] min-[1024px]:max-[1279px]:top-[60%] min-[1280px]:top-[75%] left-1/2",
+    // max-lg top 65% → 69% (by request, "little down" on mobile, matching Kindness/Compassion's
+    // own nudge) — SCOPED to max-lg only, real tablet/desktop widths keep their own values.
+    posClass: "max-lg:top-[69%] min-[1024px]:max-[1279px]:top-[60%] min-[1280px]:top-[75%] left-1/2",
     style: { transform: "translate(-50%, 0)" },
   },
   {
@@ -66,7 +70,9 @@ const LABELS: Placement[] = [
     // 35% → 28% and 40% → 28% (by request, pushed further from the star's left arm and lined up
     // with it after the model's own upward nudge, matching Compassion's own push/top). SCOPED to
     // min-[1024px]:max-[1279px] only — real desktop widths (1280px+) keep the original 40%/35%.
-    posClass: "max-lg:top-[40%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[22%] min-[1024px]:max-[1279px]:left-[28%] min-[1280px]:left-[35%]",
+    // max-lg top 40% → 44% (by request, "little down" on mobile, matching Compassion's own nudge)
+    // — SCOPED to max-lg only, real tablet/desktop widths keep their own already-tuned values.
+    posClass: "max-lg:top-[45%] min-[1024px]:max-[1279px]:top-[28%] min-[1280px]:top-[40%] max-lg:left-[22%] min-[1024px]:max-[1279px]:left-[28%] min-[1280px]:left-[35%]",
     style: { transform: "translate(-100%, -50%)" },
   },
 ];
@@ -82,7 +88,7 @@ const DOT: React.CSSProperties = {
 // [SHARP EDGE] / [SOFT HEART] annotation style — merged in from the former UniquenessReveal
 // section (kept identical) so the SWITCHBLADE wordmark now reveals inside THIS sticky scene.
 const ANNO: React.CSSProperties = {
-  fontFamily:    "var(--font-ibm-mono)",
+  fontFamily:    "var(--font-archivo)",
   fontSize:      "clamp(13px, 1.15vw, 18px)",
   fontWeight:    700,
   letterSpacing: "0.10em",

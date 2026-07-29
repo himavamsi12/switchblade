@@ -42,7 +42,7 @@ export function CollaboratorsSection() {
       paddingBlock: "clamp(64px,9vw,120px)",
     }}>
       <h2 style={{
-        fontFamily:    "var(--font-barlow)",
+        fontFamily:    "var(--font-archivo)",
         fontWeight:    900,
         // Floor lowered from 38px and vw bumped from 6.5 to 7 — same overflow the /collaborate
         // page's own "Let's Collaborate" heading had: "Collaborate" (11 characters, one
@@ -84,7 +84,7 @@ export function CollaboratorsSection() {
             >
               <Image src={card.icon} alt="" width={card.w} height={card.h} style={{ height: "clamp(22px,2vw,30px)", width: "auto" }} />
               <div>
-                <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 12, color: "#0A1AFF", marginBottom: 6 }}>{card.num}</p>
+                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 12, color: "#0A1AFF", marginBottom: 6 }}>{card.num}</p>
                 <h3 style={{
                   fontFamily:    "var(--font-archivo)",
                   fontWeight:    700,

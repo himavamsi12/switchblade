@@ -353,7 +353,7 @@ export function ClassicsGlobeSection() {
 
         <h2
           style={{
-            fontFamily:    "var(--font-barlow)",
+            fontFamily:    "var(--font-archivo)",
             fontWeight:    800,
             fontSize:      "clamp(40px, 7vw, 74px)",
             lineHeight:    1,

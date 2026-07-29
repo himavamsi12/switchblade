@@ -482,10 +482,15 @@ export default function HomePage() {
 
       <div
         ref={globalStarRef}
-        className="fixed pointer-events-none"
+        // top moved out of inline style into this responsive class — on mobile the star's tall
+        // canvas box (see the height comment below) put its top edge close enough to the fixed
+        // navbar (72px, see SiteNav) that the model's own tip could touch/overlap the wordmark
+        // logo. Nudged down a few points on phones only; desktop keeps the original 38%. GSAP's
+        // own xPercent/yPercent + x/y transform (set once its async import lands) is a relative
+        // OFFSET from whatever this top/left anchor is, so moving the anchor doesn't fight it.
+        className="fixed pointer-events-none max-md:top-[43%] md:top-[38%]"
         style={{
           zIndex: 20,
-          top: "38%",
           left: "50%",
           // Floor stays 280px (not higher): pushing the floor itself past ~320px would make it
           // exceed the viewport width on the smallest phones (iPhone SE class, ~320-375px) and

@@ -275,7 +275,7 @@ export default function HomePage() {
             ref={founderMeetRef}
             className="font-black"
             style={{
-              fontFamily:    "var(--font-barlow)",
+              fontFamily:    "var(--font-archivo)",
               fontSize:      "clamp(36px, 9vw, 140px)",
               letterSpacing: "0.12em",
               lineHeight:    0.86,
@@ -342,7 +342,7 @@ export default function HomePage() {
 
             <div className="flex-1 text-center" style={{ maxWidth: "52%" }}>
               <p style={{
-                fontFamily:    "var(--font-ibm-mono)",
+                fontFamily:    "var(--font-archivo)",
                 fontSize:      "clamp(12px, 1.15vw, 16px)",
                 fontWeight:    700,
                 lineHeight:    1.75,

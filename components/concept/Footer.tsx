@@ -148,7 +148,7 @@ export function Footer() {
         <div style={{ overflow: "hidden", lineHeight: 0 }}>
           <p
             style={{
-              fontFamily:    "var(--font-barlow)",
+              fontFamily:    "var(--font-archivo)",
               fontWeight:    900,
               fontSize:      "clamp(56px, 13.8vw, 210px)",
               letterSpacing: "-0.03em",

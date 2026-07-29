@@ -134,7 +134,7 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
       <div className="flex items-center gap-3" style={{ marginBottom: "clamp(5px,3vw,10px)" }}>
         <span style={{ width: 10, height: 10, background: "#0456DD", flexShrink: 0 }} />
         <p style={{
-          fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: "clamp(13px,1vw,15px)",
+          fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(13px,1vw,15px)",
           lineHeight: 1.3, textTransform: "uppercase", color: "#0456DD", maxWidth: "40ch",
         }}>
           Long before Switchblade became a brand, it was a way of seeing the world
@@ -167,8 +167,8 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
         <Image src="/founder-childhood.jpg" alt="Sanjam, founder of Switchblade, as a child" fill className="object-cover" style={{ objectPosition: "50% 0%" }} sizes="530px" />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0) 35%)" }} />
         <div style={{ position: "absolute", left: "clamp(16px,2vw,24px)", bottom: "clamp(16px,2vw,24px)" }}>
-          <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 600, fontSize: 13, letterSpacing: "0.06em", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>FOUNDER</p>
-          <p style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(24px,2.8vw,34px)", letterSpacing: "-0.01em", textTransform: "uppercase", color: "#fff" }}>SANJAM</p>
+          <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 600, fontSize: 13, letterSpacing: "0.06em", color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>FOUNDER</p>
+          <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 900, fontSize: "clamp(24px,2.8vw,34px)", letterSpacing: "-0.01em", textTransform: "uppercase", color: "#fff" }}>SANJAM</p>
         </div>
       </div>
 
@@ -301,6 +301,66 @@ function withAgeTag(para: string) {
   );
 }
 
+// Chunks text into "word + its own trailing whitespace" pieces (not plain .split(" ")) — keeping
+// the trailing space glued to each word means every chunk can carry its own highlight background
+// without leaving unstyled gaps between words once they're each wrapped in their own <span> below.
+const WORD_CHUNK_RE = /\S+\s*/g;
+function splitIntoWordChunks(text: string): string[] {
+  return text.match(WORD_CHUNK_RE) ?? (text ? [text] : []);
+}
+
+// Same blue "highlighter" look as the Cosmos block, but revealed WORD BY WORD left-to-right (like
+// a marker sweeping across the line) instead of the whole span flipping color in one frame — reads
+// as a deliberate "look here" cue rather than a flat on/off toggle. Only used for the READ_HERE cue
+// (the Cosmos highlight elsewhere stays instant/uniform — that one is a settled destination you
+// scroll to, not a fresh reveal that needs to draw the eye).
+// The age-11 tag sits mid-sentence inside this range (see the screenshot this was built against),
+// so it's treated as its own "word" in the sequence — the sweep passes through it in place rather
+// than skipping over it or breaking the animation.
+function ReadHereSpread({ text, active }: { text: string; active: boolean }) {
+  const ageIdx = text.indexOf(AGE_TAG_MARKER);
+  const before = ageIdx === -1 ? text : text.slice(0, ageIdx);
+  const after  = ageIdx === -1 ? "" : text.slice(ageIdx + AGE_TAG_MARKER.length);
+  const beforeChunks = splitIntoWordChunks(before);
+  const afterChunks  = ageIdx === -1 ? [] : splitIntoWordChunks(after);
+
+  const STEP_S = 0.05;
+  // Reveal (active=true) staggers each word's transition-delay by its position, so the highlight
+  // visibly spreads left to right. Dismissal (active=false) deliberately does NOT reverse-stagger
+  // — every word's delay resets to 0 so the whole cue fades out together in one clean beat, rather
+  // than reading as flickering apart word by word on the way out.
+  const wordStyle = (index: number): React.CSSProperties => ({
+    backgroundColor: active ? "rgba(4,86,221,0.22)" : "rgba(4,86,221,0)",
+    boxDecorationBreak: "clone",
+    WebkitBoxDecorationBreak: "clone",
+    padding: "0.05em 0",
+    borderRadius: 3,
+    transition: `background-color 0.35s ease ${active ? index * STEP_S : 0}s`,
+  });
+
+  let i = 0;
+  return (
+    <>
+      {beforeChunks.map(chunk => <span key={`b${i}`} style={wordStyle(i++)}>{chunk}</span>)}
+      {ageIdx !== -1 && (
+        <span key="age" style={wordStyle(i++)}>
+          <Image
+            src="/age-11-tag.png"
+            alt="Age 11"
+            width={182}
+            height={127}
+            // Same sizing/negative-margin treatment as withAgeTag above — see its own comment for
+            // why the negative margins are needed (cancels the tag's height against this
+            // paragraph's line-height so it doesn't inflate this one line's gap).
+            style={{ display: "inline-block", verticalAlign: "middle", height: "3.1em", width: "auto", marginTop: "-0.8em", marginBottom: "-0.8em" }}
+          />
+        </span>
+      )}
+      {afterChunks.map(chunk => <span key={`a${i}`} style={wordStyle(i++)}>{chunk}</span>)}
+    </>
+  );
+}
+
 function StoryFull({ highlightCosmos, enableReadHereCue, cosmosRef, onClose, isMobile }: { highlightCosmos: boolean; enableReadHereCue: boolean; cosmosRef: React.RefObject<HTMLParagraphElement | null>; onClose: () => void; isMobile: boolean }) {
   // On (fresh mount every time Read More opens), off after READ_HERE_MS — a one-shot "start
   // reading here" cue, not a persistent marker. Disabled entirely when opened via Shop
@@ -391,10 +451,6 @@ function StoryFull({ highlightCosmos, enableReadHereCue, cosmosRef, onClose, isM
                 borderRadius: 3,
                 transition: "background-color 0.6s ease",
               };
-              const highlightStyle: React.CSSProperties = {
-                ...highlightBase,
-                backgroundColor: showReadHere ? "rgba(4,86,221,0.22)" : "rgba(4,86,221,0)",
-              };
               // Only the two Cosmos paragraphs — highlighted only once the Shop link's
               // auto-open-and-scroll flow has actually reached them (highlightCosmos), unlike
               // the "read here" cue above which is on immediately and fades on its own.
@@ -426,7 +482,7 @@ function StoryFull({ highlightCosmos, enableReadHereCue, cosmosRef, onClose, isM
                     return (
                       <>
                         {para.slice(0, readHereIdx)}
-                        <span style={highlightStyle}>{withAgeTag(highlighted)}</span>
+                        <ReadHereSpread text={highlighted} active={showReadHere} />
                         {tail}
                       </>
                     );
@@ -443,7 +499,7 @@ function StoryFull({ highlightCosmos, enableReadHereCue, cosmosRef, onClose, isM
                   <span
                     className="uppercase"
                     style={{
-                      display: "block", fontFamily: "var(--font-barlow)", fontWeight: 900,
+                      display: "block", fontFamily: "var(--font-archivo)", fontWeight: 900,
                       fontSize: "clamp(18px,1.6vw,24px)", letterSpacing: "-0.01em",
                       marginTop: "clamp(20px,2.5vw,32px)", color: "#0D0D0D",
                     }}
@@ -770,7 +826,7 @@ export function OriginsSection() {
       <div id="origins-heading-row" className="flex items-end justify-center flex-wrap" style={{ gap: "clamp(8px,1vw,14px)", marginBottom: "clamp(48px,5vw,72px)" }}>
         <h2 style={{
           position: "relative",
-          fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(40px,7vw,96px)",
+          fontFamily: "var(--font-archivo)", fontWeight: 900, fontSize: "clamp(40px,7vw,96px)",
           lineHeight: 0.92, letterSpacing: "-0.02em", textTransform: "uppercase",
         }}>
           {/* The "O" of "Origins" gets its own id so page.tsx's star-tracking effect can measure
@@ -837,7 +893,7 @@ export function OriginsSection() {
             className="inline-flex items-center"
             style={{
               gap: 6, background: "#FF802B", color: "#fff",
-              fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 14,
+              fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 14,
               borderRadius: 10, padding: "10px 18px", border: "none", cursor: "pointer",
             }}
           >

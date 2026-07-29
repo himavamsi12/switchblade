@@ -137,7 +137,7 @@ export function LogoOrbit() {
             onMouseEnter={() => goTo(i)}
             onClick={() => goTo(i)}
             style={{
-              fontFamily: "var(--font-ibm-mono)", fontSize: "clamp(11px,0.9vw,14px)", fontWeight: 700, letterSpacing: "0.04em",
+              fontFamily: "var(--font-archivo)", fontSize: "clamp(11px,0.9vw,14px)", fontWeight: 700, letterSpacing: "0.04em",
               padding: "8px 16px", borderRadius: "999px", cursor: "pointer", whiteSpace: "nowrap",
               background: i === 0 ? "#0A1AFF" : "transparent", color: i === 0 ? "#fff" : "#0D0D0D",
               border: `1px solid ${i === 0 ? "#0A1AFF" : "rgba(13,13,13,0.25)"}`, transition: "background 0.3s ease, color 0.3s ease, border-color 0.3s ease",
@@ -174,13 +174,13 @@ export function LogoOrbit() {
       </div>
 
       <div className="site-px" style={{ position: "absolute", bottom: "clamp(36px,5vw,72px)", left: 0, zIndex: 20 }}>
-        <h2 style={{ fontFamily: "var(--font-barlow)", fontWeight: 900, fontSize: "clamp(40px,5.4vw,88px)", lineHeight: 0.9, letterSpacing: "-0.02em", color: "#0D0D0D" }}>
+        <h2 style={{ fontFamily: "var(--font-archivo)", fontWeight: 900, fontSize: "clamp(40px,5.4vw,88px)", lineHeight: 0.9, letterSpacing: "-0.02em", color: "#0D0D0D" }}>
           The Brand<br />Journey
         </h2>
       </div>
 
       <div className="site-px" style={{ position: "absolute", bottom: "clamp(40px,5.4vw,80px)", right: 0, zIndex: 20, display: "flex", justifyContent: "flex-end" }}>
-        <p ref={descRef} style={{ maxWidth: "min(46vw,560px)", fontFamily: "var(--font-barlow)", fontSize: "clamp(14px,1.2vw,19px)", fontWeight: 500, lineHeight: 1.55, color: "#0D0D0D", transition: "opacity 0.25s ease" }}>
+        <p ref={descRef} style={{ maxWidth: "min(46vw,560px)", fontFamily: "var(--font-archivo)", fontSize: "clamp(14px,1.2vw,19px)", fontWeight: 500, lineHeight: 1.55, color: "#0D0D0D", transition: "opacity 0.25s ease" }}>
           {PHASES[0].copy}
         </p>
       </div>
