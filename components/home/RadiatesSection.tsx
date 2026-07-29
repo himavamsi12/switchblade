@@ -282,6 +282,34 @@ export function RadiatesSection({
         gsap.delayedCall(tlEnter.duration() + 0.15, () => releaseHold?.());
       };
 
+      // A SECOND hold, at the wordmark beat (see wordmarkTween's onEnter below) — by request:
+      // reported as "scroll fast and it skips straight to the third section". This section's
+      // content is CSS `position: sticky`, not a hard scroll-jack, so nothing stops a single
+      // strong flick from covering this whole section's ~280vh scroll runway in one continuous
+      // motion — holdForEntrance only buys a forced pause right at the very start (and Lenis's
+      // own .stop() discards that flick's momentum outright, so it can't chain into a second one).
+      // A fast-enough second flick right after that release could still blow straight through the
+      // labels fading out, the star settling, AND the wordmark typing in, landing in globeTravel/
+      // ParagraphReveal having barely registered any of it. This checkpoint forces one more brief
+      // pause right as the wordmark starts revealing, so a fast scroller is guaranteed to land on
+      // it rather than only ever seeing the very first beat. Same technique, same one-shot-per-
+      // mount guard, same deep-link exemption as holdForEntrance above.
+      let heldWordmarkOnce = false;
+      const holdForWordmark = () => {
+        if (isMobile || heldWordmarkOnce) return;
+        if (isShopDeepLink()) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const lenis = (window as any).__lenis;
+        if (!lenis?.stop) return;
+        heldWordmarkOnce = true;
+        lenis.stop();
+        releaseHold = () => {
+          releaseHold = null;
+          lenis.start();
+        };
+        gsap.delayedCall(1.1, () => releaseHold?.());
+      };
+
       let wasIntersecting = false;
       const checkIntersection = () => {
         if (killed) return;
@@ -523,6 +551,7 @@ export function RadiatesSection({
           start: "40% top",
           end: "52% top",
           scrub: 0.3,
+          onEnter: holdForWordmark,
         },
       })
         .to(wordmarkChars, {
@@ -683,7 +712,7 @@ export function RadiatesSection({
   }, []);
 
   return (
-    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[500vh] lg:h-[400vh]">
+    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[500vh] lg:h-[350vh]">
       {/* Height grown from an original 380vh to 520vh: the extra scroll distance is what gives
           every scrubbed beat its own non-overlapping slice of scroll, so a normal scroll flick
           can't blow through more than one at once (which read as sections colliding at 380vh).

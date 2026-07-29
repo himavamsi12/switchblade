@@ -48,9 +48,10 @@ export function triggerShopHighlight() {
  * Standard site navbar — shared across Home, Classics, and Collaborate so all three render
  * identically in layout/behavior (Home/Classics/Shop links, centered wordmark, Collab CTA,
  * Archivo font, hamburger + drawer on mobile). Color scheme is the one thing that differs:
- * "dark" (default, Home/Collaborate) is transparent-at-top/solid-#1130A2-on-scroll over a blue
- * hero; "light" (Classics) is always a plain white bar with a bottom border, since Classics has
- * no blue hero for a transparent bar to sit over.
+ * "dark" (default, Home/Collaborate) is transparent-at-top (over that page's own blue hero, white
+ * text/logo) and switches to the exact same white-bar-with-dark-text look "light" always uses once
+ * scrolled even slightly; "light" (Classics) is always that plain white bar with a bottom border,
+ * since Classics has no blue hero for a transparent bar to sit over.
  */
 export function SiteNav({ variant = "dark", animateIn = false }: { variant?: SiteNavVariant; animateIn?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -73,19 +74,27 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
   const light = variant === "light";
 
   // Transparent at the very top of any "dark" page (letting that page's own blue hero show
-  // through the nav's height), solid #1130A2 once scrolled even slightly — otherwise the white
-  // content further down the page (e.g. most of Collaborate below its hero) would slide directly
-  // under a transparent bar with nothing to keep the nav's white text/logo legible against it.
-  // "light" variant skips this entirely — it's always plain white, matching Classics's own
-  // white content underneath.
+  // through the nav's height, white logo/text over it), switching to the SAME plain-white-bar
+  // look the "light" (Classics) variant always uses once scrolled even slightly — otherwise the
+  // white content further down the page (e.g. most of Collaborate below its hero) would slide
+  // directly under a transparent bar with nothing to keep white text/logo legible against it. Was
+  // solid navy (#1130A2) with white text instead of white-with-dark-text (by request, "should be
+  // white like [Classics's nav]" once scrolled, reverting to the transparent hero look back at the
+  // top) — lightLook below drives every color choice the "light" variant already made, so the
+  // scrolled state now reuses that same styling instead of a separate navy scheme.
+  const lightLook = light || scrolled;
   useEffect(() => {
     if (light) return;
-    // Threshold of 4px rather than a bare > 0: some mobile browsers report a tiny non-zero
-    // scrollY on initial paint (address-bar collapse/URL-bar quirks), which flipped this solid
-    // even at rest — visibly wrong on pages like Collaborate whose hero's top color (#0C40BE)
-    // doesn't match this bar's solid scrolled color (#1130A2), instead of the intended
-    // transparent-over-hero look at the top of the page.
-    const onScroll = () => setScrolled(window.scrollY > 4);
+    // Threshold is ~one viewport height (both Home's and Collaborate's hero sections are
+    // h-screen/min-h-screen, ~100vh), not a bare few px — the bar must stay transparent-over-hero
+    // for the WHOLE hero, not just its literal top edge. A small 4px threshold (the original value
+    // here) flipped this to the white-bar look the instant you scrolled at all, even while still
+    // fully inside the hero with its blue gradient still filling the screen behind the bar — white
+    // text over a now-also-white bar. The -100 buffer starts the transition a little before the
+    // exact bottom edge of the hero, rather than a hard cliff exactly at window.innerHeight (which
+    // would flicker back and forth across scrollY values that only jitter a few px near that
+    // boundary, e.g. mobile's address-bar collapse/expand).
+    const onScroll = () => setScrolled(window.scrollY > window.innerHeight - 100);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -139,10 +148,10 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
     ? { duration: 0.6, delay: 3.5, ease: [0.22, 1, 0.36, 1] as const }
     : { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
 
-  const linkColor = light
+  const linkColor = lightLook
     ? "text-[#090909] hover:opacity-60 transition-opacity"
     : "text-white/80 font-normal hover:text-white transition-colors";
-  const activeLinkColor = light
+  const activeLinkColor = lightLook
     ? "text-[#0456DD] font-medium"
     : "text-white font-medium hover:text-[#FF802B] transition-colors";
 
@@ -161,11 +170,11 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
         // hide-on-scroll-down/reveal-on-scroll-up behavior above requires: an absolutely
         // positioned bar scrolls away with the document like any other in-flow content, with
         // nothing to ever bring it back once you've scrolled past it.
-        className={"fixed top-0 inset-x-0 z-[1200] site-px flex items-center justify-between" + (light ? " border-b border-black/8" : "")}
+        className={"fixed top-0 inset-x-0 z-[1200] site-px flex items-center justify-between" + (lightLook ? " border-b border-black/8" : "")}
         style={{
           height: 72,
-          background: light ? "#ffffff" : scrolled ? "#1130A2" : "transparent",
-          transition: light ? undefined : "background-color 0.25s ease",
+          background: lightLook ? "#ffffff" : "transparent",
+          transition: light ? undefined : "background-color 0.25s ease, border-color 0.25s ease",
           fontFamily: "var(--font-archivo)",
           // Classics hides the real OS cursor site-wide (globals.css `cursor: none`) and shows
           // its own in-page dot cursor instead (ClassicsExperience's `.cursor`) — but that dot
@@ -211,15 +220,15 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
           style={{ cursor: light ? "pointer" : undefined }}
         >
           <span
-            className={"block h-[2px] w-5 transition-transform duration-200" + (light ? " bg-[#090909]" : " bg-white")}
+            className={"block h-[2px] w-5 transition-transform duration-200" + (lightLook ? " bg-[#090909]" : " bg-white")}
             style={{ transform: menuOpen ? "translateY(7px) rotate(45deg)" : "none" }}
           />
           <span
-            className={"block h-[2px] w-5 transition-opacity duration-200" + (light ? " bg-[#090909]" : " bg-white")}
+            className={"block h-[2px] w-5 transition-opacity duration-200" + (lightLook ? " bg-[#090909]" : " bg-white")}
             style={{ opacity: menuOpen ? 0 : 1 }}
           />
           <span
-            className={"block h-[2px] w-5 transition-transform duration-200" + (light ? " bg-[#090909]" : " bg-white")}
+            className={"block h-[2px] w-5 transition-transform duration-200" + (lightLook ? " bg-[#090909]" : " bg-white")}
             style={{ transform: menuOpen ? "translateY(-7px) rotate(-45deg)" : "none" }}
           />
         </button>
@@ -227,7 +236,7 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
         <Link
           href="/"
           aria-label="Switchblade — Home"
-          className={"absolute left-1/2 -translate-x-1/2 flex items-center transition-colors" + (light ? " text-[#090909] hover:opacity-60" : " text-white hover:text-[#FF802B]")}
+          className={"absolute left-1/2 -translate-x-1/2 flex items-center transition-colors" + (lightLook ? " text-[#090909] hover:opacity-60" : " text-white hover:text-[#FF802B]")}
         >
           {/* Full logo lockup (mark + wordmark + ™) as one SVG, using currentColor so it follows
               the nav variant colour. w-auto keeps its ~6.8:1 aspect ratio from the height. */}

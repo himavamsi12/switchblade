@@ -44,12 +44,19 @@ export function SmoothScroll() {
       gsap.registerPlugin(ScrollTrigger);
 
       const lenis = new Lenis({
-        // Duration bumped from 0.9 → 1.15: a longer ease is heavier drag, so a hard flick decays
-        // onto its target over more time instead of snapping there — the scroll feels weightier and
-        // more controlled at speed. This is the smoothing/settle knob.
-        duration: 1.15,
+        // Duration bumped from 0.9 → 1.15 → 1.3 (by request, "butter smooth"): a longer ease is
+        // heavier drag, so a hard flick decays onto its target over more time instead of snapping
+        // there — the scroll feels weightier, more fluid, and more controlled at speed. This is
+        // the smoothing/settle knob. RadiatesSection's scroll distance was independently cut ~30%
+        // (400vh → 280vh) around the same time, which is what makes room for a longer/smoother
+        // glide here without also reintroducing the earlier "too many scrolls" complaint —
+        // duration adds fluidity to a given scroll distance, it doesn't add distance itself.
+        duration: 1.3,
         // Standard eased curve; the exact shape matters less than that it's a continuous stream.
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        // Explicit or Lenis (correctly) already defaults to smoothing every wheel event — stated
+        // here so the "butter smooth" intent is visible in config, not just implied by omission.
+        smoothWheel: true,
         // THE drag knob. wheelMultiplier scales every wheel delta before Lenis applies it, so a
         // hard flick contributes proportionally LESS distance — the input is resisted rather than
         // banked-and-replayed (which is what made the previous velocity cap feel like it scrolled
