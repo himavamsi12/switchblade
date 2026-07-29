@@ -485,13 +485,11 @@ export function RadiatesSection({
           // above doesn't touch y on mobile at all) — one continuous scrubbed move from the
           // Hero baseline (0) straight to its final resting spot. ease:"none" for the same
           // scrubbed-tween reason as the shrink above — linear w.r.t. scroll.
-          // 6vh → 12vh → 10vh → 7vh (by request) — 6vh was a leftover flat value from an old
-          // instant gsap.set, never actually re-tuned against the labels' own mobile position
-          // (Kindness/Compassion sit at top-45%, see LABELS' posClass above); it stopped short of
-          // that row, reading as an abrupt correction/jump right as the star settled rather than a
-          // continuous glide down to it. 12vh and 10vh both overshot; 7vh is the current tuned
-          // value.
-          y: isMobile ? "7vh" : "-6vh",
+          // 6vh (the original value) — 12vh, 10vh, and 7vh were all tried and overshot past the
+          // labels' row (Kindness/Compassion sit at top-45%, see LABELS' posClass above); the
+          // jump reported alongside those wasn't actually this offset — see the
+          // document.fonts.ready refresh below, added for the real cause.
+          y: isMobile ? "6vh" : "-6vh",
           ease: "none",
           force3D: true,
         }, 0);
@@ -643,6 +641,23 @@ export function RadiatesSection({
           globeTravel.fromTo(badge, { opacity: 0, y: 8 }, { opacity: 1, y: 0, ease: "none", duration: 0.08 }, 0.92);
         }
       }
+
+      // Every trigger above is percentage-based (e.g. "top 60%", "27% top"), but ScrollTrigger
+      // still resolves those against ABSOLUTE pixel positions captured from the page's CURRENT
+      // layout — and re-checks that layout only on resize, not automatically when something
+      // reflows in place. This section's own custom display font (and the star's 3D canvas)
+      // hadn't necessarily finished loading/settling yet at the moment these triggers were
+      // created above, so their cached pixel start/end could be based on a shorter/taller
+      // pre-font-swap layout than the page actually settles into. On localhost that swap is
+      // already cached from repeated local testing, so it's long done before you ever scroll —
+      // hiding this entirely in dev. On a first real visit to the deployed site, the swap can
+      // still be happening AFTER these triggers were created, leaving them measuring against a
+      // stale layout for the rest of the session: exactly the kind of "desynced from where the
+      // reader actually is" mismatch that reads as the star jumping. document.fonts.ready fires
+      // once the swap is done; refreshing then forces every ScrollTrigger above to re-measure
+      // against the final, settled layout. Same fix already used for the same reason in
+      // components/shared/SiteFooter.tsx's own font-swap refit.
+      document.fonts?.ready.then(() => { if (!killed) ScrollTrigger.refresh(); });
     });
 
     return () => {
