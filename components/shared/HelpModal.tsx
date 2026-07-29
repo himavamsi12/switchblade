@@ -44,6 +44,8 @@ const SLIDE = 0.5;
 export function HelpModal({ onClose }: { onClose: () => void }) {
   const reduce = useReducedMotion();
   const [pitchSent, setPitchSent] = useState(false);
+  const [pitchSubmitting, setPitchSubmitting] = useState(false);
+  const [pitchError, setPitchError] = useState(false);
 
   // Esc to close + lock background scroll while open.
   useEffect(() => {
@@ -267,19 +269,41 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             <form
               className="flex flex-col gap-9"
               style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }}
-              onSubmit={e => {
+              onSubmit={async e => {
                 e.preventDefault();
-                setPitchSent(true);
-                e.currentTarget.reset();
-                window.setTimeout(() => setPitchSent(false), 4000);
+                const form = e.currentTarget;
+                const data = new FormData(form);
+                setPitchSubmitting(true);
+                try {
+                  const res = await fetch("/api/pitch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      nameOrCraft: data.get("nameOrCraft"),
+                      portfolioLink: data.get("portfolioLink"),
+                      projectIdea: data.get("projectIdea"),
+                      contact: data.get("contact"),
+                    }),
+                  });
+                  if (!res.ok) throw new Error("Pitch submission failed");
+                  setPitchSent(true);
+                  form.reset();
+                  window.setTimeout(() => setPitchSent(false), 4000);
+                } catch (err) {
+                  console.error(err);
+                  setPitchError(true);
+                  window.setTimeout(() => setPitchError(false), 4000);
+                } finally {
+                  setPitchSubmitting(false);
+                }
               }}
             >
               {[
-                { label: "You OR Your Craft", required: true },
-                { label: "Portfolio link" },
-                { label: "What would we make together" },
-                { label: "E-mail or phone number", required: true },
-              ].map(({ label, required }) => (
+                { label: "You OR Your Craft", name: "nameOrCraft", required: true },
+                { label: "Portfolio link", name: "portfolioLink" },
+                { label: "What would we make together", name: "projectIdea" },
+                { label: "E-mail or phone number", name: "contact", required: true },
+              ].map(({ label, name, required }) => (
                 // The label→input gap is 12px on the collaborate page (gap-3). Here it's a
                 // height-aware clamp with the SAME 12px ceiling: identical to collab on a normal
                 // desktop viewport, but able to compress further rather than pushing the last
@@ -287,6 +311,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
                 <div key={label} className="flex flex-col" style={{ gap: "clamp(8px,2vh,12px)" }}>
                   <label style={labelStyle}>{label}{required && <span style={{ color: "#0456DD" }}> *</span>}</label>
                   <input
+                    name={name}
                     type="text"
                     required={required}
                     style={fieldStyle}
@@ -297,16 +322,23 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
               ))}
               <button
                 type="submit"
+                disabled={pitchSubmitting}
                 style={{
                   height: 40, background: "#000", color: "#fff", border: "none", borderRadius: 8,
                   fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16,
-                  letterSpacing: "-0.02em", cursor: "pointer", transition: "opacity 0.15s",
+                  letterSpacing: "-0.02em", cursor: pitchSubmitting ? "default" : "pointer",
+                  opacity: pitchSubmitting ? 0.6 : 1, transition: "opacity 0.15s",
                 }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
-                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                onMouseEnter={e => { if (!pitchSubmitting) e.currentTarget.style.opacity = "0.8"; }}
+                onMouseLeave={e => { if (!pitchSubmitting) e.currentTarget.style.opacity = "1"; }}
               >
-                Send the pitch
+                {pitchSubmitting ? "Sending..." : "Send the pitch"}
               </button>
+              {pitchError && (
+                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 14, color: "#D64545" }}>
+                  Something went wrong sending your pitch — please try again.
+                </p>
+              )}
             </form>
           </div>
         </motion.div>

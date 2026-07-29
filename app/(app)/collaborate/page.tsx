@@ -67,6 +67,8 @@ export default function CollaboratePage() {
   const collabAnchorRef   = useRef<HTMLDivElement>(null);
   const shrinkRef         = useRef<number>(1);
   const [pitchSent, setPitchSent] = useState(false);
+  const [pitchSubmitting, setPitchSubmitting] = useState(false);
+  const [pitchError, setPitchError] = useState(false);
   // Both blue gradient areas on this page reveal through <GradientReveal> (see the JSX) — the
   // shared "the gradient falls in" overlay from the homepage hero: a white cover that slides down
   // out of view behind a feathered edge, rather than a flat opacity cross-fade. It's a pure CSS
@@ -739,33 +741,60 @@ export default function CollaboratePage() {
               <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Drop a Pitch</span>
             </div>
 
-            <form className="rise-item flex flex-col gap-9" style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }} onSubmit={e => {
+            <form className="rise-item flex flex-col gap-9" style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }} onSubmit={async e => {
               e.preventDefault();
-              setPitchSent(true);
-              e.currentTarget.reset();
-              window.setTimeout(() => setPitchSent(false), 4000);
+              const form = e.currentTarget;
+              const data = new FormData(form);
+              setPitchSubmitting(true);
+              try {
+                const res = await fetch("/api/pitch", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    nameOrCraft: data.get("nameOrCraft"),
+                    portfolioLink: data.get("portfolioLink"),
+                    projectIdea: data.get("projectIdea"),
+                    contact: data.get("contact"),
+                  }),
+                });
+                if (!res.ok) throw new Error("Pitch submission failed");
+                setPitchSent(true);
+                form.reset();
+                window.setTimeout(() => setPitchSent(false), 4000);
+              } catch (err) {
+                console.error(err);
+                setPitchError(true);
+                window.setTimeout(() => setPitchError(false), 4000);
+              } finally {
+                setPitchSubmitting(false);
+              }
             }}>
               {[
-                { label: "You OR Your Craft",             type: "input", required: true },
-                { label: "Portfolio link",                type: "input" },
-                { label: "What would we make together",  type: "input" },
-                { label: "E-mail or phone number",        type: "input", required: true },
+                { label: "You OR Your Craft",             name: "nameOrCraft",   required: true },
+                { label: "Portfolio link",                name: "portfolioLink", required: false },
+                { label: "What would we make together",  name: "projectIdea",   required: false },
+                { label: "E-mail or phone number",        name: "contact",       required: true },
               ].map(f => (
                 <div key={f.label} className="flex flex-col gap-3">
                   <label style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>{f.label}{f.required && <span style={{ color: "#0456DD" }}> *</span>}</label>
-                  <input type="text" required={f.required} style={fieldStyle} onFocus={e => (e.target.style.borderBottomColor = "#0456DD")} onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")} />
+                  <input name={f.name} type="text" required={f.required} style={fieldStyle} onFocus={e => (e.target.style.borderBottomColor = "#0456DD")} onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")} />
                 </div>
               ))}
-              <button type="submit" style={{
+              <button type="submit" disabled={pitchSubmitting} style={{
                 height: 40, background: "#000", color: "#fff", border: "none", borderRadius: 8,
                 fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16, letterSpacing: "-0.02em",
-                cursor: "pointer", transition: "opacity 0.15s",
+                cursor: pitchSubmitting ? "default" : "pointer", opacity: pitchSubmitting ? 0.6 : 1, transition: "opacity 0.15s",
               }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = "0.8")}
-                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                onMouseEnter={e => { if (!pitchSubmitting) e.currentTarget.style.opacity = "0.8"; }}
+                onMouseLeave={e => { if (!pitchSubmitting) e.currentTarget.style.opacity = "1"; }}
               >
-                Send the pitch
+                {pitchSubmitting ? "Sending..." : "Send the pitch"}
               </button>
+              {pitchError && (
+                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 14, color: "#D64545" }}>
+                  Something went wrong sending your pitch — please try again.
+                </p>
+              )}
             </form>
           </div>
         </div>

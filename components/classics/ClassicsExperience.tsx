@@ -10,7 +10,7 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import "./classics-experience.css";
 
-interface Project { title: string; cat: string; img: string; gallery?: string[]; body?: string[] }
+interface Project { title: string; cat: string; img: string; gallery?: string[]; body?: string[]; instagram?: string }
 
 export type CmsProject = Project;
 
@@ -45,6 +45,19 @@ function escapeHtml(s: string) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+// Hides the IG icon entirely for projects with no Instagram link (the hardcoded PROJECTS list
+// has none) instead of leaving it pointing nowhere.
+function applyIgLink(el: HTMLAnchorElement | null, url: string | undefined) {
+  if (!el) return;
+  if (url) {
+    el.href = url;
+    el.style.display = "";
+  } else {
+    el.removeAttribute("href");
+    el.style.display = "none";
+  }
 }
 
 function detailBodyHtml(body: string[] | undefined) {
@@ -204,6 +217,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
   const detailGhostNextTitleRef = useRef<HTMLHeadingElement>(null);
   const detailGhostNextBadgeRef = useRef<HTMLSpanElement>(null);
   const detailGhostNextBodyRef = useRef<HTMLDivElement>(null);
+  const detailIgRef = useRef<HTMLAnchorElement>(null);
+  const detailGhostPrevIgRef = useRef<HTMLAnchorElement>(null);
+  const detailGhostNextIgRef = useRef<HTMLAnchorElement>(null);
   const detailThumbsRef     = useRef<HTMLDivElement>(null);
   const detailThumbTrackRef = useRef<HTMLDivElement>(null);
   const detailThumbPrevRef  = useRef<HTMLButtonElement>(null);
@@ -783,10 +799,12 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       if (detailGhostPrevTitleRef.current) detailGhostPrevTitleRef.current.textContent = prevProj.title.toUpperCase();
       if (detailGhostPrevBadgeRef.current) detailGhostPrevBadgeRef.current.textContent = prevProj.cat.toUpperCase();
       if (detailGhostPrevBodyRef.current) detailGhostPrevBodyRef.current.innerHTML = detailBodyHtml(prevProj.body);
+      applyIgLink(detailGhostPrevIgRef.current, prevProj.instagram);
       if (detailGhostNextImgRef.current) detailGhostNextImgRef.current.src = nextProj.img;
       if (detailGhostNextTitleRef.current) detailGhostNextTitleRef.current.textContent = nextProj.title.toUpperCase();
       if (detailGhostNextBadgeRef.current) detailGhostNextBadgeRef.current.textContent = nextProj.cat.toUpperCase();
       if (detailGhostNextBodyRef.current) detailGhostNextBodyRef.current.innerHTML = detailBodyHtml(nextProj.body);
+      applyIgLink(detailGhostNextIgRef.current, nextProj.instagram);
     }
 
     function renderThumbs(proj: Project) {
@@ -827,6 +845,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       detailTitleRef.current.textContent = proj.title.toUpperCase();
       detailBadgeRef.current.textContent = proj.cat.toUpperCase();
       detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
+      applyIgLink(detailIgRef.current, proj.instagram);
       renderThumbs(proj);
       updateGhosts();
       // Safety reset — guards against opening a fresh detail view while the 3-card group from a
@@ -902,6 +921,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         detailTitleRef.current!.textContent = proj.title.toUpperCase();
         detailBadgeRef.current!.textContent = proj.cat.toUpperCase();
         detailBodyRef.current!.innerHTML = detailBodyHtml(proj.body);
+        applyIgLink(detailIgRef.current, proj.instagram);
         renderThumbs(proj);
         updateGhosts();
         img.style.opacity = "1";
@@ -986,6 +1006,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           if (detailTitleRef.current) detailTitleRef.current.textContent = proj.title.toUpperCase();
           if (detailBadgeRef.current) detailBadgeRef.current.textContent = proj.cat.toUpperCase();
           if (detailBodyRef.current) detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
+          applyIgLink(detailIgRef.current, proj.instagram);
           renderThumbs(proj);
           updateGhosts();
           setGroupTransform(0, false);
@@ -1343,7 +1364,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               <div className="detail__textWrap">
                 <span className="detail__badge" ref={detailGhostPrevBadgeRef} />
                 <div className="detail__body" ref={detailGhostPrevBodyRef} />
-                <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>
+                <a className="detail__ig" ref={detailGhostPrevIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
                 </a>
               </div>
@@ -1370,7 +1391,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               <div className="detail__textWrap">
                 <span className="detail__badge" ref={detailBadgeRef} />
                 <div className="detail__body" ref={detailBodyRef} />
-                <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>
+                <a className="detail__ig" ref={detailIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
                 </a>
               </div>
@@ -1388,7 +1409,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               <div className="detail__textWrap">
                 <span className="detail__badge" ref={detailGhostNextBadgeRef} />
                 <div className="detail__body" ref={detailGhostNextBodyRef} />
-                <a className="detail__ig" href="#" aria-label="Instagram" onClick={e => e.preventDefault()}>
+                <a className="detail__ig" ref={detailGhostNextIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
                 </a>
               </div>

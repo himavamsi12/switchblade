@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SweepText } from "@/components/shared/SweepText";
 
 export function MembershipPreview() {
@@ -9,6 +9,27 @@ export function MembershipPreview() {
   const leftTopRef   = useRef<HTMLDivElement>(null);
   const leftBottomRef = useRef<HTMLDivElement>(null);
   const rightRef     = useRef<HTMLDivElement>(null);
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) return;
+    setStatus("submitting");
+    try {
+      const res = await fetch("/api/membership", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "concept-preview" }),
+      });
+      if (!res.ok) throw new Error("Membership request failed");
+      setStatus("done");
+      setEmail("");
+    } catch (err) {
+      console.error(err);
+      setStatus("error");
+    }
+  }
 
   useEffect(() => {
     let killed = false;
@@ -170,11 +191,13 @@ export function MembershipPreview() {
             Get early access — join the list
           </p>
 
-          <form onSubmit={e => e.preventDefault()} style={{ display: "flex", gap: 10, maxWidth: 500 }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", gap: 10, maxWidth: 500 }}>
             <input
               type="email"
               placeholder="your@email.com"
               required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               style={{
                 flex:          1,
                 height:        52,
@@ -195,6 +218,7 @@ export function MembershipPreview() {
             />
             <button
               type="submit"
+              disabled={status === "submitting"}
               style={{
                 height:        52,
                 padding:       "0 28px",
@@ -207,23 +231,24 @@ export function MembershipPreview() {
                 fontSize:      12,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
-                cursor:        "pointer",
+                cursor:        status === "submitting" ? "default" : "pointer",
+                opacity:       status === "submitting" ? 0.6 : 1,
                 whiteSpace:    "nowrap",
                 flexShrink:    0,
                 transition:    "background 0.15s, transform 0.15s",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#ea6c0a"; e.currentTarget.style.transform = "scale(1.04)"; }}
+              onMouseEnter={e => { if (status !== "submitting") { e.currentTarget.style.background = "#ea6c0a"; e.currentTarget.style.transform = "scale(1.04)"; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "#F97316"; e.currentTarget.style.transform = "scale(1)"; }}
             >
-              Request Access →
+              {status === "submitting" ? "Sending..." : status === "done" ? "Request sent ✓" : "Request Access →"}
             </button>
           </form>
 
           <p style={{
             fontFamily: "var(--font-archivo)", fontSize: 10, letterSpacing: "0.06em",
-            color: "rgba(255,255,255,0.3)", marginTop: 12,
+            color: status === "error" ? "#F87171" : "rgba(255,255,255,0.3)", marginTop: 12,
           }}>
-            No spam. When it&apos;s time, you&apos;ll hear from us first.
+            {status === "error" ? "Something went wrong — please try again." : "No spam. When it's time, you'll hear from us first."}
           </p>
 
           <Link href="/membership" style={{

@@ -10,10 +10,28 @@ import { SweepText } from "@/components/shared/SweepText";
 export default function MembershipPage() {
   const [form, setForm]         = useState({ name: "", email: "", source: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (form.name && form.email) setSubmitted(true);
+    if (!form.name || !form.email) return;
+    setSubmitting(true);
+    setError(false);
+    try {
+      const res = await fetch("/api/membership", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("Membership request failed");
+      setSubmitted(true);
+    } catch (err) {
+      console.error(err);
+      setError(true);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -98,9 +116,10 @@ export default function MembershipPage() {
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <button type="submit" className="w-full bg-[#111111] text-white py-4 text-sm font-medium hover:bg-[#0A1AFF] transition-colors mt-2">
-                    Request access
+                  <button type="submit" disabled={submitting} className="w-full bg-[#111111] text-white py-4 text-sm font-medium hover:bg-[#0A1AFF] transition-colors mt-2 disabled:opacity-60">
+                    {submitting ? "Sending..." : "Request access"}
                   </button>
+                  {error && <p className="text-xs text-red-500 text-center leading-relaxed">Something went wrong — please try again.</p>}
                   <p className="text-xs text-[#9CA3AF] text-center leading-relaxed">We will never sell your data. We will contact you when it&apos;s time.</p>
                 </motion.form>
               )}

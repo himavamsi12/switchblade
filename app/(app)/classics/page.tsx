@@ -1,20 +1,40 @@
 import { ClassicsPageClient } from "@/components/classics/ClassicsPageClient";
+import type { CmsProject } from "@/components/classics/ClassicsExperience";
+import { createClient } from "@/lib/supabase/server";
 
 /**
- * Static page — deliberately NOT backed by Payload.
+ * Dynamic again, but backed by Supabase instead of Payload's own local sqlite db.
  *
- * This used to be `force-dynamic` and ran `payload.find({ collection: "classics-cards" })` on every
- * request. That can't work on Vercel: the Payload config points `sqliteAdapter` at the local file
- * `./payload.db`, which is gitignored (so it's never deployed) and couldn't be read or written
- * anyway on a read-only, ephemeral serverless filesystem. The result was a 500 on /classics in
- * production while every other (static) route was fine.
+ * This used to run `payload.find({ collection: "classics-cards" })` on every request, which can't
+ * work on Vercel: Payload's `sqliteAdapter` points at the local file `./payload.db`, which is
+ * gitignored (so it's never deployed) and couldn't be read or written anyway on a read-only,
+ * ephemeral serverless filesystem. That 500'd in production, so the query was dropped entirely.
  *
- * Nothing was lost by dropping the query: the `classics-cards` collection was empty (0 rows), and
- * ClassicsExperience composes its cards as `[...PROJECTS, ...cmsProjects]` — so the CMS array only
- * ever appended to the hardcoded PROJECTS list, and was always appending nothing.
- *
- * To add or edit cards, edit PROJECTS in components/classics/ClassicsExperience.tsx.
+ * Cards created/edited in the Payload admin now sync to Supabase's `classics_cards` table (see the
+ * afterChange/afterDelete hooks in collections/ClassicsCards.ts) — Postgres has no such local-disk
+ * problem on Vercel, so this can safely query it on every request. ClassicsExperience still
+ * composes `[...PROJECTS, ...cmsProjects]`, so the hardcoded list keeps working even if this fetch
+ * returns nothing (e.g. no cards created yet, or a transient Supabase error).
  */
-export default function ClassicsPage() {
-  return <ClassicsPageClient cmsProjects={[]} />;
+export default async function ClassicsPage() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("classics_cards")
+    .select("heading, category, image_url, gallery, body, instagram_url")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to fetch classics_cards from Supabase:", error.message);
+  }
+
+  const cmsProjects: CmsProject[] = (data ?? []).map((row) => ({
+    title: row.heading,
+    cat: row.category,
+    img: row.image_url,
+    gallery: (row.gallery as string[] | null) ?? undefined,
+    body: (row.body as string[] | null) ?? undefined,
+    instagram: row.instagram_url ?? undefined,
+  }));
+
+  return <ClassicsPageClient cmsProjects={cmsProjects} />;
 }
