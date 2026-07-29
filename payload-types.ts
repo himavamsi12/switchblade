@@ -180,7 +180,7 @@ export interface Media {
 export interface ClassicsCard {
   id: number;
   /**
-   * Shown as the detail popup title, e.g. "STILL LIFE I" (the leading "/" is added automatically).
+   * Shown as the detail popup title, e.g. "STILL LIFE I" (uppercased automatically).
    */
   heading: string;
   /**
@@ -195,6 +195,10 @@ export interface ClassicsCard {
    * Main image shown in the grid tile and as the large image in the detail popup.
    */
   image: number | Media;
+  /**
+   * Optional Instagram link, e.g. "https://instagram.com/p/...". Shown as the IG icon in the detail popup.
+   */
+  instagram?: string | null;
   /**
    * Optional extra images. When present, a thumbnail strip appears below the main image in the detail popup so visitors can browse through all the photos for this card.
    */
@@ -348,6 +352,7 @@ export interface ClassicsCardsSelect<T extends boolean = true> {
   category?: T;
   paragraph?: T;
   image?: T;
+  instagram?: T;
   gallery?:
     | T
     | {
