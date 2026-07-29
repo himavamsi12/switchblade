@@ -477,10 +477,14 @@ export function RadiatesSection({
         .to(star, {
           // Mobile owns its ENTIRE settle-down motion here (the entrance IntersectionObserver
           // above doesn't touch y on mobile at all) — one continuous scrubbed move from the
-          // Hero baseline (0) straight to its final resting spot. 6vh matches the settle
-          // amount originally tuned via an old instant set. ease:"none" for the same
+          // Hero baseline (0) straight to its final resting spot. ease:"none" for the same
           // scrubbed-tween reason as the shrink above — linear w.r.t. scroll.
-          y: isMobile ? "6vh" : "-6vh",
+          // 6vh → 12vh (by request, "should go a little down") — 6vh was a leftover flat value
+          // from an old instant gsap.set, never actually re-tuned against the labels' own mobile
+          // position (Kindness/Compassion sit at top-45%, see LABELS' posClass above); it stopped
+          // short of that row, which read as an abrupt correction/jump right as the star settled
+          // rather than a continuous glide down to it.
+          y: isMobile ? "12vh" : "-6vh",
           ease: "none",
           force3D: true,
         }, 0);
