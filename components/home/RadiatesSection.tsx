@@ -431,7 +431,18 @@ export function RadiatesSection({
           // labels appear, the star is already sitting still.
           start: isMobile ? "top 60%" : "27% top",
           end: isMobile ? "top 8%" : "33% top",
-          scrub: 0.3,
+          // Mobile gets scrub:true (exact, zero-lag tracking), not the damped 0.3 desktop uses.
+          // Damped scrub doesn't map 1:1 to scroll position — it's a time-based follow that keeps
+          // interpolating toward the target for a while AFTER the raw scroll position already
+          // reached it. The "top 8%" end (instead of "top 0%") was an earlier attempt to fix this
+          // by giving that lag some scroll DISTANCE to resolve in before checkIntersection's hard
+          // "top <= 0" trigger fires the labels. But the lag resolves over TIME, not distance — a
+          // fast mobile flick (the normal way people scroll on a phone) can cross that whole 8%
+          // buffer in well under the time 0.3s-scrub needs to settle, so the star was still
+          // mid-catch-up exactly when the labels snapped in: the reported jump/stick. Desktop
+          // doesn't have this race (Lenis already smooths its raw input, so light damping here is
+          // just polish, not load-bearing), so only mobile switches to exact tracking.
+          scrub: isMobile ? true : 0.3,
           // Re-record the .to() tweens' start values every time this range is (re-)entered by
           // scrolling down into it — same fix, same reasoning as globeTravel's own onEnter
           // further below (see its comment for the full explanation). A .to() records its start
