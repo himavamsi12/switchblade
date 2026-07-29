@@ -16,6 +16,11 @@
 /payload.db
 /media
 
+# bulk classics import — real data/images are local-only, only the template is tracked
+/classics-import/data.csv
+/classics-import/images/*
+!/classics-import/images/.gitkeep
+
 # misc
 .DS_Store
 *.pem
