@@ -432,6 +432,20 @@ export function RadiatesSection({
           start: isMobile ? "top 60%" : "27% top",
           end: isMobile ? "top 8%" : "33% top",
           scrub: 0.3,
+          // Re-record the .to() tweens' start values every time this range is (re-)entered by
+          // scrolling down into it — same fix, same reasoning as globeTravel's own onEnter
+          // further below (see its comment for the full explanation). A .to() records its start
+          // from the element's CURRENT value only on its very first render (page load, y:0). The
+          // first pass through this range matches that recorded 0 exactly, so it looks fine —
+          // but scroll back up out of the range and down into it again, and the star's actual
+          // live y at that second entry isn't guaranteed to be bit-for-bit the same 0 the tween
+          // is still assuming (scrub reversal, rotation/spin settling, or plain scroll-momentum
+          // timing can all leave a tiny residual). Without invalidating, that second pass snaps
+          // from whatever the live value actually is back toward the STALE recorded start —
+          // exactly the reported "works first time, jumps on scroll down/up/down again".
+          // invalidate() forces a fresh read of the star's live position on every re-entry, so
+          // the tween always starts from wherever it truly is, never a stale cached value.
+          onEnter: () => scaleTween?.invalidate(),
         },
       })
         .to(shrinkProxy, {
