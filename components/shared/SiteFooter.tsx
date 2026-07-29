@@ -62,7 +62,7 @@ function InstagramLink({ className = "" }: { className?: string }) {
       padding:       "0 17px",
       borderRadius:  999,
       border:        "1px solid rgba(255,255,255,0.28)",
-      fontFamily:    "var(--font-ibm-mono)",
+      fontFamily:    "var(--font-archivo)",
       fontWeight:    700,
       fontSize:      12,
       letterSpacing: "0.1em",
@@ -356,10 +356,10 @@ export function SiteFooter() {
         marginTop:      "clamp(20px,3vw,36px)",
         borderTop:      "1px solid rgba(255,255,255,0.08)",
       }}>
-        <p style={{ fontFamily: "var(--font-ibm-mono)", fontSize: 10, letterSpacing: "0.1em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>
+        <p style={{ fontFamily: "var(--font-archivo)", fontSize: 10, letterSpacing: "0.1em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>
           © 2026 Switchblade
         </p>
-        <p style={{ fontFamily: "var(--font-ibm-mono)", fontSize: 10, letterSpacing: "0.1em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>
+        <p style={{ fontFamily: "var(--font-archivo)", fontSize: 10, letterSpacing: "0.1em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>
           All rights reserved
         </p>
       </div>

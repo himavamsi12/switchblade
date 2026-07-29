@@ -47,17 +47,13 @@ function escapeHtml(s: string) {
     .replace(/>/g, "&gt;");
 }
 
-// Hides the IG icon entirely for projects with no Instagram link (the hardcoded PROJECTS list
-// has none) instead of leaving it pointing nowhere.
+// Falls back to the studio's main Instagram profile for projects with no card-specific link (the
+// hardcoded PROJECTS list has none) — same URL as the site footer's Instagram link — instead of
+// hiding the icon, which is how it always displayed before per-card links existed.
+const DEFAULT_IG_URL = "https://www.instagram.com/switchbladeworld?igsh=Mmw2dHBscHdnYzgx&utm_source=qr";
 function applyIgLink(el: HTMLAnchorElement | null, url: string | undefined) {
   if (!el) return;
-  if (url) {
-    el.href = url;
-    el.style.display = "";
-  } else {
-    el.removeAttribute("href");
-    el.style.display = "none";
-  }
+  el.href = url || DEFAULT_IG_URL;
 }
 
 function detailBodyHtml(body: string[] | undefined) {

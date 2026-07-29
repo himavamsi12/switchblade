@@ -92,7 +92,7 @@
 .classics-exp .webgl.is-detail { filter: blur(14px); transition: filter .3s ease; }
 .classics-exp .detail { align-items: center; background: rgba(255, 255, 255, .55); display: flex; flex-direction: column; gap: 16px; inset: 0; justify-content: center; opacity: 0; pointer-events: none; position: fixed; transition: opacity .3s ease; z-index: 700; }
 .classics-exp .detail.is-open { opacity: 1; pointer-events: auto; }
-.classics-exp .detail__esc { align-items: center; color: rgba(0, 0, 0, .45); display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; gap: 12px; letter-spacing: .12em; max-width: 1320px; padding: 0 var(--margin); text-align: left; text-transform: uppercase; width: 100%; }
+.classics-exp .detail__esc { align-items: center; color: rgba(0, 0, 0, .45); display: flex; font-family: var(--font-archivo), sans-serif; font-size: .74rem; gap: 12px; letter-spacing: .12em; max-width: 1320px; padding: 0 var(--margin); text-align: left; text-transform: uppercase; width: 100%; }
 /* Invisible spacer matching .detail__nav's width so the text starts exactly where
    .detail__card starts (the card sits after a nav button + gap inside .detail__inner) —
    without this the text lines up with .detail__inner's own padding edge, which is further
@@ -122,7 +122,7 @@
 .classics-exp .detail__thumbNav:hover { background: #f2f2f2; }
 .classics-exp .detail__content { display: flex; flex: 1 1 0; flex-direction: column; justify-content: space-between; min-width: 0; }
 .classics-exp .detail__title { color: var(--color-ink); font-family: var(--font-archivo), sans-serif; font-size: 1.7rem; font-weight: 700; letter-spacing: .01em; opacity: 0; transform: translateY(10px); transition: opacity .3s ease .3s, transform .3s cubic-bezier(.22, 1, .36, 1) .3s; }
-.classics-exp .detail__badge { align-self: flex-start; background: #1d4ed8; border-radius: 999px; color: #fff; display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .7rem; letter-spacing: .08em; margin: 22px 0 18px; opacity: 0; padding: 7px 13px; text-transform: uppercase; transform: translateY(10px); transition: opacity .3s ease .37s, transform .3s cubic-bezier(.22, 1, .36, 1) .37s; }
+.classics-exp .detail__badge { align-self: flex-start; background: #1d4ed8; border-radius: 999px; color: #fff; display: inline-block; font-family: var(--font-archivo), sans-serif; font-size: .7rem; letter-spacing: .08em; margin: 22px 0 18px; opacity: 0; padding: 7px 13px; text-transform: uppercase; transform: translateY(10px); transition: opacity .3s ease .37s, transform .3s cubic-bezier(.22, 1, .36, 1) .37s; }
 .classics-exp .detail__body { color: rgba(0, 0, 0, .78); font-size: .95rem; line-height: 1.62; opacity: 0; transform: translateY(10px); transition: opacity .3s ease .44s, transform .3s cubic-bezier(.22, 1, .36, 1) .44s; }
 .classics-exp .detail__body p + p { margin-top: 16px; }
 .classics-exp .detail__ig { align-items: center; color: #111; display: inline-flex; justify-content: center; margin-top: 20px; opacity: 0; transform: translateY(10px); transition: opacity .3s ease .5s, transform .3s cubic-bezier(.22, 1, .36, 1) .5s; }
@@ -249,7 +249,7 @@
 .classics-exp .pg-card__img { box-shadow: 0 18px 40px rgba(0, 0, 0, .12); display: block; height: auto; width: 100%; transition: transform .45s cubic-bezier(.22, 1, .36, 1), box-shadow .45s ease, filter .45s ease; }
 .classics-exp .pg-card:hover .pg-card__img { transform: scale(1.04); box-shadow: 0 30px 64px rgba(0, 0, 0, .22); filter: brightness(1.04); }
 .classics-exp .pg-card__title { bottom: calc(100% + 8px); color: #111; font-family: var(--font-archivo), sans-serif; font-size: .92rem; font-weight: 700; letter-spacing: .02em; pointer-events: none; position: absolute; right: 2px; white-space: nowrap; }
-.classics-exp .pg-card__cta { background: rgba(20, 20, 20, .78); border-radius: 999px; color: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; left: 50%; letter-spacing: .12em; opacity: 0; padding: 9px 16px; pointer-events: none; position: absolute; top: 50%; transform: translate(-50%, -50%); transition: opacity .25s ease; white-space: nowrap; }
+.classics-exp .pg-card__cta { background: rgba(20, 20, 20, .78); border-radius: 999px; color: #fff; font-family: var(--font-archivo), sans-serif; font-size: .72rem; left: 50%; letter-spacing: .12em; opacity: 0; padding: 9px 16px; pointer-events: none; position: absolute; top: 50%; transform: translate(-50%, -50%); transition: opacity .25s ease; white-space: nowrap; }
 .classics-exp .pg-card:hover .pg-card__cta { opacity: 1; }
 .classics-exp .pg.pg--blur .pg-card { filter: blur(7px); }
 /* .cursor deliberately NOT hidden here (only .project-label is, which is specific to hovering
@@ -264,11 +264,11 @@
 .classics-exp .contact { background: #8c8c8c; inset: 0; opacity: 0; pointer-events: none; position: fixed; transition: opacity .3s ease; z-index: 1150; }
 .classics-exp .contact.is-open { opacity: 1; pointer-events: auto; }
 .classics-exp .contact__panel { background: linear-gradient(180deg, #ffffff 0%, #e8eefc 24%, #2c49bd 66%, #073194 100%); bottom: 0; display: flex; left: 0; overflow: hidden; position: absolute; right: 0; top: 72px; }
-.classics-exp .contact__close { align-items: center; background: transparent; border: 0; color: #111; cursor: pointer; display: inline-flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; font-weight: 700; gap: 8px; letter-spacing: .12em; position: absolute; right: 48px; top: 22px; z-index: 3; }
+.classics-exp .contact__close { align-items: center; background: transparent; border: 0; color: #111; cursor: pointer; display: inline-flex; font-family: var(--font-archivo), sans-serif; font-size: .8rem; font-weight: 700; gap: 8px; letter-spacing: .12em; position: absolute; right: 48px; top: 22px; z-index: 3; }
 .classics-exp .contact__left { display: flex; flex: 1; flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 40px 48px 48px; position: relative; }
 .classics-exp .contact__star { display: block; filter: drop-shadow(0 0 52px rgba(120, 160, 255, .6)); width: clamp(220px, 26vw, 360px); aspect-ratio: 1/1; height: auto; margin: 0 0 6px -24px; }
 .classics-exp .contact__bottom { position: relative; }
-.classics-exp .contact__tag { align-items: center; color: #fff; display: inline-flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; gap: 9px; letter-spacing: .14em; }
+.classics-exp .contact__tag { align-items: center; color: #fff; display: inline-flex; font-family: var(--font-archivo), sans-serif; font-size: .78rem; gap: 9px; letter-spacing: .14em; }
 .classics-exp .contact__tag b { border: 1px solid rgba(255, 255, 255, .8); border-radius: 999px; font-weight: 400; padding: 4px 12px; }
 .classics-exp .contact__headline { color: #fff; font-size: clamp(2.4rem, 5.6vw, 5.4rem); font-variation-settings: "wght" 900; letter-spacing: -.02em; line-height: .92; margin-top: 18px; text-transform: uppercase; white-space: nowrap; }
 .classics-exp .contact__card { background: #fff; border-radius: 22px; box-shadow: 0 30px 80px rgba(0, 0, 0, .18); display: flex; flex-direction: column; margin: 54px 56px; padding: 46px 44px; width: min(40%, 600px); }
@@ -278,12 +278,12 @@
 .classics-exp .contact__book-row { align-items: center; display: flex; gap: 12px; }
 .classics-exp .contact__book-row span { font-size: 1.1rem; }
 .classics-exp .contact__book-arrow { position: absolute; right: 18px; top: 18px; }
-.classics-exp .contact__book-meta { align-items: center; color: #6b7280; display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; gap: 8px; letter-spacing: .1em; margin-top: 16px; }
+.classics-exp .contact__book-meta { align-items: center; color: #6b7280; display: flex; font-family: var(--font-archivo), sans-serif; font-size: .72rem; gap: 8px; letter-spacing: .1em; margin-top: 16px; }
 .classics-exp .contact__field { margin-top: 22px; }
-.classics-exp .contact__field label { color: #9aa0a6; display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .7rem; letter-spacing: .1em; margin-bottom: 6px; }
+.classics-exp .contact__field label { color: #9aa0a6; display: block; font-family: var(--font-archivo), sans-serif; font-size: .7rem; letter-spacing: .1em; margin-bottom: 6px; }
 .classics-exp .contact__field input { -webkit-appearance: none; background: transparent; border: 0; border-bottom: 1px solid rgba(0, 0, 0, .25); color: #111; font: inherit; outline: none; padding: 6px 0; width: 100%; }
 .classics-exp .contact__field input:focus { border-color: #111; }
-.classics-exp .contact__submit { background: #111; border: 0; border-radius: 12px; color: #fff; cursor: pointer; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; letter-spacing: .18em; margin-top: auto; padding: 18px; transition: background .2s ease; }
+.classics-exp .contact__submit { background: #111; border: 0; border-radius: 12px; color: #fff; cursor: pointer; font-family: var(--font-archivo), sans-serif; font-size: .85rem; letter-spacing: .18em; margin-top: auto; padding: 18px; transition: background .2s ease; }
 .classics-exp .contact__submit:hover { background: #000; }
 .classics-exp .contact__form { display: flex; flex-direction: column; flex: 1; padding-top: 6px; }
 @media (max-width:900px) {

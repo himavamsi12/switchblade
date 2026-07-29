@@ -734,11 +734,11 @@ export default function CollaboratePage() {
                 dividerLabelStyle-equivalent numbers as HelpModal) keeps it on one line, with the
                 two rules (flex:1, small min-width) shrinking first instead of forcing a wrap. */}
             <div className="rise-item flex items-center gap-2 sm:gap-4 flex-nowrap">
-              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Book a meeting</span>
+              <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Book a meeting</span>
               <span style={{ flex: 1, minWidth: 12, height: 1, background: "#D8D8D8" }} />
-              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>or</span>
+              <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>or</span>
               <span style={{ flex: 1, minWidth: 12, height: 1, background: "#D8D8D8" }} />
-              <span style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Drop a Pitch</span>
+              <span style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(9px,2.7vw,14px)", whiteSpace: "nowrap", textTransform: "uppercase", color: "#000", opacity: 0.5 }}>Drop a Pitch</span>
             </div>
 
             <form className="rise-item flex flex-col gap-9" style={{ border: "1px solid #D8D8D8", borderRadius: 12, padding: "32px 24px" }} onSubmit={async e => {
@@ -776,7 +776,7 @@ export default function CollaboratePage() {
                 { label: "E-mail or phone number",        name: "contact",       required: true },
               ].map(f => (
                 <div key={f.label} className="flex flex-col gap-3">
-                  <label style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>{f.label}{f.required && <span style={{ color: "#0456DD" }}> *</span>}</label>
+                  <label style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 14, textTransform: "uppercase", color: "#000", opacity: 0.5 }}>{f.label}{f.required && <span style={{ color: "#0456DD" }}> *</span>}</label>
                   <input name={f.name} type="text" required={f.required} style={fieldStyle} onFocus={e => (e.target.style.borderBottomColor = "#0456DD")} onBlur={e => (e.target.style.borderBottomColor = "rgba(13,13,13,0.14)")} />
                 </div>
               ))}

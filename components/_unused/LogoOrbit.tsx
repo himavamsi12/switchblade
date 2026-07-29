@@ -137,7 +137,7 @@ export function LogoOrbit() {
             onMouseEnter={() => goTo(i)}
             onClick={() => goTo(i)}
             style={{
-              fontFamily: "var(--font-ibm-mono)", fontSize: "clamp(11px,0.9vw,14px)", fontWeight: 700, letterSpacing: "0.04em",
+              fontFamily: "var(--font-archivo)", fontSize: "clamp(11px,0.9vw,14px)", fontWeight: 700, letterSpacing: "0.04em",
               padding: "8px 16px", borderRadius: "999px", cursor: "pointer", whiteSpace: "nowrap",
               background: i === 0 ? "#0A1AFF" : "transparent", color: i === 0 ? "#fff" : "#0D0D0D",
               border: `1px solid ${i === 0 ? "#0A1AFF" : "rgba(13,13,13,0.25)"}`, transition: "background 0.3s ease, color 0.3s ease, border-color 0.3s ease",

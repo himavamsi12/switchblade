@@ -88,7 +88,7 @@ const DOT: React.CSSProperties = {
 // [SHARP EDGE] / [SOFT HEART] annotation style — merged in from the former UniquenessReveal
 // section (kept identical) so the SWITCHBLADE wordmark now reveals inside THIS sticky scene.
 const ANNO: React.CSSProperties = {
-  fontFamily:    "var(--font-ibm-mono)",
+  fontFamily:    "var(--font-archivo)",
   fontSize:      "clamp(13px, 1.15vw, 18px)",
   fontWeight:    700,
   letterSpacing: "0.10em",

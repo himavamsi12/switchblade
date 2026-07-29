@@ -342,7 +342,7 @@ export default function HomePage() {
 
             <div className="flex-1 text-center" style={{ maxWidth: "52%" }}>
               <p style={{
-                fontFamily:    "var(--font-ibm-mono)",
+                fontFamily:    "var(--font-archivo)",
                 fontSize:      "clamp(12px, 1.15vw, 16px)",
                 fontWeight:    700,
                 lineHeight:    1.75,

@@ -175,7 +175,7 @@ export function BrandJourney() {
                   border: isActive ? "none" : "1px solid rgba(13,13,13,0.18)",
                   borderRadius: 8,
                   color: isActive ? "#fff" : "#0D0D0D",
-                  fontFamily: "var(--font-ibm-mono)", fontWeight: 700, whiteSpace: "nowrap",
+                  fontFamily: "var(--font-archivo)", fontWeight: 700, whiteSpace: "nowrap",
                   fontSize: isActive ? 13 : 11, letterSpacing: "0.06em", padding: isActive ? "6px 14px" : "5px 10px",
                 }}>
                   {p.label}
@@ -365,7 +365,7 @@ export function BrandJourney() {
               animate={{ opacity: i === active ? 1 : 0, y: i === active ? 0 : (i < active ? -12 : 12) }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             >
-              <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 15, whiteSpace: "nowrap" }}>
+              <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 15, whiteSpace: "nowrap" }}>
                 <span style={{ color: "#0456DD" }}>({p.num})</span>{" "}
                 <span style={{ color: "#0456DD" }}>{p.label}</span>
               </p>

@@ -84,7 +84,7 @@ export function CollaboratorsSection() {
             >
               <Image src={card.icon} alt="" width={card.w} height={card.h} style={{ height: "clamp(22px,2vw,30px)", width: "auto" }} />
               <div>
-                <p style={{ fontFamily: "var(--font-ibm-mono)", fontWeight: 700, fontSize: 12, color: "#0A1AFF", marginBottom: 6 }}>{card.num}</p>
+                <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 12, color: "#0A1AFF", marginBottom: 6 }}>{card.num}</p>
                 <h3 style={{
                   fontFamily:    "var(--font-archivo)",
                   fontWeight:    700,
