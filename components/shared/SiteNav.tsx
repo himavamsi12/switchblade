@@ -106,22 +106,34 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
   // back. Now `fixed` (see the className below) so it stays pinned to the viewport, with THIS
   // effect deciding whether it's slid up out of view or not.
   //
-  // Reveals on ANY upward scroll movement, however small (matching "on a little scroll up, show
-  // it" exactly) — only HIDES once scrolled down past the bar's own height, so it doesn't vanish
-  // on the first few px of scroll right at the top of the page, and never while the mobile drawer
-  // is open (hiding the bar that owns the now-open hamburger/X button mid-interaction would read as
-  // broken). Skipped entirely under reduced motion — the bar just stays put, matching how the
-  // staged intro above is also skipped there.
+  // Reveals once the reader has scrolled up by a small cumulative distance (REVEAL_THRESHOLD),
+  // not on the very first pixel of upward movement — revealing instantly made the bar flicker
+  // back in on the tiniest upward wobble (trackpad/momentum micro-jitter while still generally
+  // scrolling down), by request. Only HIDES once scrolled down past the bar's own height, so it
+  // doesn't vanish on the first few px of scroll right at the top of the page, and never while the
+  // mobile drawer is open (hiding the bar that owns the now-open hamburger/X button mid-interaction
+  // would read as broken). Skipped entirely under reduced motion — the bar just stays put, matching
+  // how the staged intro above is also skipped there.
   const [hiddenByScroll, setHiddenByScroll] = useState(false);
   useEffect(() => {
     if (shouldReduceMotion) return;
     let lastY = window.scrollY;
+    // Accumulates continuous upward movement, reset the instant the reader scrolls back down —
+    // so this is "how far up in one unbroken upward gesture", not total distance from some
+    // earlier point.
+    let upAccum = 0;
     const NAV_HEIGHT = 72;
+    const REVEAL_THRESHOLD = 150;
     const onScroll = () => {
       if (menuOpen) return;
       const y = window.scrollY;
-      if (y > lastY && y > NAV_HEIGHT) setHiddenByScroll(true);
-      else if (y < lastY) setHiddenByScroll(false);
+      if (y > lastY) {
+        upAccum = 0;
+        if (y > NAV_HEIGHT) setHiddenByScroll(true);
+      } else if (y < lastY) {
+        upAccum += lastY - y;
+        if (upAccum > REVEAL_THRESHOLD) setHiddenByScroll(false);
+      }
       lastY = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });

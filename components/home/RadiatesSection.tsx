@@ -138,9 +138,9 @@ export function RadiatesSection({
     let wordmarkTrigger: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let starHideTrigger: any = null;
-    // Set while the entrance scroll-hold is active (see holdForEntrance); calling it resumes
-    // scrolling. Must be invoked from cleanup as well, so an unmount mid-hold can't strand the
-    // page with scrolling disabled.
+    // Set while the stepped-beat hold is engaged (see engageSteps); calling it hands scrolling
+    // back. Must be invoked from cleanup as well, so an unmount mid-hold can't strand the page
+    // with scrolling disabled.
     let releaseHold: (() => void) | null = null;
     let rafId = 0;
 
@@ -240,80 +240,212 @@ export function RadiatesSection({
       // (zero duration) rather than animated, so it can push the star down the moment the section
       // is entered without reintroducing motion-during-scroll — it just snaps to the correct
       // resting spot for this section, same as it would have looked once the old tween finished.
-      // Holds the page still for the length of the entrance (tlEnter) the FIRST time this section
-      // engages, then hands scrolling straight back.
+      // ── Stepped beats: the section advances exactly one beat per scroll gesture ────────────────
+      // Replaces two earlier time-based holds (one at the entrance, one at the wordmark), which
+      // each called lenis.stop() and released on their own fixed gsap.delayedCall timer. Those
+      // could never actually stop a fast flick from skipping a beat: they froze the page for a
+      // FIXED duration, so the moment that timer elapsed the reader's flick was free to cover the
+      // rest of this section's ~280vh runway in one continuous motion — sailing past the wordmark
+      // entirely. That's the reported "scroll fast and it goes straight from the labels to the
+      // next section". Lengthening those timers only traded the skip for the page feeling stalled.
       //
-      // Why: tlEnter is time-based (~1.5s on its own clock) while every beat after it is
-      // scroll-SCRUBBED. So a hard scroll flick moves the scroll position deep into the section
-      // while the labels are still typing in — the reader lands at the wordmark's scrubbed range
-      // (40%) having never seen the star spin or the labels form. Freezing the scroll for that
-      // ~1.5s is what makes the entrance unskippable without making the section itself longer.
+      // Instead the section is now a stepped scene: while the reader is inside it the page is HELD
+      // (lenis.stop()), and each scroll gesture advances exactly ONE beat via an animated
+      // lenis.scrollTo. Because the page never free-scrolls here, flick SPEED stops mattering —
+      // one gesture can't cover more than one beat, so no beat can be skipped at any speed, and
+      // every transition is a controlled ease rather than raw momentum. Past the last beat the
+      // hold is handed back and normal scrolling continues into the next section.
       //
-      // Routed through Lenis (window.__lenis, desktop-only — see SmoothScroll.tsx) because Lenis
-      // owns the scroll on desktop: its .stop() discards wheel input outright rather than queuing
-      // it, so the page doesn't lurch forward by the buffered delta the moment it resumes.
-      // Skipped entirely on mobile/tablet: there's no Lenis there, and blocking a native momentum
-      // flick mid-gesture reads as the page having frozen/broken rather than as a deliberate hold.
+      // Three Lenis behaviours this leans on, all verified against lenis/dist/lenis.mjs rather
+      // than assumed:
+      //  - "virtual-scroll" is emitted BEFORE Lenis's own isStopped check, so wheel/touch intent
+      //    and direction still arrive while the page is stopped — that's what drives stepping.
+      //  - while stopped, Lenis calls preventDefault() on those same events, so the page cannot
+      //    drift natively behind the hold.
+      //  - scrollTo() early-returns while stopped unless passed `force: true`.
       //
-      // ONCE only (heldOnce): re-locking every time the reader scrolls back up and re-enters would
-      // feel like the page fighting them. And `releaseHold` is called from the effect cleanup too —
-      // unmounting mid-hold must never leave the page permanently unscrollable.
-      let heldOnce = false;
-      const holdForEntrance = () => {
-        if (isMobile || heldOnce) return;
-        // Never freeze the page during a Shop deep-link landing. That flow jumps the scroll
-        // position straight past this section to Origins; this section's own top still crosses
-        // the trigger line on the way, so without this guard the hold fires and locks scrolling
-        // for ~1.65s mid-jump — the page visibly stalling here (and again at ParagraphReveal's
-        // own hold) is exactly the reported "stopping in each section". Nobody is reading this
-        // section on a deep-link, so there is nothing to protect from being skipped.
-        if (isShopDeepLink()) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const lenis = (window as any).__lenis;
-        if (!lenis?.stop) return;
-        heldOnce = true;
-        lenis.stop();
-        releaseHold = () => {
-          releaseHold = null;
-          lenis.start();
-        };
-        // +0.15s of settle after the last character lands, so scrolling doesn't resume on the
-        // exact frame the animation ends.
-        gsap.delayedCall(tlEnter.duration() + 0.15, () => releaseHold?.());
+      // Desktop only, for the same reason every other hold here was: Lenis simply doesn't exist on
+      // mobile/tablet (see SmoothScroll.tsx), and hard-blocking a native touch flick mid-gesture
+      // reads as the page having broken rather than as a deliberate beat. Mobile keeps its existing
+      // free-scroll behaviour. Also skipped under prefers-reduced-motion — commandeering someone's
+      // scroll is exactly what that setting is asking us not to do.
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // Progress points (fraction of this section's own height) the scene rests on:
+      //   0.02 — labels formed around the star, just past the pin engaging
+      //   0.50 — SWITCHBLADE fully typed in (wordmarkTween finishes at 45%)
+      const BEAT_PROGRESS = [0.02, 0.5];
+      // Accumulated wheel delta needed to commit to a step — roughly one deliberate gesture.
+      const STEP_THRESHOLD = 90;
+      // Milliseconds of input SILENCE that marks the end of one gesture and re-opens the input
+      // gate. This is the fix for the hold appearing not to work at all: "virtual-scroll" fires
+      // before Lenis's own isStopped check (the very property this stepper relies on to read
+      // direction while frozen), so the moment the hold engages, the still-decaying momentum tail
+      // of the flick that BROUGHT the reader here keeps delivering wheel events. A hard trackpad
+      // flick emits thousands of px of cumulative delta over several hundred ms, so it blew
+      // through STEP_THRESHOLD within a frame or two and instantly stepped on to the wordmark —
+      // the scene did hold, for about 30ms, which read as not holding at all. Gating on silence
+      // means that tail gets absorbed and only a genuinely new gesture can advance a beat.
+      const GESTURE_GAP = 220;
+      // Only deltas ABOVE this push the silence deadline out. Set well above sub-pixel noise on
+      // purpose: a flick's momentum tail decays in amplitude, so once it drops under this the gate
+      // stops being held open by it and can reopen — while the meaty front of the flick is still
+      // absorbed. It also means a slow deliberate drag (small per-event deltas) isn't mistaken for
+      // a flick tail and can advance a beat normally.
+      const GATE_NOISE_FLOOR = 12;
+      // Hard safety valve: however much input keeps arriving, never hold the gate shut longer than
+      // this. Without it a sustained continuous drag (which never goes silent) could keep pushing
+      // the deadline forever and leave the reader genuinely unable to advance — stuck, with no way
+      // out but reloading. Worst case this lets one extra step through on a freakishly long flick,
+      // which is strictly better than a dead end.
+      const GATE_MAX_HOLD = 900;
+
+      // Absolute page Y for a given progress point, recomputed from the LIVE rect every time
+      // rather than cached at setup: this section's height and offset both shift while fonts and
+      // the 3D canvas settle, and a stale pixel target here would land the reader at the wrong
+      // beat (the same class of bug as the ScrollTrigger.refresh() on fonts.ready further below).
+      const beatY = (p: number) => section.getBoundingClientRect().top + window.scrollY + p * section.offsetHeight;
+      // Live progress through the section, 0 at the moment its top hits the viewport top.
+      const sectionProgress = () => Math.max(0, -section.getBoundingClientRect().top / section.offsetHeight);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const getLenis = () => (window as any).__lenis;
+
+      let stepEngaged = false;   // currently holding the page
+      let stepIndex = 0;         // which beat the reader is parked on
+      let stepping = false;      // a step animation is in flight — ignore input
+      let stepAccum = 0;         // accumulated gesture delta toward the next step
+      let stepArmed = true;      // false after a release, until the reader leaves the section
+      let gateOpen = false;      // false until input has gone quiet — see GESTURE_GAP
+      let gateClosedAt = 0;      // when the gate last shut, for the GATE_MAX_HOLD safety valve
+      let quietTimer: ReturnType<typeof setTimeout> | null = null;
+      let unsubStepInput: (() => void) | null = null;
+
+      // Shuts the input gate and (re)starts the silence timer that reopens it. Called on engage and
+      // after every step, so each beat begins by absorbing whatever is left of the gesture that got
+      // the reader there before it will accept the next one.
+      const closeGate = () => {
+        gateOpen = false;
+        stepAccum = 0;
+        gateClosedAt = Date.now();
+        if (quietTimer) clearTimeout(quietTimer);
+        quietTimer = setTimeout(() => { gateOpen = true; }, GESTURE_GAP);
       };
 
-      // A SECOND hold, at the wordmark beat (see wordmarkTween's onEnter below) — by request:
-      // reported as "scroll fast and it skips straight to the third section". This section's
-      // content is CSS `position: sticky`, not a hard scroll-jack, so nothing stops a single
-      // strong flick from covering this whole section's ~280vh scroll runway in one continuous
-      // motion — holdForEntrance only buys a forced pause right at the very start (and Lenis's
-      // own .stop() discards that flick's momentum outright, so it can't chain into a second one).
-      // A fast-enough second flick right after that release could still blow straight through the
-      // labels fading out, the star settling, AND the wordmark typing in, landing in globeTravel/
-      // ParagraphReveal having barely registered any of it. This checkpoint forces one more brief
-      // pause right as the wordmark starts revealing, so a fast scroller is guaranteed to land on
-      // it rather than only ever seeing the very first beat. Same technique, same one-shot-per-
-      // mount guard, same deep-link exemption as holdForEntrance above.
-      let heldWordmarkOnce = false;
-      const holdForWordmark = () => {
-        if (isMobile || heldWordmarkOnce) return;
+      // Pushes the silence deadline out while input keeps arriving — but never past GATE_MAX_HOLD
+      // from when the gate first shut, so the reader can't be locked out indefinitely.
+      const deferGate = () => {
+        if (Date.now() - gateClosedAt >= GATE_MAX_HOLD) {
+          if (quietTimer) clearTimeout(quietTimer);
+          quietTimer = null;
+          gateOpen = true;
+          stepAccum = 0;
+          return;
+        }
+        gateOpen = false;
+        stepAccum = 0;
+        if (quietTimer) clearTimeout(quietTimer);
+        quietTimer = setTimeout(() => { gateOpen = true; }, GESTURE_GAP);
+      };
+
+      const releaseSteps = () => {
+        stepEngaged = false;
+        stepAccum = 0;
+        gateOpen = false;
+        if (quietTimer) clearTimeout(quietTimer);
+        quietTimer = null;
+        unsubStepInput?.();
+        unsubStepInput = null;
+        releaseHold = null;
+        getLenis()?.start?.();
+      };
+
+      const stepTo = (index: number) => {
+        const lenis = getLenis();
+        if (!lenis?.scrollTo) return;
+        stepping = true;
+        stepAccum = 0;
+        // Duration scales with how far this step actually travels, so the long labels→wordmark
+        // move (~48% of the section) reads as a deliberate cinematic transition with its scrubbed
+        // beats legible along the way, while any short hop stays snappy. A single flat duration
+        // would either blur the long move or make the short ones feel sluggish.
+        const distance = Math.abs(BEAT_PROGRESS[index] - sectionProgress());
+        const duration = Math.min(1.8, Math.max(0.6, distance * 3));
+        stepIndex = index;
+        lenis.scrollTo(beatY(BEAT_PROGRESS[index]), {
+          force: true, // required — scrollTo is a no-op while stopped without it
+          duration,
+          onComplete: () => {
+            stepping = false;
+            // Beat landed — absorb the rest of the gesture before accepting the next one.
+            closeGate();
+          },
+        });
+      };
+
+      const onStepInput = ({ deltaY }: { deltaY: number }) => {
+        if (killed || !stepEngaged || !deltaY) return;
+        // Gate shut (or a step still animating): this input is the tail of an earlier gesture, not
+        // a new one. Absorb it and push the silence deadline out, so the gate only reopens once the
+        // reader has actually stopped scrolling.
+        if (stepping || !gateOpen) {
+          if (Math.abs(deltaY) > GATE_NOISE_FLOOR) deferGate();
+          return;
+        }
+        // Reversing direction restarts the tally, so a wobble back the other way can't bank
+        // toward a step the reader is no longer asking for.
+        if ((deltaY > 0) !== (stepAccum >= 0)) stepAccum = 0;
+        stepAccum += deltaY;
+        if (Math.abs(stepAccum) < STEP_THRESHOLD) return;
+        const next = stepAccum > 0 ? stepIndex + 1 : stepIndex - 1;
+        if (next >= 0 && next < BEAT_PROGRESS.length) {
+          stepTo(next);
+        } else {
+          // Stepped off either end of the beat list — hand scrolling back so the reader continues
+          // into the next section (or back up to the hero) under their own momentum. Left
+          // disarmed so this doesn't instantly re-freeze the page they were just handed.
+          stepArmed = false;
+          releaseSteps();
+        }
+      };
+
+      const engageSteps = () => {
+        if (isMobile || prefersReducedMotion || !stepArmed || stepEngaged) return;
+        // Never hold during a Shop deep-link landing: that flow jumps the scroll position straight
+        // past this section to Origins, and this section's top still crosses the engage line on
+        // the way. Nobody is reading the scene on a deep-link, so there's nothing to protect from
+        // being skipped — and freezing mid-jump is exactly the "page stalls in every section"
+        // problem that guard was originally added for.
         if (isShopDeepLink()) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const lenis = (window as any).__lenis;
-        if (!lenis?.stop) return;
-        heldWordmarkOnce = true;
+        const lenis = getLenis();
+        if (!lenis?.stop || !lenis?.on) return;
+        stepEngaged = true;
+        stepping = false;
+        // Park on whichever beat the reader actually arrived at rather than assuming the first —
+        // entering fast means the rAF poll below can observe top<=0 slightly past beat 0, and
+        // animating backward to it would read as the page yanking them back.
+        const p = sectionProgress();
+        stepIndex = 0;
+        BEAT_PROGRESS.forEach((bp, i) => { if (p >= bp - 0.01) stepIndex = i; });
         lenis.stop();
-        releaseHold = () => {
-          releaseHold = null;
-          lenis.start();
-        };
-        gsap.delayedCall(1.1, () => releaseHold?.());
+        // Shut the gate immediately: the reader almost certainly arrived here mid-flick, and that
+        // flick's momentum tail must not count as their first step.
+        closeGate();
+        unsubStepInput = lenis.on("virtual-scroll", onStepInput);
+        // Cleanup path — unmounting mid-hold must never strand the page unscrollable.
+        releaseHold = releaseSteps;
       };
 
       let wasIntersecting = false;
       const checkIntersection = () => {
         if (killed) return;
-        const top = section.getBoundingClientRect().top;
+        const rect = section.getBoundingClientRect();
+        const top = rect.top;
+        // Re-arm the stepped scene once the reader has genuinely left the section in either
+        // direction (back above its top, or fully past its bottom), so a real re-entry replays the
+        // beats. Deliberately NOT re-armed mid-section: right after a release the reader is still
+        // inside the section by definition, and re-engaging there would instantly re-freeze the
+        // page they were just handed back.
+        if (!stepArmed && (top > 0 || rect.bottom <= 0)) stepArmed = true;
         const isIntersecting = top <= 0;
         if (isIntersecting !== wasIntersecting) {
           wasIntersecting = isIntersecting;
@@ -325,7 +457,7 @@ export function RadiatesSection({
             // state without any of that motion.
             if (isShopDeepLink()) tlEnter.progress(1).pause();
             else tlEnter.play();
-            holdForEntrance();
+            engageSteps();
             // Desktop only — mobile's whole settle motion is owned by scaleTween alone (start:
             // "top 60%", see below), one continuous tween with no competing move here.
             // This used to be an INSTANT gsap.set rather than a tween — that snapped the star to
@@ -449,7 +581,7 @@ export function RadiatesSection({
           // (heading fade + spin + the labels typing in) and the section's sticky pin locks. A
           // scrub tween is a DAMPED follow, not exact 1:1 tracking — it lags the raw scroll
           // position and keeps interpolating to catch up even after scrolling stops (or, since
-          // holdForEntrance is a no-op on mobile — see its own comment — even while the reader
+          // the stepped-beat hold is desktop-only — see engageSteps — even while the reader
           // KEEPS scrolling further into the section). Ending exactly at the pin-lock instant
           // meant this tween was, by construction, ALWAYS still mid-flight the moment the labels
           // started appearing: the reported "star jumps toward the labels' center instead of
@@ -528,7 +660,7 @@ export function RadiatesSection({
       // fired by onEnter/onLeaveBack — that is exactly what could still be mid-reveal (or mid-
       // reverse) at a scroll depth where the labels' own beat wasn't yet in its "hidden" state on
       // a fast flick, which is what put the labels and the wordmark on screen together. Now it's a
-      // scrubbed timeline over its own DISJOINT slice (desktop 40%→52%, mobile 40%→52%), well after
+      // scrubbed timeline over its own DISJOINT slice (desktop 35%→45%, mobile 35%→45%), well after
       // fadeTl has fully hidden the labels (ends 28%/34%) and after the star's shrink (scaleTween,
       // 27%→33% desktop) has settled. Since beat 2 is guaranteed at progress 1 (labels fully gone)
       // for the entire stretch before this range even begins, and this reveal is itself locked to
@@ -544,14 +676,15 @@ export function RadiatesSection({
       wordmarkTween = gsap.timeline({
         scrollTrigger: {
           trigger: section,
-          // Desktop 40%: one clear screen of gap after fadeTl's 28% end and the shrink's 33% end,
-          // so the star has visibly settled before the word starts typing. Mobile 40%: sits after
-          // fadeTl's 34% end, and comfortably before starHideTrigger (58%) carries the whole
-          // wordmark back off-screen, leaving a ~one-screen dwell where it's fully readable.
-          start: "40% top",
-          end: "52% top",
+          // 40%→52% brought down to 35%→45% (by request, "too many scrolls even the first time" —
+          // reaching 40% of this section's ~280vh runway was ~112vh of scrolling on its own, before
+          // ever accounting for the entrance hold above or the wordmark hold below). Still leaves a
+          // buffer after fadeTl (desktop ends 28%, mobile 34%) and the shrink (scaleTween, desktop
+          // ends 33%) so the star has visibly settled before the word starts typing — just a
+          // tighter one than before — and still comfortably clears mobile's starHideTrigger (58%).
+          start: "35% top",
+          end: "45% top",
           scrub: 0.3,
-          onEnter: holdForWordmark,
         },
       })
         .to(wordmarkChars, {
@@ -585,7 +718,9 @@ export function RadiatesSection({
           start: "58% top",
           end: "82% top",
           scrub: 0.3,
-          onUpdate: (self: any) => {
+          // Structurally typed to just the field used, rather than `any` — ScrollTrigger's own
+          // type isn't statically available here since it's dynamically imported above.
+          onUpdate: (self: { progress: number }) => {
             const p = self.progress;
             gsap.set(star, { y: `${6 + p * 60}vh`, opacity: 1 - p });
           },
@@ -691,8 +826,9 @@ export function RadiatesSection({
 
     return () => {
       killed = true;
-      // Before anything else: if we unmount while the entrance hold is still active, scrolling
+      // Before anything else: if we unmount while the stepped-beat hold is still active, scrolling
       // must be handed back — otherwise the page stays frozen with nothing left alive to free it.
+      // releaseSteps also clears the gate's pending silence timer.
       releaseHold?.();
       cancelAnimationFrame(rafId);
       tlEnter?.kill();
@@ -719,12 +855,12 @@ export function RadiatesSection({
           The text choreography: labels form as a time-based entrance the moment the section pins
           (tlEnter, plays once — by request, not scrubbed), then a chain of DISJOINT scroll-scrubbed
           ranges (all percentages of this height) enforces the rest: labels fade out (fadeTl,
-          20%→28%), star shrink (scaleTween, 27%→33%), wordmark types in (wordmarkTween, 40%→52%),
+          20%→28%), star shrink (scaleTween, 27%→33%), wordmark types in (wordmarkTween, 35%→45%),
           dwell, then release into ParagraphReveal. Because those ranges are disjoint and scrubbed,
           the labels are guaranteed hidden before the wordmark's range begins — so the two can't
           overlap at any speed even though the forming itself is time-based. Mobile gets its OWN
           total height (500vh vs desktop's 520vh): fade 24%→34%, wordmark
-          40%→52%, then the star + wordmark head out together (starHideTrigger, 58%→82%), leaving
+          35%→45%, then the star + wordmark head out together (starHideTrigger, 58%→82%), leaving
           the remaining scroll before the section releases into ParagraphReveal (via the buffer in
           page.tsx). All the percentage-based triggers below are computed live against whatever
           this height actually is, so it's the
