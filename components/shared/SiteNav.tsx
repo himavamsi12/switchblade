@@ -161,11 +161,11 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
     : { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
 
   const linkColor = lightLook
-    ? "text-[#090909] hover:opacity-60 transition-opacity"
-    : "text-white/80 font-normal hover:text-white transition-colors";
+    ? "text-[#090909] hover:opacity-60 transition-opacity uppercase"
+    : "text-white/80 font-normal hover:text-white transition-colors uppercase";
   const activeLinkColor = lightLook
-    ? "text-[#0456DD] font-medium"
-    : "text-white font-medium hover:text-[#FF802B] transition-colors";
+    ? "text-[#0456DD] font-medium uppercase"
+    : "text-white font-medium hover:text-[#FF802B] transition-colors uppercase";
 
   return (
     <>
