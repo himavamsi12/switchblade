@@ -40,11 +40,18 @@ const LOREM = [
   "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.",
 ];
 
+// Escapes quotes too (not just &/</>) — this is used both inside text nodes (detailBodyHtml
+// below) and inside HTML attributes (the pg-card src="…"/alt="…" template strings further down),
+// and a literal " in an admin-entered heading or image URL would otherwise break out of those
+// attributes. Escaping quotes is always safe in a text-node context too, so one function covers
+// both call sites correctly.
 function escapeHtml(s: string) {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // Falls back to the studio's main Instagram profile for projects with no card-specific link (the
@@ -562,9 +569,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           // above it. Right-positioned cards keep the default (their right edge already lines
           // up); left-positioned cards get the title anchored to their left edge instead.
           const titleStyle = alignRight ? "" : ' style="right:auto;left:2px;text-align:left;"';
-          card.innerHTML = `<img class="pg-card__img" src="${p.img}" alt="${p.title}">
+          // p.title/p.img can come from a classics card entered in the Payload admin (see
+          // ClassicsPageClient's cmsProjects prop) — escaped here the same way detailBodyHtml
+          // escapes card body text below, so a crafted heading/image URL can't break out of these
+          // attributes into a stored XSS payload.
+          card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(p.img)}" alt="${escapeHtml(p.title)}">
             <span class="pg-card__cta">CLICK TO SEE</span>
-            <span class="pg-card__title"${titleStyle}>/${p.title.toUpperCase()}</span>`;
+            <span class="pg-card__title"${titleStyle}>/${escapeHtml(p.title.toUpperCase())}</span>`;
           const onClick = () => { if (!detailOpen) openDetail(p, card); };
           card.addEventListener("click", onClick);
           pgCardCleanups.push(() => card.removeEventListener("click", onClick));
@@ -587,9 +598,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         card.className = "pg-card";
         card.style.left = left + "%"; card.style.top = top + "px"; card.style.width = w + "px";
         card.style.transform = `rotate(${rot.toFixed(2)}deg)`;
-        card.innerHTML = `<img class="pg-card__img" src="${p.img}" alt="${p.title}">
+        card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(p.img)}" alt="${escapeHtml(p.title)}">
           <span class="pg-card__cta">CLICK TO SEE</span>
-          <span class="pg-card__title">/${p.title.toUpperCase()}</span>`;
+          <span class="pg-card__title">/${escapeHtml(p.title.toUpperCase())}</span>`;
         const onClick = () => { if (!detailOpen) openDetail(p, card); };
         card.addEventListener("click", onClick);
         pgCardCleanups.push(() => card.removeEventListener("click", onClick));
