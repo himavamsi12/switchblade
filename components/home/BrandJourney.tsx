@@ -62,6 +62,18 @@ export function BrandJourney() {
   const goPrev = () => setActive((a) => Math.max(0, a - 1));
   const goNext = () => setActive((a) => Math.min(N - 1, a + 1));
 
+  // Swipe/drag-to-navigate (by request — "draggable with mouse left and right"). Framer Motion's
+  // `drag` on the stage below reports gesture offset/velocity here; the cards themselves aren't
+  // actually moved by the drag (their position is purely a function of `active`, not of drag
+  // offset) — dragging just decides whether to call goPrev/goNext (which still clamp at the
+  // ends, same as the arrow buttons), then the stage springs back to 0 (see `dragConstraints`),
+  // the same "swipe to flip" pattern as a native carousel.
+  const DRAG_THRESHOLD = 80;
+  const onCardDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+    if (info.offset.x <= -DRAG_THRESHOLD || info.velocity.x <= -500) goNext();
+    else if (info.offset.x >= DRAG_THRESHOLD || info.velocity.x >= 500) goPrev();
+  };
+
 
   return (
     <section className="site-px" style={{
@@ -102,7 +114,19 @@ export function BrandJourney() {
         </AnimatePresence>
       </div>
 
-      <div style={{ position: "relative", flex: "1 1 auto", minHeight: 0 }}>
+      {/* drag="x" + dragConstraints:{left:0,right:0} — the stage itself never actually moves (it
+          springs right back to 0, `dragElastic` just lets it rubber-band slightly during the
+          gesture for feedback); onCardDragEnd is what decides whether the swipe crossed the
+          threshold and, if so, calls goPrev/goNext. cursor grab/grabbing gives the same affordance
+          hint a native draggable carousel has. */}
+      <motion.div
+        style={{ position: "relative", flex: "1 1 auto", minHeight: 0, cursor: "grab", touchAction: "pan-y" }}
+        whileTap={{ cursor: "grabbing" }}
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.15}
+        onDragEnd={onCardDragEnd}
+      >
         <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 1, background: "rgba(13,13,13,0.12)" }} />
 
         <div style={{ position: "relative", height: "100%" }}>
@@ -238,7 +262,7 @@ export function BrandJourney() {
             );
           })}
         </div>
-      </div>
+      </motion.div>
 
       <div className="flex items-center justify-center" style={{ flex: "0 0 auto", gap: "clamp(16px,2vw,24px)", marginTop: "clamp(16px,2.5vw,28px)" }}>
         <button
@@ -278,11 +302,10 @@ export function BrandJourney() {
         {/* --font-barlow is a single-weight custom display font (TBJ One More Demo.ttf, see
             layout.tsx) — it renders at its own native (heavy) weight regardless of what
             fontWeight CSS asks for, so "reduce the weight" can't be done on that font at all.
-            Mobile-only switches to font-archivo instead (a real variable-weight font, see
-            layout.tsx) at font-normal so the requested lighter weight actually has an effect;
-            desktop (md: and up) keeps the original Barlow/700 look untouched. */}
+            Uses font-archivo instead (a real variable-weight font, see layout.tsx) everywhere now,
+            settled on font-semibold after font-normal read as too light. */}
         <span
-          className="font-[family-name:var(--font-archivo)] font-normal md:font-[family-name:var(--font-barlow)] md:font-bold"
+          className="font-[family-name:var(--font-archivo)] font-semibold"
           style={{ fontSize: 16, color: "#0D0D0D", minWidth: 32, textAlign: "center" }}
         >
           {active + 1}/{N}
