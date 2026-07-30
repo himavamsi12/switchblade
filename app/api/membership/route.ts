@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getClientIp, isRateLimited } from "@/lib/rateLimit";
 
 // membership_requests has RLS enabled with no policies at all (see the migration) — writes only
 // ever happen here, server-side, with the service_role key, which bypasses RLS. The browser never
@@ -16,10 +17,16 @@ export async function POST(request: Request) {
   const source = typeof body.source === "string" ? body.source.trim() || null : null;
 
   const supabase = createAdminClient();
+  const ip = getClientIp(request);
+  if (await isRateLimited(supabase, "membership_requests", ip)) {
+    return NextResponse.json({ error: "Too many submissions — please try again later" }, { status: 429 });
+  }
+
   const { error } = await supabase.from("membership_requests").insert({
     name,
     email,
     source,
+    ip_address: ip,
   });
 
   if (error) {
