@@ -340,8 +340,12 @@ export function RadiatesSection({
           // to 60vh (of the new 400vh total) gives a continuous scroll noticeably more physical
           // distance — and therefore more real time, even under Lenis's inertia — to actually read
           // them before they fade.
-          start: isMobile ? "24% top" : "20% top",
-          end: isMobile ? "34% top" : "35% top",
+          // Mobile: 24%/34% (500vh) → 34%/49% (350vh, "too many scrolls" fix) → 22%/39% (360vh,
+          // "too fast" fix) → 18%/38% (this value — "make it even more slow": widened again,
+          // ~90vh now vs. the previous ~61vh, of the 440vh total — see the h-[440vh] note on the
+          // outer div).
+          start: isMobile ? "18% top" : "20% top",
+          end: isMobile ? "38% top" : "35% top",
           scrub: 0.3,
         },
       })
@@ -463,8 +467,8 @@ export function RadiatesSection({
       // fired by onEnter/onLeaveBack — that is exactly what could still be mid-reveal (or mid-
       // reverse) at a scroll depth where the labels' own beat wasn't yet in its "hidden" state on
       // a fast flick, which is what put the labels and the wordmark on screen together. Now it's a
-      // scrubbed timeline over its own DISJOINT slice (desktop 45%→70%, mobile 35%→45%), well after
-      // fadeTl has fully hidden the labels (ends 35%/34%) and after the star's shrink (scaleTween,
+      // scrubbed timeline over its own DISJOINT slice (desktop 45%→70%, mobile 50%→64%), well after
+      // fadeTl has fully hidden the labels (ends 35%/49%) and after the star's shrink (scaleTween,
       // 35%→43% desktop) has settled. Since beat 2 is guaranteed at progress 1 (labels fully gone)
       // for the entire stretch before this range even begins, and this reveal is itself locked to
       // scroll, the two are mutually exclusive by construction at every scroll position and every
@@ -496,13 +500,16 @@ export function RadiatesSection({
           // BEFORE the actual 75% release point, not past it — is what actually guarantees the
           // word is fully typed while the section is still genuinely pinned, with a small buffer
           // to absorb scrub's own damped lag (scrub: 0.3, not exact 1:1 tracking) before the
-          // release point arrives. Mobile is untouched here (35%→45%, its own already-tuned
-          // wordmark pacing against its own 500vh height); its starHideTrigger further below was
-          // separately realigned to mobile's own 80% release point, for the same sticky-release
-          // reason. Desktop still leaves a buffer after fadeTl (ends 35%) and the shrink (scaleTween, ends
-          // 43%) so the star has visibly settled before the word starts typing.
-          start: isMobile ? "35% top" : "45% top",
-          end: isMobile ? "45% top" : "70% top",
+          // release point arrives. Mobile: 35%/45% (500vh) → 50%/64% (350vh, "too many scrolls"
+          // fix) → 42%/69% (360vh, "too fast" fix) → 43%/74% (this value — "make it even more
+          // slow": widened again to ~140vh, of the 440vh total, see the h-[440vh] note on the
+          // outer div), still ending with a buffer BEFORE mobile's own sticky release point (~77%
+          // of 440vh) so the word still can't be cut off mid-type. Its starHideTrigger further
+          // below was realigned to that same release point. Desktop still leaves a buffer after
+          // fadeTl (ends 35%) and the shrink (scaleTween, ends 43%) so the star has visibly
+          // settled before the word starts typing.
+          start: isMobile ? "43% top" : "45% top",
+          end: isMobile ? "74% top" : "70% top",
           scrub: 0.3,
         },
       })
@@ -527,25 +534,29 @@ export function RadiatesSection({
       // section should go down in sync and hide the 3D star"). This section's "pin" is CSS
       // position:sticky (the two "sticky top-0 h-screen" layers below), which — unlike a
       // ScrollTrigger pin — releases automatically once exactly one sticky-height (h-screen =
-      // 100vh) of the container remains: at (containerHeight − 100vh), i.e. 400vh/80% of this
-      // section's own 500vh mobile height (see the h-[400vh] note on the desktop side of the outer
-      // div for the same math, applied here to mobile's height instead). Before this fix the
-      // star's hide window (58%→82%) ran almost entirely BEFORE that 80% release point — so the
-      // star sank and faded away while the section was still fully pinned/static, and only once
-      // it had *already* mostly vanished did the section itself start physically scrolling away —
-      // reading as two sequential motions instead of one. Realigning this window to exactly match
-      // the section's own post-release scroll-away range (80%→100%) makes them the same motion:
-      // both the star's fade/sink and the section's physical scroll-off now happen across the
-      // identical scroll distance, so they move down and disappear together. (An earlier version
-      // instead tied the star literally to the wordmark's own on-screen position across its whole
-      // dwell — that read as "the text dragging the star along"; this is different: the star
-      // isn't bound to the text's pixel position, it's independently scrubbed over the SAME scroll
-      // window the section naturally uses to scroll away, so they merely share timing, not a
-      // literal offset relationship.)
+      // 100vh) of the container remains: at (containerHeight − 100vh). Before that first fix the
+      // star's hide window (58%→82%) ran almost entirely BEFORE the release point — so the star
+      // sank and faded away while the section was still fully pinned/static, and only once it had
+      // *already* mostly vanished did the section itself start physically scrolling away — reading
+      // as two sequential motions instead of one. Realigning this window to exactly match the
+      // section's own post-release scroll-away range makes them the same motion: both the star's
+      // fade/sink and the section's physical scroll-off happen across the identical scroll
+      // distance, so they move down and disappear together. (An earlier version instead tied the
+      // star literally to the wordmark's own on-screen position across its whole dwell — that read
+      // as "the text dragging the star along"; this is different: the star isn't bound to the
+      // text's pixel position, it's independently scrubbed over the SAME scroll window the section
+      // naturally uses to scroll away, so they merely share timing, not a literal offset
+      // relationship.)
+      //
+      // Retuned each time mobile's own section height changed — 80%→100% (at 500vh) → 71%→100%
+      // (350vh, "too many scrolls" fix) → 72%→100% (360vh, "too fast" fix) → 77%→100% (this value,
+      // widened to 440vh, "make it even more slow" — see the h-[440vh] note on the outer div): the
+      // release point itself moves every time this section's total height does, so this has to
+      // track it or the star/section sync this whole trigger exists for breaks again.
       if (isMobile) {
         starHideTrigger = ScrollTrigger.create({
           trigger: section,
-          start: "80% top",
+          start: "77% top",
           end: "100% top",
           scrub: 0.3,
           // Structurally typed to just the field used, rather than `any` — ScrollTrigger's own
@@ -674,7 +685,7 @@ export function RadiatesSection({
   }, []);
 
   return (
-    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[500vh] lg:h-[400vh]">
+    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[440vh] lg:h-[400vh]">
       {/* Desktop height: 350vh (original) → 190vh (once the stepped-beat scroll-hold was removed —
           it kept reading as "sticking" for 2-3 scrolls no matter how it was retuned, since forcibly
           holding scroll is inherently what a hold does) → 300vh (widened the label-fade/wordmark
@@ -702,13 +713,19 @@ export function RadiatesSection({
           then the section unsticks at 75% and scrolls away over the remaining 25%. Because those
           ranges are disjoint and scrubbed, the labels are guaranteed hidden before the wordmark's
           range begins — so the two can't overlap at any speed even though the forming itself is
-          time-based. Mobile's fade/wordmark pacing is untouched (own 500vh height — fade 24%→34%,
-          wordmark 35%→45%) since only desktop ever had a hold to remove and only desktop was
-          reported there. Mobile's starHideTrigger (further below) WAS separately retuned — 58%→82%
-          → 80%→100% — so the star's own hide motion lines up with mobile's sticky-release point
-          (400vh/80% of 500vh) instead of running mostly before it. All the
-          percentage-based triggers below are computed live against whichever height actually
-          applies, so this class is the single place to retune the overall pacing per breakpoint.
+          time-based. Mobile never had a hold to remove, but went through the same escalating fix
+          desktop did once its own issue surfaced: 500vh (content left a 175vh dead stretch before
+          the star-hide/scroll-away range even began — the "too many scrolls" report) → 350vh
+          (every content percentage re-expressed against the shorter height to land on the same
+          absolute scroll position, and starHideTrigger retuned to the new ~71% release point) →
+          360vh ("too fast": those re-expressed windows kept the SAME absolute widths the old, much
+          taller 500vh section could afford, which alone were never enough reading time — fadeTl
+          widened to 22%→39%, wordmarkTween to 42%→69%) → 440vh (this value — "make it even more
+          slow": widened further still, fadeTl to 18%→38% (~90vh) and wordmarkTween to 43%→74%
+          (~140vh), see their own comments). starHideTrigger tracks the release point at each step
+          (now ~77% of 440vh). All the percentage-based triggers below are computed live against
+          whichever height actually applies, so this class is the single place to retune the
+          overall pacing per breakpoint.
 
           Wordmark layer — its own sticky pin at z-10, BELOW the fixed star (z-20 in page.tsx) so
           the star sits OVER the SWITCHBLADE letters. The heading/labels live in the separate z-25
