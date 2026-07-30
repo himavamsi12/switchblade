@@ -4,6 +4,7 @@ import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { s3Storage } from "@payloadcms/storage-s3";
 import { buildConfig } from "payload";
+import sharp from "sharp";
 
 import { ClassicsCards } from "./collections/ClassicsCards";
 import { Media } from "./collections/Media";
@@ -18,6 +19,11 @@ export default buildConfig({
   },
   collections: [Users, Media, ClassicsCards],
   editor: lexicalEditor(),
+  // Wires up the Media collection's imageSizes/adminThumbnail (see collections/Media.ts) — without
+  // this, Payload silently skips generating those resized variants (it warned "Image resizing is
+  // enabled... but sharp not installed" even though the package was in package.json, since it was
+  // never passed in here).
+  sharp,
   secret: process.env.PAYLOAD_SECRET || "",
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts"),
