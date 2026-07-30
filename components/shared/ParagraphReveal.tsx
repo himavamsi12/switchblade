@@ -159,12 +159,16 @@ export function ParagraphReveal() {
 
         {/* alignItems:stretch on the grid (was "center") makes both columns' cells match the ROW's
             height — which the globe's own aspectRatio-driven column normally sets, since its height
-            is fixed by that ratio while this column's is just whatever its text content needs. That
-            alone doesn't visually center this column's content within the taller cell though (a
-            plain block just sits at the top of whatever height it's given) — flex+justifyContent
-            distributes the extra space evenly, reading as "space added" rather than a lopsided gap
-            at the bottom. */}
-        <div ref={leftColRef} style={{ maxWidth: 554, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            scales with the column's WIDTH (aspectRatio), while this column's natural height is just
+            whatever its text needs — on a typical desktop width the globe cell ends up considerably
+            taller. justifyContent:space-between was tried (push the 3 blocks — paragraph / Vision /
+            Core Belief — apart to line up with the globe's top/bottom "50%" labels) but that extra
+            leftover height, split into just 2 gaps, made the space BETWEEN the blocks look
+            excessive on real desktop widths (by request, "spacing is too much"). flex-start instead
+            just top-aligns the group as-is as one tight, naturally-spaced block — its top still
+            lines up with "50% Individual Identity" (since both columns share the same stretched
+            cell height starting at the same y), without forcing the bottom to reach the far side. */}
+        <div ref={leftColRef} style={{ maxWidth: 554, display: "flex", flexDirection: "column", justifyContent: "flex-start" }}>
           <p style={{
             fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(24px,3vw,32px)",
             lineHeight: 1.12, color: "#0D0D0D", textAlign: "justify",
@@ -187,7 +191,17 @@ export function ParagraphReveal() {
           </div>
         </div>
 
-        <div style={{ position: "relative", width: "100%", aspectRatio: "548/499" }}>
+        {/* lg:max-h caps this column's height on large screens (by request, later bumped 460px →
+            560px — "make the globe little big" once 460px read as too small). Height is
+            otherwise driven by aspectRatio scaling with the column's own WIDTH, which on wide
+            desktop viewports made it considerably taller than the left text column, forcing that
+            column to either add awkward internal spacing or leave a lot of empty space to match.
+            Capping the height directly (rather than padding the shorter column to match a tall
+            one) is the more natural fix. Width stays 100% — Globe3D's own 3D camera adjusts to
+            whatever box it's given, unlike a flat image, so this doesn't visually distort it, just
+            shows a bit less vertical extent. Untouched below lg: (tablet/mobile stack these
+            columns, so there's no side-by-side height mismatch to correct there). */}
+        <div className="lg:max-h-[560px]" style={{ position: "relative", width: "100%", aspectRatio: "548/499" }}>
           {/* Real rotating three.js globe (Globe3D) — replaces the former flat vision-globe.svg,
               which baked its continents (and the two "50%" callouts below) into one static image
               that could only ever be rotated as a flat tumbling card, not read as an actual

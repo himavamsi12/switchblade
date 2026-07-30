@@ -61,13 +61,18 @@ function InstagramLink({ className = "" }: { className?: string }) {
       height:        32,
       padding:       "0 17px",
       borderRadius:  999,
-      border:        "1px solid rgba(255,255,255,0.28)",
+      // border/text bumped from 0.28/0.75 opacity to 0.6/0.95 (by request — "not even visible in
+      // mobile") — this pill sits on GradientReveal's gradient (see below), which fades to a much
+      // lighter blue/near-white lower down; the low-opacity original was legible against the
+      // gradient's darker top but nearly invisible against its lighter bottom, which is exactly
+      // where this pill renders on shorter (mobile) viewports.
+      border:        "1px solid rgba(255,255,255,0.6)",
       fontFamily:    "var(--font-archivo)",
       fontWeight:    700,
       fontSize:      12,
       letterSpacing: "0.1em",
       textTransform: "uppercase",
-      color:          "rgba(255,255,255,0.75)",
+      color:          "rgba(255,255,255,0.95)",
       textDecoration: "none",
       transition:     "all 0.15s",
     }}
@@ -78,8 +83,8 @@ function InstagramLink({ className = "" }: { className?: string }) {
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLElement;
-        el.style.borderColor = "rgba(255,255,255,0.28)";
-        el.style.color       = "rgba(255,255,255,0.75)";
+        el.style.borderColor = "rgba(255,255,255,0.6)";
+        el.style.color       = "rgba(255,255,255,0.95)";
       }}
     >
       Instagram
