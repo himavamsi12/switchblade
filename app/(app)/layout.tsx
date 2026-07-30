@@ -52,7 +52,8 @@ const archivo = Archivo({
 
 export const metadata: Metadata = {
   title: "SWITCHBLADE™ — Anything but Everything",
-  description: "A philosophy applied to whatever it touches.",
+  description:
+    "SWITCHBLADE™ — a philosophy applied to whatever it touches. Strength, compassion, and intent, distilled into a mark for builders who refuse to be boxed in.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

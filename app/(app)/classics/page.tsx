@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import { ClassicsPageClient } from "@/components/classics/ClassicsPageClient";
 import type { CmsProject } from "@/components/classics/ClassicsExperience";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "SWITCHBLADE CLASSICS — The Brand Journey | SWITCHBLADE™",
+  description:
+    "From Cosmos to Classic to Evolution — explore the three-phase journey of the Switchblade star, and the archive of inspirations that shaped an unmistakable mark.",
+};
 
 /**
  * Dynamic again, but backed by Supabase instead of Payload's own local sqlite db.
