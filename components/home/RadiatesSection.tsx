@@ -391,6 +391,17 @@ export function RadiatesSection({
           if (Math.abs(deltaY) > GATE_NOISE_FLOOR) deferGate();
           return;
         }
+        // On the last beat (the wordmark), forward scroll releases IMMEDIATELY — no threshold to
+        // cross first. By request: once the wordmark has been seen, continuing on into
+        // ParagraphReveal/the next section shouldn't cost yet another deliberate gesture on top
+        // of everything already spent getting here. The threshold below still applies to
+        // reversing back toward the labels — that direction is a real step with content to show,
+        // not a release.
+        if (stepIndex === BEAT_PROGRESS.length - 1 && deltaY > 0) {
+          stepArmed = false;
+          releaseSteps();
+          return;
+        }
         // Reversing direction restarts the tally, so a wobble back the other way can't bank
         // toward a step the reader is no longer asking for.
         if ((deltaY > 0) !== (stepAccum >= 0)) stepAccum = 0;
