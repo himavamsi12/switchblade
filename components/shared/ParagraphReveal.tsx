@@ -159,7 +159,7 @@ export function ParagraphReveal() {
 
         <div ref={leftColRef} style={{ maxWidth: 554 }}>
           <p style={{
-            fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: "clamp(24px,3vw,32px)",
+            fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(24px,3vw,32px)",
             lineHeight: 1.12, color: "#0D0D0D", textAlign: "justify",
           }}>
             <Highlighted text="Switchblade is the beginning of a journey for those who carry competence without seeking validation - the builders, thinkers & doers who value depth and attention to detail and those who refuse to get boxed in." />

@@ -135,7 +135,7 @@ function Hero({ starRef }: { starRef: React.RefObject<HTMLDivElement | null> }) 
 
         <Link
           href="/collaborate"
-          className="flex items-center gap-2 rounded-lg text-white font-medium hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 rounded-lg text-white font-medium hover:opacity-80 transition-opacity uppercase"
           style={{ background: "#FF802B", fontFamily: "var(--font-archivo)", fontSize: "14px", padding: "10px 12px" }}
         >
           Contact

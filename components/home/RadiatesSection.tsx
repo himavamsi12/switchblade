@@ -298,6 +298,10 @@ export function RadiatesSection({
       // out but reloading. Worst case this lets one extra step through on a freakishly long flick,
       // which is strictly better than a dead end.
       const GATE_MAX_HOLD = 900;
+      // Minimum time on the final beat before a forward scroll may release the scene. Short
+      // enough that a deliberate scroll reads as instant, long enough that the momentum tail of
+      // the gesture that just landed here can't release it before the wordmark is even read.
+      const RELEASE_MIN_DWELL = 300;
 
       // Absolute page Y for a given progress point, recomputed from the LIVE rect every time
       // rather than cached at setup: this section's height and offset both shift while fonts and
@@ -384,22 +388,33 @@ export function RadiatesSection({
 
       const onStepInput = ({ deltaY }: { deltaY: number }) => {
         if (killed || !stepEngaged || !deltaY) return;
+        // Last beat + scrolling forward = leave the scene. Checked BEFORE the gesture gate below,
+        // and deliberately WITHOUT requiring that gate to be open: the gate exists to stop a
+        // flick's momentum tail from skipping a beat, but here there is no beat left to skip —
+        // the only thing past this one is the rest of the page. Gating it meant the reader's
+        // scroll was absorbed as "tail" and they had to scroll a second time, which is the
+        // reported "still takes two scrolls to leave this section".
+        //
+        // RELEASE_MIN_DWELL is the one guard kept: without it the tail of the very gesture that
+        // stepped them ONTO the wordmark would release them again the instant that step landed,
+        // so a hard flick would blow straight through the wordmark without it ever being read.
+        // Measured from gateClosedAt, which closeGate() stamps when a beat lands (deferGate
+        // deliberately never touches it), so it reads as "time since arriving on this beat".
+        if (
+          !stepping &&
+          deltaY > 0 &&
+          stepIndex === BEAT_PROGRESS.length - 1 &&
+          Date.now() - gateClosedAt > RELEASE_MIN_DWELL
+        ) {
+          stepArmed = false;
+          releaseSteps();
+          return;
+        }
         // Gate shut (or a step still animating): this input is the tail of an earlier gesture, not
         // a new one. Absorb it and push the silence deadline out, so the gate only reopens once the
         // reader has actually stopped scrolling.
         if (stepping || !gateOpen) {
           if (Math.abs(deltaY) > GATE_NOISE_FLOOR) deferGate();
-          return;
-        }
-        // On the last beat (the wordmark), forward scroll releases IMMEDIATELY — no threshold to
-        // cross first. By request: once the wordmark has been seen, continuing on into
-        // ParagraphReveal/the next section shouldn't cost yet another deliberate gesture on top
-        // of everything already spent getting here. The threshold below still applies to
-        // reversing back toward the labels — that direction is a real step with content to show,
-        // not a release.
-        if (stepIndex === BEAT_PROGRESS.length - 1 && deltaY > 0) {
-          stepArmed = false;
-          releaseSteps();
           return;
         }
         // Reversing direction restarts the tally, so a wobble back the other way can't bank

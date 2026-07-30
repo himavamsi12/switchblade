@@ -205,6 +205,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
   const detailBodyRef  = useRef<HTMLDivElement>(null);
   const detailPrevRef  = useRef<HTMLButtonElement>(null);
   const detailNextRef  = useRef<HTMLButtonElement>(null);
+  const detailCloseRef = useRef<HTMLButtonElement>(null);
   const detailInnerRef = useRef<HTMLDivElement>(null);
   const detailCardRef  = useRef<HTMLDivElement>(null);
   // Mobile-only peek cards (see classics-experience.css .detail__card--ghost) — real, full
@@ -936,10 +937,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     }
     const onDetailPrev = () => showAdjacentProject(-1);
     const onDetailNext = () => showAdjacentProject(1);
+    const onDetailClose = () => closeDetail();
     const detailPrevEl = detailPrevRef.current;
     const detailNextEl = detailNextRef.current;
+    const detailCloseEl = detailCloseRef.current;
     detailPrevEl?.addEventListener("click", onDetailPrev);
     detailNextEl?.addEventListener("click", onDetailNext);
+    detailCloseEl?.addEventListener("click", onDetailClose);
 
     // Card-swipe project navigation (mobile only — the nav arrows are hidden below 820px in
     // favor of this, see classics-experience.css). Drags all 3 cards (ghost-prev, active,
@@ -1098,9 +1102,21 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     canvas.addEventListener("click", onCanvasClick);
 
     const onKeydown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (contactOpen) closeContact();
-      else if (detailOpen) closeDetail();
+      if (e.key === "Escape") {
+        if (contactOpen) closeContact();
+        else if (detailOpen) closeDetail();
+        return;
+      }
+      // Desktop keyboard equivalent of the prev/next arrow buttons — by request. Guarded on
+      // !contactOpen (the contact/booking modal sits ON TOP of the detail view; arrow keys there
+      // should have no effect on the cards underneath it) and detailOpen (showAdjacentProject
+      // itself also checks this, but bailing here skips the project-index math entirely when
+      // there's no detail view to navigate). Desktop only — mobile already has its own arrow-key-
+      // free swipe gesture for this (see the card-swipe carousel below), and phones don't have a
+      // hardware keyboard to fire these events from anyway.
+      if (contactOpen || !detailOpen || window.innerWidth <= 820) return;
+      if (e.key === "ArrowLeft") showAdjacentProject(-1);
+      else if (e.key === "ArrowRight") showAdjacentProject(1);
     };
     window.addEventListener("keydown", onKeydown);
     const detailEl = detailRef.current;
@@ -1115,6 +1131,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     // ghost peeks, and .detail__inner's own empty space all close it now, matching what visually
     // reads as "empty" to someone tapping there.
     const onDetailBackdropClick = (e: MouseEvent) => {
+      // Mobile relies on swipe-down-to-close and the explicit "X" button instead — a stray tap
+      // while scrolling the body text or swiping between ghost cards was closing the popup
+      // unintentionally, since almost the entire viewport counts as "backdrop" on a small screen.
+      if (window.innerWidth <= 820) return;
       const target = e.target as HTMLElement;
       if (target.closest(".detail__card:not(.detail__card--ghost)") || target.closest(".detail__nav")) return;
       closeDetail();
@@ -1247,6 +1267,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       canvas.removeEventListener("click", onCanvasClick);
       detailPrevEl?.removeEventListener("click", onDetailPrev);
       detailNextEl?.removeEventListener("click", onDetailNext);
+      detailCloseEl?.removeEventListener("click", onDetailClose);
       detailInnerEl?.removeEventListener("touchstart", onCardTouchStart);
       detailInnerEl?.removeEventListener("touchmove", onCardTouchMove);
       detailInnerEl?.removeEventListener("touchend", onCardTouchEnd);
@@ -1345,6 +1366,12 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
       <div className="detail" ref={detailRef} aria-hidden="true">
         <div className="detail__esc">[ESC] to close</div>
+        {/* Mobile-only close affordance — tap-outside-to-close is disabled below 820px (see
+            onDetailBackdropClick) since almost the whole viewport reads as "outside" on a phone,
+            so this is the only tap-to-close option left there (swipe-down still works too). */}
+        <button type="button" className="detail__close" ref={detailCloseRef} aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M18 6L6 18" stroke="#111" strokeWidth="1.8" strokeLinecap="round" /></svg>
+        </button>
         <div className="detail__inner" ref={detailInnerRef}>
           <button type="button" className="detail__nav" ref={detailPrevRef} aria-label="Previous">
             <img src="/classics/icons/left-arrow.svg" alt="" width={20} height={18} />

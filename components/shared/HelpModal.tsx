@@ -160,7 +160,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
                 textTransform: "uppercase", color: "#ffffff",
               }}
             >
-              Let's<br />Connect
+              Let&apos;s<br />Connect
             </h2>
           </motion.div>
         </div>
@@ -328,6 +328,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
                   fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16,
                   letterSpacing: "-0.02em", cursor: pitchSubmitting ? "default" : "pointer",
                   opacity: pitchSubmitting ? 0.6 : 1, transition: "opacity 0.15s",
+                  textTransform: "uppercase",
                 }}
                 onMouseEnter={e => { if (!pitchSubmitting) e.currentTarget.style.opacity = "0.8"; }}
                 onMouseLeave={e => { if (!pitchSubmitting) e.currentTarget.style.opacity = "1"; }}

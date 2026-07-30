@@ -408,7 +408,7 @@ export default function CollaboratePage() {
             <div className="flex items-center gap-[18px] flex-wrap">
               <a
                 href="#pitch"
-                className="flex items-center gap-3 rounded-xl text-white font-medium hover:opacity-85 transition-opacity"
+                className="flex items-center gap-3 rounded-xl text-white font-medium hover:opacity-85 transition-opacity uppercase"
                 style={{ background: "#FF802B", fontFamily: "var(--font-archivo)", fontSize: 15, padding: "8px 8px 8px 20px" }}
               >
                 Send Pitch
@@ -427,7 +427,7 @@ export default function CollaboratePage() {
                   document.getElementById("standard")?.scrollIntoView({ behavior: "smooth", block: "start" });
                   history.replaceState(null, "", "#standard");
                 }}
-                className="flex items-center gap-3 rounded-xl font-medium hover:opacity-70 transition-opacity"
+                className="flex items-center gap-3 rounded-xl font-medium hover:opacity-70 transition-opacity uppercase"
                 style={{ border: "1px solid #0F0E0C", color: "#0F0E0C", fontFamily: "var(--font-archivo)", fontSize: 15, padding: "12px 16px 12px 20px" }}
               >
                 See the standard
@@ -672,7 +672,21 @@ export default function CollaboratePage() {
               // tight for the whole word — everywhere else the word fits and this has no effect.
               overflowWrap: "break-word",
             }}>
-              <SweepText tone="dark" color="#0F0E0C">Let&rsquo;s<br />Collaborate</SweepText>
+              {/* The custom Barlow display font (TBJ One More Demo.ttf) has NO apostrophe glyph
+                  at all — verified directly against the font file (fontTools cmap), neither
+                  U+0027 nor U+2019 exist in it, only letters/digits. A missing glyph makes the
+                  browser silently substitute a fallback font for just that character, and that
+                  substituted glyph fails to paint under SweepText's gradient reveal
+                  (-webkit-background-clip: text + -webkit-text-fill-color: transparent, see
+                  .sweep-text in globals.css) — it renders invisible rather than just unstyled.
+                  Swapping curly &rsquo; for a plain ' alone does NOT fix this (tried first): the
+                  font has neither, so it's still a fallback substitution either way. The actual
+                  fix is forcing an EXPLICIT fallback font on just the apostrophe (not an implicit
+                  substitution), so the browser has an unambiguous font decision for that glyph
+                  and paints it as a normal (non-substituted) render within the clip. */}
+              <SweepText tone="dark" color="#0F0E0C">
+                Let<span style={{ fontFamily: "system-ui, -apple-system, Arial, sans-serif" }}>&apos;</span>s<br />Collaborate
+              </SweepText>
             </h2>
             <div className="rise">
               <p style={{ fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 18, color: "#929292", maxWidth: 440 }}>
@@ -784,6 +798,7 @@ export default function CollaboratePage() {
                 height: 40, background: "#000", color: "#fff", border: "none", borderRadius: 8,
                 fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: 16, letterSpacing: "-0.02em",
                 cursor: pitchSubmitting ? "default" : "pointer", opacity: pitchSubmitting ? 0.6 : 1, transition: "opacity 0.15s",
+                textTransform: "uppercase",
               }}
                 onMouseEnter={e => { if (!pitchSubmitting) e.currentTarget.style.opacity = "0.8"; }}
                 onMouseLeave={e => { if (!pitchSubmitting) e.currentTarget.style.opacity = "1"; }}

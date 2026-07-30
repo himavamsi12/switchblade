@@ -116,7 +116,7 @@ export default function MembershipPage() {
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <button type="submit" disabled={submitting} className="w-full bg-[#111111] text-white py-4 text-sm font-medium hover:bg-[#0A1AFF] transition-colors mt-2 disabled:opacity-60">
+                  <button type="submit" disabled={submitting} className="w-full bg-[#111111] text-white py-4 text-sm font-medium hover:bg-[#0A1AFF] transition-colors mt-2 disabled:opacity-60 uppercase">
                     {submitting ? "Sending..." : "Request access"}
                   </button>
                   {error && <p className="text-xs text-red-500 text-center leading-relaxed">Something went wrong — please try again.</p>}

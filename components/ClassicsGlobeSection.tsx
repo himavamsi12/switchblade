@@ -385,6 +385,7 @@ export function ClassicsGlobeSection() {
             fontSize:       "clamp(14px, 1vw, 16px)",
             fontWeight:     600,
             textDecoration: "none",
+            textTransform:  "uppercase",
             padding:        "8px 8px 8px 18px",
             opacity:        0,
             transition:     "opacity 0.18s ease, transform 0.18s ease",

@@ -237,7 +237,7 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
               // of the sentence, and a top margin still shifts it down there — an inline-flex
               // element is an atomic inline-level box, so margin-top is not the no-op it would be
               // on a pure inline. That's what knocked it out of line with the text.
-              className="inline-flex items-center rounded-lg text-white font-medium hover:opacity-85 transition-opacity align-middle max-md:mt-5"
+              className="inline-flex items-center rounded-lg text-white font-medium hover:opacity-85 transition-opacity align-middle max-md:mt-5 uppercase"
               style={{ background: "#FF802B", fontFamily: "var(--font-archivo)", fontSize: 15, padding: "6px 18px", border: "none", cursor: "pointer" }}
             >
               Read More
@@ -895,6 +895,7 @@ export function OriginsSection() {
               gap: 6, background: "#FF802B", color: "#fff",
               fontFamily: "var(--font-archivo)", fontWeight: 700, fontSize: 14,
               borderRadius: 10, padding: "10px 18px", border: "none", cursor: "pointer",
+              textTransform: "uppercase",
             }}
           >
             ✕ Close

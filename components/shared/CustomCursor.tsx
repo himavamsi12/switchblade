@@ -10,6 +10,11 @@ export function CustomCursor() {
   const hoveredRef = useRef(false);
   const pos  = useRef({ x: -100, y: -100 });
   const ring = useRef({ x: -100, y: -100 });
+  // Lerped like the ring's position rather than transitioned in CSS: the ring's transform is
+  // rewritten every frame to follow the pointer, so a CSS transition on `transform` would lag the
+  // POSITION too, not just the size. Keeping the scale on the same lerp means one transform write
+  // per frame and no competing transition.
+  const ringScale = useRef(1);
   const raf  = useRef<number>(0);
 
   useEffect(() => {
@@ -38,10 +43,16 @@ export function CustomCursor() {
       ring.current.x += (pos.current.x - ring.current.x) * 0.4;
       ring.current.y += (pos.current.y - ring.current.y) * 0.4;
       if (ringRef.current) {
-        const sz = hoveredRef.current ? 56 : 32;
-        ringRef.current.style.transform = `translate(${ring.current.x - sz / 2}px, ${ring.current.y - sz / 2}px)`;
-        ringRef.current.style.width  = `${sz}px`;
-        ringRef.current.style.height = `${sz}px`;
+        // Size via `scale`, NOT width/height. This loop runs every frame for as long as the page
+        // is open, and width/height are layout properties — writing them here forced a layout pass
+        // 60x/sec, and wrote the SAME value on the vast majority of frames since the size only
+        // changes on hover. scale is compositor-only, so the whole loop is now transform-only.
+        // Box stays a fixed 32px (see className) and scales about its own centre, so the -16
+        // centring offset is constant and the ring still tracks the pointer exactly.
+        const target = hoveredRef.current ? 56 / 32 : 1;
+        ringScale.current += (target - ringScale.current) * 0.2;
+        ringRef.current.style.transform =
+          `translate(${ring.current.x - 16}px, ${ring.current.y - 16}px) scale(${ringScale.current.toFixed(3)})`;
       }
       raf.current = requestAnimationFrame(loop);
     };
@@ -64,10 +75,14 @@ export function CustomCursor() {
       />
       <div
         ref={ringRef}
-        className={`global-cursor fixed top-0 left-0 z-[9998] rounded-full pointer-events-none border transition-[width,height,border-color] duration-200 ${
+        // Fixed 32px box — the hover size change is a transform scale in the rAF loop above, not a
+        // width/height change, so only border-color transitions here now (paint-only, cheap).
+        className={`global-cursor fixed top-0 left-0 z-[9998] w-8 h-8 rounded-full pointer-events-none border transition-[border-color] duration-200 ${
           hovered ? "border-[#0A1AFF]" : "border-[#111111]/30"
         }`}
-        style={{ willChange: "transform, width, height" }}
+        // will-change lists only what actually animates now (was also claiming width/height,
+        // which the perf guidance warns against — they're layout props, hinting them buys nothing).
+        style={{ willChange: "transform" }}
       />
     </>
   );

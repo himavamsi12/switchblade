@@ -56,8 +56,18 @@ export function CollaboratorsSection() {
         marginBottom:  "clamp(56px,7vw,110px)",
         marginLeft:    "clamp(18px,2vw,26px)",
       }}>
+        {/* The custom Barlow display font (TBJ One More Demo.ttf) has NO apostrophe glyph at all
+            — verified against the font file directly (fontTools cmap): neither U+0027 nor U+2019
+            exist in it, only letters/digits. A missing glyph makes the browser silently
+            substitute a fallback font for just that character, and that substituted glyph fails
+            to paint under SweepText's gradient reveal (-webkit-background-clip: text +
+            -webkit-text-fill-color: transparent, see .sweep-text in globals.css) — invisible, not
+            just unstyled. Swapping curly &rsquo; for a plain ' alone does NOT fix this: the font
+            has neither, so it's still a fallback substitution either way. The fix is forcing an
+            EXPLICIT fallback font on just the apostrophe (not an implicit substitution), so
+            there's no ambiguous font decision for the browser to get wrong mid-clip. */}
         <SweepText tone="dark" color="#0D0D0D">
-          Let&rsquo;s<br />Collaborate
+          Let<span style={{ fontFamily: "system-ui, -apple-system, Arial, sans-serif" }}>&apos;</span>s<br />Collaborate
         </SweepText>
       </h2>
 
@@ -119,7 +129,7 @@ export function CollaboratorsSection() {
       <div className="col-reveal" style={{ display: "flex", justifyContent: "center", marginTop: "clamp(24px,3vw,36px)" }}>
         <a
           href="/collaborate#pitch"
-          className="flex items-center gap-3 rounded-lg text-white font-medium hover:opacity-85 transition-opacity"
+          className="flex items-center gap-3 rounded-lg text-white font-medium hover:opacity-85 transition-opacity uppercase"
           style={{ background: "#FF802B", fontSize: 14, padding: "8px 8px 8px 16px", fontFamily: "var(--font-archivo)", }}
         >
           Request for collaboration

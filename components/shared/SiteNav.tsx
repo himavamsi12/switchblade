@@ -140,20 +140,22 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
     return () => window.removeEventListener("scroll", onScroll);
   }, [shouldReduceMotion, menuOpen]);
   // Opening the drawer while the bar happens to be scroll-hidden would strand the hamburger/X
-  // button off-screen with no way to close it — force the bar back on screen the moment it opens.
-  useEffect(() => {
-    if (menuOpen) setHiddenByScroll(false);
-  }, [menuOpen]);
+  // button off-screen with no way to close it — handled by the `!menuOpen && hiddenByScroll` check
+  // in navAnimate below instead of a separate effect forcing hiddenByScroll back to false.
 
   // The bar's animate target, unified across both features it now drives:
   //  - During the staged intro (navIntro && not yet settled), this must stay exactly {y:0,
   //    opacity:1} — the FIXED target the entrance's own initial→animate interpolation (with its
   //    long delay/duration, see the transition below) is already animating toward. Changing the
   //    target mid-flight would cut that timed reveal short.
-  //  - Afterwards (or immediately, for pages with no intro at all), it tracks hiddenByScroll.
+  //  - Afterwards (or immediately, for pages with no intro at all), it tracks hiddenByScroll —
+  //    EXCEPT while the mobile drawer is open, forced visible here rather than via a separate
+  //    effect writing setHiddenByScroll(false): that effect was pure derived state (this is the
+  //    only place hiddenByScroll is ever read), so computing the override at the read site removes
+  //    the redundant state sync entirely — one less effect, one less render.
   const navAnimate = navIntro && !entranceSettled
     ? { y: 0, opacity: 1 }
-    : { y: hiddenByScroll ? "-100%" : "0%", opacity: 1 };
+    : { y: !menuOpen && hiddenByScroll ? "-100%" : "0%", opacity: 1 };
   // Only the intro gets the long delay — once settled, scroll-triggered hide/reveal must react
   // immediately (no delay) and quickly, or it reads as sluggish against the reader's own scrolling.
   const navTransition = navIntro && !entranceSettled
@@ -271,7 +273,7 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
               window.location.href = "/collaborate";
             }
           }}
-          className="flex items-center gap-2 rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-4"
+          className="flex items-center gap-2 rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-4 uppercase"
           style={{ background: "#FF802B", fontSize: 14, paddingTop: 6, paddingRight: 6, paddingBottom: 6, cursor: light ? "pointer" : undefined }}
         >
           {/* "Collab" label hidden below sm: at phone widths, this button's full width plus the
