@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // Compass.glb is meshopt-compressed (EXT_meshopt_compression, a REQUIRED extension — 7.5MB → 627KB),
@@ -178,6 +179,15 @@ interface ClassicsExperienceProps {
 
 export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsExperienceProps>(function ClassicsExperience({ cmsProjects = [] }, ref) {
   const rootRef = useRef<HTMLDivElement>(null);
+  // Portal target for the mobile detail-close button (see its own comment further down) —
+  // document.body isn't available during SSR, so this flips true only after mount.
+  const [portalMounted, setPortalMounted] = useState(false);
+  useEffect(() => { setPortalMounted(true); }, []);
+  // closeDetail itself is defined inside the big imperative effect below (it needs that effect's
+  // closure — currentSource, detailClosing etc.), so it isn't directly callable from a separate
+  // effect. Stashed here once that effect runs, so the close button's own click-wiring effect
+  // (below, gated on portalMounted) can call the CURRENT closeDetail without needing it in scope.
+  const closeDetailFnRef = useRef<() => void>(() => {});
 
   const allProjects = useMemo(() => [...PROJECTS, ...cmsProjects], [cmsProjects]);
 
@@ -206,6 +216,19 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
   const detailPrevRef  = useRef<HTMLButtonElement>(null);
   const detailNextRef  = useRef<HTMLButtonElement>(null);
   const detailCloseRef = useRef<HTMLButtonElement>(null);
+  // The close button only exists in the DOM once portalMounted flips true — a SECOND render after
+  // the one the big effect's setup below ran on. Wiring its click listener inside that big effect
+  // (like detailPrevRef/detailNextRef are) reads detailCloseRef.current as null forever, since
+  // that effect has an empty dep array and never re-runs once the portal's button actually
+  // mounts — the listener would silently never attach. This effect re-runs specifically when
+  // portalMounted flips, i.e. exactly when the button first exists.
+  useEffect(() => {
+    if (!portalMounted) return;
+    const el = detailCloseRef.current;
+    const onClick = () => closeDetailFnRef.current();
+    el?.addEventListener("click", onClick);
+    return () => el?.removeEventListener("click", onClick);
+  }, [portalMounted]);
   const detailInnerRef = useRef<HTMLDivElement>(null);
   const detailCardRef  = useRef<HTMLDivElement>(null);
   // Mobile-only peek cards (see classics-experience.css .detail__card--ghost) — real, full
@@ -868,6 +891,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       detailRef.current?.setAttribute("aria-hidden", "false");
       canvas.classList.add("is-detail");
       root.classList.add("detail-open");
+      // detailCloseRef is portaled straight to document.body (see its own comment in the JSX) —
+      // no longer a descendant of `root`, so the CSS "root.detail-open .detail__close" selector
+      // that gates .detail's own children can't reach it. Toggled directly here instead.
+      detailCloseRef.current?.classList.add("is-open");
       if (playgroundOn) pgRef.current?.classList.add("pg--blur");
       setHovered(null);
 
@@ -891,6 +918,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       stopAutoplay();
       detailRef.current?.classList.add("is-closing");
       canvas.classList.remove("is-detail");
+      detailCloseRef.current?.classList.remove("is-open");
 
       const img = detailImgRef.current!;
       const to = img.getBoundingClientRect();
@@ -915,6 +943,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         if (playgroundOn) pgRef.current?.classList.remove("pg--blur");
       }, FLIP_MS + 20);
     }
+    // See closeDetailFnRef's own declaration above — the portaled close button's click listener
+    // is wired in a separate effect (gated on portalMounted) that can't see this closure directly.
+    closeDetailFnRef.current = closeDetail;
 
     function showAdjacentProject(dir: 1 | -1) {
       if (!detailOpen || detailClosing) return;
@@ -937,13 +968,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     }
     const onDetailPrev = () => showAdjacentProject(-1);
     const onDetailNext = () => showAdjacentProject(1);
-    const onDetailClose = () => closeDetail();
     const detailPrevEl = detailPrevRef.current;
     const detailNextEl = detailNextRef.current;
-    const detailCloseEl = detailCloseRef.current;
     detailPrevEl?.addEventListener("click", onDetailPrev);
     detailNextEl?.addEventListener("click", onDetailNext);
-    detailCloseEl?.addEventListener("click", onDetailClose);
 
     // Card-swipe project navigation (mobile only — the nav arrows are hidden below 820px in
     // favor of this, see classics-experience.css). Drags all 3 cards (ghost-prev, active,
@@ -1267,7 +1295,6 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       canvas.removeEventListener("click", onCanvasClick);
       detailPrevEl?.removeEventListener("click", onDetailPrev);
       detailNextEl?.removeEventListener("click", onDetailNext);
-      detailCloseEl?.removeEventListener("click", onDetailClose);
       detailInnerEl?.removeEventListener("touchstart", onCardTouchStart);
       detailInnerEl?.removeEventListener("touchmove", onCardTouchMove);
       detailInnerEl?.removeEventListener("touchend", onCardTouchEnd);
@@ -1366,12 +1393,6 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
       <div className="detail" ref={detailRef} aria-hidden="true">
         <div className="detail__esc">[ESC] to close</div>
-        {/* Mobile-only close affordance — tap-outside-to-close is disabled below 820px (see
-            onDetailBackdropClick) since almost the whole viewport reads as "outside" on a phone,
-            so this is the only tap-to-close option left there (swipe-down still works too). */}
-        <button type="button" className="detail__close" ref={detailCloseRef} aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M18 6L6 18" stroke="#111" strokeWidth="1.8" strokeLinecap="round" /></svg>
-        </button>
         <div className="detail__inner" ref={detailInnerRef}>
           <button type="button" className="detail__nav" ref={detailPrevRef} aria-label="Previous">
             <img src="/classics/icons/left-arrow.svg" alt="" width={20} height={18} />
@@ -1455,6 +1476,33 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           </button>
         </div>
       </div>
+
+      {/* Mobile-only close affordance — rendered via a PORTAL straight into document.body, not as
+          a plain descendant anywhere in this tree. Reason: position:fixed elements ALWAYS
+          establish their own stacking context (true even with z-index:auto — this differs from
+          position:absolute/relative, which only do that when z-index is explicitly set). Both
+          .detail (explicit z-index:700) AND .classics-exp itself (position:fixed, z-index:auto)
+          are such elements, so ANY descendant's z-index — this button was tried at up to 1300,
+          first nested in .detail, then merely a sibling of it still inside .classics-exp — only
+          ever ranks against its own siblings INSIDE that ancestor's local context. The whole
+          .classics-exp subtree still only ever competes as a single unit against SiteNav's
+          z-[1200] (components/shared/SiteNav.tsx, a totally separate fixed element elsewhere in
+          the tree) — and loses, since .classics-exp itself has no z-index high enough to beat it.
+          No descendant z-index can ever escape that. Portaling to document.body sidesteps the
+          whole ancestor chain: this button now competes directly in the ROOT stacking context,
+          where its z-index:1300 genuinely outranks SiteNav's 1200. Visibility is driven by the
+          "detail-open" class openDetail/closeDetail already toggle on the root element (see
+          rootRef) via the .classics-exp.detail-open selector in the CSS, since portaling moves
+          this out from under .detail's own opacity/pointer-events toggle too. Tap-outside-to-close
+          is disabled below 820px (see onDetailBackdropClick), so this is the only tap-to-close
+          option left there (swipe-down still works too). portalMounted guards against
+          document.body being unavailable during SSR. */}
+      {portalMounted && createPortal(
+        <button type="button" className="detail__close" ref={detailCloseRef} aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M18 6L6 18" stroke="#111" strokeWidth="1.8" strokeLinecap="round" /></svg>
+        </button>,
+        document.body
+      )}
 
       <div className="pg" ref={pgRef} aria-hidden="true">
         <div className="pg__scroll" ref={pgScrollRef}>

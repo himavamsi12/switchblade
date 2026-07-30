@@ -275,7 +275,16 @@ export function BrandJourney() {
             </svg>
           )}
         </button>
-        <span style={{ fontFamily: "var(--font-barlow)", fontWeight: 700, fontSize: 16, color: "#0D0D0D", minWidth: 32, textAlign: "center" }}>
+        {/* --font-barlow is a single-weight custom display font (TBJ One More Demo.ttf, see
+            layout.tsx) — it renders at its own native (heavy) weight regardless of what
+            fontWeight CSS asks for, so "reduce the weight" can't be done on that font at all.
+            Mobile-only switches to font-archivo instead (a real variable-weight font, see
+            layout.tsx) at font-normal so the requested lighter weight actually has an effect;
+            desktop (md: and up) keeps the original Barlow/700 look untouched. */}
+        <span
+          className="font-[family-name:var(--font-archivo)] font-normal md:font-[family-name:var(--font-barlow)] md:font-bold"
+          style={{ fontSize: 16, color: "#0D0D0D", minWidth: 32, textAlign: "center" }}
+        >
           {active + 1}/{N}
         </span>
         <button

@@ -138,10 +138,6 @@ export function RadiatesSection({
     let wordmarkTrigger: any = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let starHideTrigger: any = null;
-    // Set while the stepped-beat hold is engaged (see engageSteps); calling it hands scrolling
-    // back. Must be invoked from cleanup as well, so an unmount mid-hold can't strand the page
-    // with scrolling disabled.
-    let releaseHold: (() => void) | null = null;
     let rafId = 0;
 
     import("gsap").then(async ({ gsap }) => {
@@ -240,238 +236,12 @@ export function RadiatesSection({
       // (zero duration) rather than animated, so it can push the star down the moment the section
       // is entered without reintroducing motion-during-scroll — it just snaps to the correct
       // resting spot for this section, same as it would have looked once the old tween finished.
-      // ── Stepped beats: the section advances exactly one beat per scroll gesture ────────────────
-      // Replaces two earlier time-based holds (one at the entrance, one at the wordmark), which
-      // each called lenis.stop() and released on their own fixed gsap.delayedCall timer. Those
-      // could never actually stop a fast flick from skipping a beat: they froze the page for a
-      // FIXED duration, so the moment that timer elapsed the reader's flick was free to cover the
-      // rest of this section's ~280vh runway in one continuous motion — sailing past the wordmark
-      // entirely. That's the reported "scroll fast and it goes straight from the labels to the
-      // next section". Lengthening those timers only traded the skip for the page feeling stalled.
-      //
-      // Instead the section is now a stepped scene: while the reader is inside it the page is HELD
-      // (lenis.stop()), and each scroll gesture advances exactly ONE beat via an animated
-      // lenis.scrollTo. Because the page never free-scrolls here, flick SPEED stops mattering —
-      // one gesture can't cover more than one beat, so no beat can be skipped at any speed, and
-      // every transition is a controlled ease rather than raw momentum. Past the last beat the
-      // hold is handed back and normal scrolling continues into the next section.
-      //
-      // Three Lenis behaviours this leans on, all verified against lenis/dist/lenis.mjs rather
-      // than assumed:
-      //  - "virtual-scroll" is emitted BEFORE Lenis's own isStopped check, so wheel/touch intent
-      //    and direction still arrive while the page is stopped — that's what drives stepping.
-      //  - while stopped, Lenis calls preventDefault() on those same events, so the page cannot
-      //    drift natively behind the hold.
-      //  - scrollTo() early-returns while stopped unless passed `force: true`.
-      //
-      // Desktop only, for the same reason every other hold here was: Lenis simply doesn't exist on
-      // mobile/tablet (see SmoothScroll.tsx), and hard-blocking a native touch flick mid-gesture
-      // reads as the page having broken rather than as a deliberate beat. Mobile keeps its existing
-      // free-scroll behaviour. Also skipped under prefers-reduced-motion — commandeering someone's
-      // scroll is exactly what that setting is asking us not to do.
-      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      // Progress points (fraction of this section's own height) the scene rests on:
-      //   0.02 — labels formed around the star, just past the pin engaging
-      //   0.50 — SWITCHBLADE fully typed in (wordmarkTween finishes at 45%)
-      const BEAT_PROGRESS = [0.02, 0.5];
-      // Accumulated wheel delta needed to commit to a step — roughly one deliberate gesture.
-      const STEP_THRESHOLD = 90;
-      // Milliseconds of input SILENCE that marks the end of one gesture and re-opens the input
-      // gate. This is the fix for the hold appearing not to work at all: "virtual-scroll" fires
-      // before Lenis's own isStopped check (the very property this stepper relies on to read
-      // direction while frozen), so the moment the hold engages, the still-decaying momentum tail
-      // of the flick that BROUGHT the reader here keeps delivering wheel events. A hard trackpad
-      // flick emits thousands of px of cumulative delta over several hundred ms, so it blew
-      // through STEP_THRESHOLD within a frame or two and instantly stepped on to the wordmark —
-      // the scene did hold, for about 30ms, which read as not holding at all. Gating on silence
-      // means that tail gets absorbed and only a genuinely new gesture can advance a beat.
-      const GESTURE_GAP = 220;
-      // Only deltas ABOVE this push the silence deadline out. Set well above sub-pixel noise on
-      // purpose: a flick's momentum tail decays in amplitude, so once it drops under this the gate
-      // stops being held open by it and can reopen — while the meaty front of the flick is still
-      // absorbed. It also means a slow deliberate drag (small per-event deltas) isn't mistaken for
-      // a flick tail and can advance a beat normally.
-      const GATE_NOISE_FLOOR = 12;
-      // Hard safety valve: however much input keeps arriving, never hold the gate shut longer than
-      // this. Without it a sustained continuous drag (which never goes silent) could keep pushing
-      // the deadline forever and leave the reader genuinely unable to advance — stuck, with no way
-      // out but reloading. Worst case this lets one extra step through on a freakishly long flick,
-      // which is strictly better than a dead end.
-      const GATE_MAX_HOLD = 900;
-      // Minimum time on the final beat before a forward scroll may release the scene. Short
-      // enough that a deliberate scroll reads as instant, long enough that the momentum tail of
-      // the gesture that just landed here can't release it before the wordmark is even read.
-      const RELEASE_MIN_DWELL = 300;
-
-      // Absolute page Y for a given progress point, recomputed from the LIVE rect every time
-      // rather than cached at setup: this section's height and offset both shift while fonts and
-      // the 3D canvas settle, and a stale pixel target here would land the reader at the wrong
-      // beat (the same class of bug as the ScrollTrigger.refresh() on fonts.ready further below).
-      const beatY = (p: number) => section.getBoundingClientRect().top + window.scrollY + p * section.offsetHeight;
-      // Live progress through the section, 0 at the moment its top hits the viewport top.
-      const sectionProgress = () => Math.max(0, -section.getBoundingClientRect().top / section.offsetHeight);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const getLenis = () => (window as any).__lenis;
-
-      let stepEngaged = false;   // currently holding the page
-      let stepIndex = 0;         // which beat the reader is parked on
-      let stepping = false;      // a step animation is in flight — ignore input
-      let stepAccum = 0;         // accumulated gesture delta toward the next step
-      let stepArmed = true;      // false after a release, until the reader leaves the section
-      let gateOpen = false;      // false until input has gone quiet — see GESTURE_GAP
-      let gateClosedAt = 0;      // when the gate last shut, for the GATE_MAX_HOLD safety valve
-      let quietTimer: ReturnType<typeof setTimeout> | null = null;
-      let unsubStepInput: (() => void) | null = null;
-
-      // Shuts the input gate and (re)starts the silence timer that reopens it. Called on engage and
-      // after every step, so each beat begins by absorbing whatever is left of the gesture that got
-      // the reader there before it will accept the next one.
-      const closeGate = () => {
-        gateOpen = false;
-        stepAccum = 0;
-        gateClosedAt = Date.now();
-        if (quietTimer) clearTimeout(quietTimer);
-        quietTimer = setTimeout(() => { gateOpen = true; }, GESTURE_GAP);
-      };
-
-      // Pushes the silence deadline out while input keeps arriving — but never past GATE_MAX_HOLD
-      // from when the gate first shut, so the reader can't be locked out indefinitely.
-      const deferGate = () => {
-        if (Date.now() - gateClosedAt >= GATE_MAX_HOLD) {
-          if (quietTimer) clearTimeout(quietTimer);
-          quietTimer = null;
-          gateOpen = true;
-          stepAccum = 0;
-          return;
-        }
-        gateOpen = false;
-        stepAccum = 0;
-        if (quietTimer) clearTimeout(quietTimer);
-        quietTimer = setTimeout(() => { gateOpen = true; }, GESTURE_GAP);
-      };
-
-      const releaseSteps = () => {
-        stepEngaged = false;
-        stepAccum = 0;
-        gateOpen = false;
-        if (quietTimer) clearTimeout(quietTimer);
-        quietTimer = null;
-        unsubStepInput?.();
-        unsubStepInput = null;
-        releaseHold = null;
-        getLenis()?.start?.();
-      };
-
-      const stepTo = (index: number) => {
-        const lenis = getLenis();
-        if (!lenis?.scrollTo) return;
-        stepping = true;
-        stepAccum = 0;
-        // Duration scales with how far this step actually travels, so the long labels→wordmark
-        // move (~48% of the section) reads as a deliberate cinematic transition with its scrubbed
-        // beats legible along the way, while any short hop stays snappy. A single flat duration
-        // would either blur the long move or make the short ones feel sluggish.
-        const distance = Math.abs(BEAT_PROGRESS[index] - sectionProgress());
-        const duration = Math.min(1.8, Math.max(0.6, distance * 3));
-        stepIndex = index;
-        lenis.scrollTo(beatY(BEAT_PROGRESS[index]), {
-          force: true, // required — scrollTo is a no-op while stopped without it
-          duration,
-          onComplete: () => {
-            stepping = false;
-            // Beat landed — absorb the rest of the gesture before accepting the next one.
-            closeGate();
-          },
-        });
-      };
-
-      const onStepInput = ({ deltaY }: { deltaY: number }) => {
-        if (killed || !stepEngaged || !deltaY) return;
-        // Last beat + scrolling forward = leave the scene. Checked BEFORE the gesture gate below,
-        // and deliberately WITHOUT requiring that gate to be open: the gate exists to stop a
-        // flick's momentum tail from skipping a beat, but here there is no beat left to skip —
-        // the only thing past this one is the rest of the page. Gating it meant the reader's
-        // scroll was absorbed as "tail" and they had to scroll a second time, which is the
-        // reported "still takes two scrolls to leave this section".
-        //
-        // RELEASE_MIN_DWELL is the one guard kept: without it the tail of the very gesture that
-        // stepped them ONTO the wordmark would release them again the instant that step landed,
-        // so a hard flick would blow straight through the wordmark without it ever being read.
-        // Measured from gateClosedAt, which closeGate() stamps when a beat lands (deferGate
-        // deliberately never touches it), so it reads as "time since arriving on this beat".
-        if (
-          !stepping &&
-          deltaY > 0 &&
-          stepIndex === BEAT_PROGRESS.length - 1 &&
-          Date.now() - gateClosedAt > RELEASE_MIN_DWELL
-        ) {
-          stepArmed = false;
-          releaseSteps();
-          return;
-        }
-        // Gate shut (or a step still animating): this input is the tail of an earlier gesture, not
-        // a new one. Absorb it and push the silence deadline out, so the gate only reopens once the
-        // reader has actually stopped scrolling.
-        if (stepping || !gateOpen) {
-          if (Math.abs(deltaY) > GATE_NOISE_FLOOR) deferGate();
-          return;
-        }
-        // Reversing direction restarts the tally, so a wobble back the other way can't bank
-        // toward a step the reader is no longer asking for.
-        if ((deltaY > 0) !== (stepAccum >= 0)) stepAccum = 0;
-        stepAccum += deltaY;
-        if (Math.abs(stepAccum) < STEP_THRESHOLD) return;
-        const next = stepAccum > 0 ? stepIndex + 1 : stepIndex - 1;
-        if (next >= 0 && next < BEAT_PROGRESS.length) {
-          stepTo(next);
-        } else {
-          // Stepped off either end of the beat list — hand scrolling back so the reader continues
-          // into the next section (or back up to the hero) under their own momentum. Left
-          // disarmed so this doesn't instantly re-freeze the page they were just handed.
-          stepArmed = false;
-          releaseSteps();
-        }
-      };
-
-      const engageSteps = () => {
-        if (isMobile || prefersReducedMotion || !stepArmed || stepEngaged) return;
-        // Never hold during a Shop deep-link landing: that flow jumps the scroll position straight
-        // past this section to Origins, and this section's top still crosses the engage line on
-        // the way. Nobody is reading the scene on a deep-link, so there's nothing to protect from
-        // being skipped — and freezing mid-jump is exactly the "page stalls in every section"
-        // problem that guard was originally added for.
-        if (isShopDeepLink()) return;
-        const lenis = getLenis();
-        if (!lenis?.stop || !lenis?.on) return;
-        stepEngaged = true;
-        stepping = false;
-        // Park on whichever beat the reader actually arrived at rather than assuming the first —
-        // entering fast means the rAF poll below can observe top<=0 slightly past beat 0, and
-        // animating backward to it would read as the page yanking them back.
-        const p = sectionProgress();
-        stepIndex = 0;
-        BEAT_PROGRESS.forEach((bp, i) => { if (p >= bp - 0.01) stepIndex = i; });
-        lenis.stop();
-        // Shut the gate immediately: the reader almost certainly arrived here mid-flick, and that
-        // flick's momentum tail must not count as their first step.
-        closeGate();
-        unsubStepInput = lenis.on("virtual-scroll", onStepInput);
-        // Cleanup path — unmounting mid-hold must never strand the page unscrollable.
-        releaseHold = releaseSteps;
-      };
 
       let wasIntersecting = false;
       const checkIntersection = () => {
         if (killed) return;
         const rect = section.getBoundingClientRect();
         const top = rect.top;
-        // Re-arm the stepped scene once the reader has genuinely left the section in either
-        // direction (back above its top, or fully past its bottom), so a real re-entry replays the
-        // beats. Deliberately NOT re-armed mid-section: right after a release the reader is still
-        // inside the section by definition, and re-engaging there would instantly re-freeze the
-        // page they were just handed back.
-        if (!stepArmed && (top > 0 || rect.bottom <= 0)) stepArmed = true;
         const isIntersecting = top <= 0;
         if (isIntersecting !== wasIntersecting) {
           wasIntersecting = isIntersecting;
@@ -483,7 +253,6 @@ export function RadiatesSection({
             // state without any of that motion.
             if (isShopDeepLink()) tlEnter.progress(1).pause();
             else tlEnter.play();
-            engageSteps();
             // Desktop only — mobile's whole settle motion is owned by scaleTween alone (start:
             // "top 60%", see below), one continuous tween with no competing move here.
             // This used to be an INSTANT gsap.set rather than a tween — that snapped the star to
@@ -564,8 +333,15 @@ export function RadiatesSection({
       fadeTl = gsap.timeline({
         scrollTrigger: {
           trigger: section,
+          // Desktop widened to 20%→35% (was 20%/28%, a mere 28vh window) — see the h-[400vh] note
+          // on the outer div for why: with the scroll-hold removed entirely, this scrubbed range
+          // is the ONLY thing giving the labels any readable dwell time — a narrow window here
+          // meant a normal continuous scroll blew past them in a fraction of a second. Widening it
+          // to 60vh (of the new 400vh total) gives a continuous scroll noticeably more physical
+          // distance — and therefore more real time, even under Lenis's inertia — to actually read
+          // them before they fade.
           start: isMobile ? "24% top" : "20% top",
-          end: isMobile ? "34% top" : "28% top",
+          end: isMobile ? "34% top" : "35% top",
           scrub: 0.3,
         },
       })
@@ -606,17 +382,18 @@ export function RadiatesSection({
           // to be "top top" — the EXACT same instant checkIntersection's poll fires tlEnter
           // (heading fade + spin + the labels typing in) and the section's sticky pin locks. A
           // scrub tween is a DAMPED follow, not exact 1:1 tracking — it lags the raw scroll
-          // position and keeps interpolating to catch up even after scrolling stops (or, since
-          // the stepped-beat hold is desktop-only — see engageSteps — even while the reader
-          // KEEPS scrolling further into the section). Ending exactly at the pin-lock instant
+          // position and keeps interpolating to catch up even after scrolling stops. Ending
+          // exactly at the pin-lock instant
           // meant this tween was, by construction, ALWAYS still mid-flight the moment the labels
           // started appearing: the reported "star jumps toward the labels' center instead of
           // already being settled when they show up". "top 8%" ends the range a small buffer of
           // scroll distance BEFORE that instant, giving the scrub room to fully resolve its lag
           // and actually REACH its target before tlEnter/the pin ever fire — so by the time the
           // labels appear, the star is already sitting still.
-          start: isMobile ? "top 60%" : "27% top",
-          end: isMobile ? "top 8%" : "33% top",
+          // Desktop retuned to 35%/43% (was 27%/33%) — starts right as fadeTl's widened range
+          // above ends.
+          start: isMobile ? "top 60%" : "35% top",
+          end: isMobile ? "top 8%" : "43% top",
           // Mobile gets a LIGHT scrub (0.12), not the heavier 0.3 desktop uses, and not scrub:true
           // either — both extremes were tried and both read as jumpy, for opposite reasons:
           //   - 0.3 (too much damping): a time-based lag that keeps interpolating toward the
@@ -686,9 +463,9 @@ export function RadiatesSection({
       // fired by onEnter/onLeaveBack — that is exactly what could still be mid-reveal (or mid-
       // reverse) at a scroll depth where the labels' own beat wasn't yet in its "hidden" state on
       // a fast flick, which is what put the labels and the wordmark on screen together. Now it's a
-      // scrubbed timeline over its own DISJOINT slice (desktop 35%→45%, mobile 35%→45%), well after
-      // fadeTl has fully hidden the labels (ends 28%/34%) and after the star's shrink (scaleTween,
-      // 27%→33% desktop) has settled. Since beat 2 is guaranteed at progress 1 (labels fully gone)
+      // scrubbed timeline over its own DISJOINT slice (desktop 45%→70%, mobile 35%→45%), well after
+      // fadeTl has fully hidden the labels (ends 35%/34%) and after the star's shrink (scaleTween,
+      // 35%→43% desktop) has settled. Since beat 2 is guaranteed at progress 1 (labels fully gone)
       // for the entire stretch before this range even begins, and this reveal is itself locked to
       // scroll, the two are mutually exclusive by construction at every scroll position and every
       // speed — no runtime gate required.
@@ -702,14 +479,30 @@ export function RadiatesSection({
       wordmarkTween = gsap.timeline({
         scrollTrigger: {
           trigger: section,
-          // 40%→52% brought down to 35%→45% (by request, "too many scrolls even the first time" —
-          // reaching 40% of this section's ~280vh runway was ~112vh of scrolling on its own, before
-          // ever accounting for the entrance hold above or the wordmark hold below). Still leaves a
-          // buffer after fadeTl (desktop ends 28%, mobile 34%) and the shrink (scaleTween, desktop
-          // ends 33%) so the star has visibly settled before the word starts typing — just a
-          // tighter one than before — and still comfortably clears mobile's starHideTrigger (58%).
-          start: "35% top",
-          end: "45% top",
+          // Desktop widened to 45%→70% (was 35%/45%, a mere 35vh window) — same reasoning as
+          // fadeTl's own widening above: with no hold left to force a pause, this scrubbed range
+          // is the ONLY thing giving SWITCHBLADE's letter-by-letter reveal any readable pace.
+          //
+          // Critical fix here, not just a pacing tweak: this section's "pin" is CSS position:sticky
+          // (see the two "sticky top-0 h-screen" layers in the JSX below), NOT a ScrollTrigger
+          // pin — and a sticky element does NOT stay stuck for the whole container height. It
+          // releases once there's exactly one sticky-height (h-screen = 100vh) of the container
+          // left, i.e. at (containerHeight − 100vh), NOT at the container's own 100%. Earlier
+          // attempts ended this range at 90% and then 100% of the container's height — both PAST
+          // the actual release point (75% of this 400vh container, see the h-[400vh] note on the
+          // outer div) — so the section was unsticking and scrolling away NORMALLY while the
+          // reveal's scrub was still mid-flight, cutting SWITCHBLADE off mid-word regardless of
+          // how the percentage math looked on paper. Ending this range at 70% — a small margin
+          // BEFORE the actual 75% release point, not past it — is what actually guarantees the
+          // word is fully typed while the section is still genuinely pinned, with a small buffer
+          // to absorb scrub's own damped lag (scrub: 0.3, not exact 1:1 tracking) before the
+          // release point arrives. Mobile is untouched here (35%→45%, its own already-tuned
+          // wordmark pacing against its own 500vh height); its starHideTrigger further below was
+          // separately realigned to mobile's own 80% release point, for the same sticky-release
+          // reason. Desktop still leaves a buffer after fadeTl (ends 35%) and the shrink (scaleTween, ends
+          // 43%) so the star has visibly settled before the word starts typing.
+          start: isMobile ? "35% top" : "45% top",
+          end: isMobile ? "45% top" : "70% top",
           scrub: 0.3,
         },
       })
@@ -729,20 +522,31 @@ export function RadiatesSection({
         }); // no position arg — starts right after the last letter tween in the stagger above ends
       wordmarkTrigger = wordmarkTween.scrollTrigger;
 
-      // Mobile only: the STAR alone travels down and out after the wordmark's one-screen dwell
-      // (38%→58% of the section) — the SWITCHBLADE wordmark itself stays put, by request. It's a
-      // sticky-pinned layer, so leaving it untouched here means it simply holds its position for
-      // the rest of the section and then scrolls away naturally when the pin releases into
-      // ParagraphReveal, rather than sliding down in lockstep with the star (which read as the
-      // text being dragged along by the model). The star's downward travel + fade is scrubbed to
-      // scroll across 58%→82% so it tracks the reader's own pace and is fully gone before Origins
-      // arrives. Hero's own paragraph-reveal-based fade-out is guarded off on mobile (see page.tsx)
-      // so it can't fight this.
+      // Mobile only: the STAR travels down and fades out IN SYNC with the section's own sticky
+      // pin releasing and scrolling away — by request ("the section also should go... star and
+      // section should go down in sync and hide the 3D star"). This section's "pin" is CSS
+      // position:sticky (the two "sticky top-0 h-screen" layers below), which — unlike a
+      // ScrollTrigger pin — releases automatically once exactly one sticky-height (h-screen =
+      // 100vh) of the container remains: at (containerHeight − 100vh), i.e. 400vh/80% of this
+      // section's own 500vh mobile height (see the h-[400vh] note on the desktop side of the outer
+      // div for the same math, applied here to mobile's height instead). Before this fix the
+      // star's hide window (58%→82%) ran almost entirely BEFORE that 80% release point — so the
+      // star sank and faded away while the section was still fully pinned/static, and only once
+      // it had *already* mostly vanished did the section itself start physically scrolling away —
+      // reading as two sequential motions instead of one. Realigning this window to exactly match
+      // the section's own post-release scroll-away range (80%→100%) makes them the same motion:
+      // both the star's fade/sink and the section's physical scroll-off now happen across the
+      // identical scroll distance, so they move down and disappear together. (An earlier version
+      // instead tied the star literally to the wordmark's own on-screen position across its whole
+      // dwell — that read as "the text dragging the star along"; this is different: the star
+      // isn't bound to the text's pixel position, it's independently scrubbed over the SAME scroll
+      // window the section naturally uses to scroll away, so they merely share timing, not a
+      // literal offset relationship.)
       if (isMobile) {
         starHideTrigger = ScrollTrigger.create({
           trigger: section,
-          start: "58% top",
-          end: "82% top",
+          start: "80% top",
+          end: "100% top",
           scrub: 0.3,
           // Structurally typed to just the field used, rather than `any` — ScrollTrigger's own
           // type isn't statically available here since it's dynamically imported above.
@@ -852,10 +656,6 @@ export function RadiatesSection({
 
     return () => {
       killed = true;
-      // Before anything else: if we unmount while the stepped-beat hold is still active, scrolling
-      // must be handed back — otherwise the page stays frozen with nothing left alive to free it.
-      // releaseSteps also clears the gate's pending silence timer.
-      releaseHold?.();
       cancelAnimationFrame(rafId);
       tlEnter?.kill();
       fadeTrigger?.kill();
@@ -874,23 +674,41 @@ export function RadiatesSection({
   }, []);
 
   return (
-    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[500vh] lg:h-[350vh]">
-      {/* Height grown from an original 380vh to 520vh: the extra scroll distance is what gives
-          every scrubbed beat its own non-overlapping slice of scroll, so a normal scroll flick
-          can't blow through more than one at once (which read as sections colliding at 380vh).
+    <div ref={outerRef} style={{ background: "#ffffff", marginTop: "clamp(180px,14vw,204px)" }} className="relative h-[500vh] lg:h-[400vh]">
+      {/* Desktop height: 350vh (original) → 190vh (once the stepped-beat scroll-hold was removed —
+          it kept reading as "sticking" for 2-3 scrolls no matter how it was retuned, since forcibly
+          holding scroll is inherently what a hold does) → 300vh (widened the label-fade/wordmark
+          scrub ranges since, with no hold, they were the only thing left giving those moments any
+          readable pace, and the old narrow widths only ever worked BECAUSE the hold added extra
+          pause on top of them) → 400vh (this value — fixes a real bug the 300vh version had, not
+          just pacing: this section's "pin" is CSS position:sticky (two "sticky top-0 h-screen"
+          layers below), NOT a ScrollTrigger pin, and sticky does NOT stay stuck for the whole
+          container height — it releases once exactly one sticky-height (h-screen = 100vh) of the
+          container remains, i.e. at (containerHeight − 100vh), not at the container's own 100%.
+          At 300vh that release point is 200vh (66.7%), but wordmarkTween's range ran past it
+          (ending at 90%, then 100% of that 300vh) — so the section was unsticking and scrolling
+          away NORMALLY while SWITCHBLADE was still mid-type, cutting the word off regardless of
+          how generous its scrubbed range looked on paper. At 400vh the release point is 300vh
+          (75%), and wordmarkTween now deliberately ends BEFORE it (70%, see its own comment) — so
+          the word is always guaranteed to finish typing while the section is still genuinely
+          pinned, at any scroll speed, with a small margin for scrub's own damped lag. The
+          mandatory 100vh after the release point (75%→100%) isn't dead space to trim: it's the
+          sticky layers physically scrolling away, the same as any normal content leaving the
+          viewport — required by how position:sticky itself works, not something to tune away.
           The text choreography: labels form as a time-based entrance the moment the section pins
           (tlEnter, plays once — by request, not scrubbed), then a chain of DISJOINT scroll-scrubbed
           ranges (all percentages of this height) enforces the rest: labels fade out (fadeTl,
-          20%→28%), star shrink (scaleTween, 27%→33%), wordmark types in (wordmarkTween, 35%→45%),
-          dwell, then release into ParagraphReveal. Because those ranges are disjoint and scrubbed,
-          the labels are guaranteed hidden before the wordmark's range begins — so the two can't
-          overlap at any speed even though the forming itself is time-based. Mobile gets its OWN
-          total height (500vh vs desktop's 520vh): fade 24%→34%, wordmark
-          35%→45%, then the star + wordmark head out together (starHideTrigger, 58%→82%), leaving
-          the remaining scroll before the section releases into ParagraphReveal (via the buffer in
-          page.tsx). All the percentage-based triggers below are computed live against whatever
-          this height actually is, so it's the
-          single place to retune the overall mobile pacing.
+          20%→35%), star shrink (scaleTween, 35%→43%), wordmark types in (wordmarkTween, 45%→70%),
+          then the section unsticks at 75% and scrolls away over the remaining 25%. Because those
+          ranges are disjoint and scrubbed, the labels are guaranteed hidden before the wordmark's
+          range begins — so the two can't overlap at any speed even though the forming itself is
+          time-based. Mobile's fade/wordmark pacing is untouched (own 500vh height — fade 24%→34%,
+          wordmark 35%→45%) since only desktop ever had a hold to remove and only desktop was
+          reported there. Mobile's starHideTrigger (further below) WAS separately retuned — 58%→82%
+          → 80%→100% — so the star's own hide motion lines up with mobile's sticky-release point
+          (400vh/80% of 500vh) instead of running mostly before it. All the
+          percentage-based triggers below are computed live against whichever height actually
+          applies, so this class is the single place to retune the overall pacing per breakpoint.
 
           Wordmark layer — its own sticky pin at z-10, BELOW the fixed star (z-20 in page.tsx) so
           the star sits OVER the SWITCHBLADE letters. The heading/labels live in the separate z-25
@@ -912,11 +730,14 @@ export function RadiatesSection({
                 (md:top-[8%]/md:right-[calc(100%+gap)] etc.), but the reference layout wants them
                 above/below on every breakpoint, just like mobile already had. Desktop now reuses
                 that same above/below placement, with a larger, viewport-scaled gap to suit the
-                much bigger desktop wordmark instead of mobile's fixed -top-6/-bottom-6. Both fade
+                much bigger desktop wordmark instead of mobile's fixed -top-8/-bottom-6. Both fade
                 in AFTER the SWITCHBLADE letters finish typing in (see wordmarkTween). */}
             <div
               ref={sharpEdgeRef}
-              className="absolute left-0 -top-6 md:top-auto md:bottom-[calc(100%+clamp(10px,1.4vw,24px))]"
+              // Mobile -top-6 (24px) → -top-8 (32px), by request ("make the sharp edge text
+              // little up") — nudges it further above the wordmark's own top edge. Desktop
+              // untouched (md:top-auto overrides this entirely).
+              className="absolute left-0 -top-8 md:top-auto md:bottom-[calc(100%+clamp(10px,1.4vw,24px))]"
               style={{ ...ANNO, color: "#888" }}
             >
               [SHARP EDGE]

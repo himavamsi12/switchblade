@@ -155,9 +155,16 @@ export function ParagraphReveal() {
     // spacer) → "Failed to execute 'removeChild'... not a child of this node". Keeping the pin on an
     // inner wrapper leaves this outer node a clean, unwrapped React child that unmounts safely.
     <div id="paragraph-reveal" style={{ background: "#ffffff", borderTop: "1px solid rgba(13,13,13,0.1)" }}>
-      <div ref={sectionRef} className="site-px grid grid-cols-1 lg:[grid-template-columns:1fr_1fr]" style={{ gap: "clamp(32px,5vw,64px)", paddingTop: "clamp(56px,7vw,100px)", paddingBottom: "clamp(90px,7vw,175px)", alignItems: "center" }}>
+      <div ref={sectionRef} className="site-px grid grid-cols-1 lg:[grid-template-columns:1fr_1fr]" style={{ gap: "clamp(32px,5vw,64px)", paddingTop: "clamp(56px,7vw,100px)", paddingBottom: "clamp(90px,7vw,175px)", alignItems: "stretch" }}>
 
-        <div ref={leftColRef} style={{ maxWidth: 554 }}>
+        {/* alignItems:stretch on the grid (was "center") makes both columns' cells match the ROW's
+            height — which the globe's own aspectRatio-driven column normally sets, since its height
+            is fixed by that ratio while this column's is just whatever its text content needs. That
+            alone doesn't visually center this column's content within the taller cell though (a
+            plain block just sits at the top of whatever height it's given) — flex+justifyContent
+            distributes the extra space evenly, reading as "space added" rather than a lopsided gap
+            at the bottom. */}
+        <div ref={leftColRef} style={{ maxWidth: 554, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <p style={{
             fontFamily: "var(--font-archivo)", fontWeight: 500, fontSize: "clamp(24px,3vw,32px)",
             lineHeight: 1.12, color: "#0D0D0D", textAlign: "justify",

@@ -94,8 +94,12 @@
 .classics-exp .detail.is-open { opacity: 1; pointer-events: auto; }
 .classics-exp .detail__esc { align-items: center; color: rgba(0, 0, 0, .45); display: flex; font-family: var(--font-archivo), sans-serif; font-size: .74rem; gap: 12px; letter-spacing: .12em; max-width: 1320px; padding: 0 var(--margin); text-align: left; text-transform: uppercase; width: 100%; }
 /* Mobile-only affordance (see the @media block below) — desktop keeps tap-outside-to-close and
-   the [ESC] hint, so this stays hidden there. */
-.classics-exp .detail__close { display: none; }
+   the [ESC] hint, so this stays hidden there. Not scoped under .classics-exp: this button is
+   portaled straight to document.body (see its own comment in ClassicsExperience.tsx) specifically
+   so it ESCAPES .classics-exp's own stacking context (position:fixed always creates one, even at
+   z-index:auto) — scoping this selector back under .classics-exp would just be dead weight, since
+   the button is never actually a descendant of it in the rendered DOM. */
+.detail__close { display: none; }
 /* Invisible spacer matching .detail__nav's width so the text starts exactly where
    .detail__card starts (the card sits after a nav button + gap inside .detail__inner) —
    without this the text lines up with .detail__inner's own padding edge, which is further
@@ -162,14 +166,33 @@
   .classics-exp .detail__esc { display: none; }
   /* The "popup's own close affordance" referenced above — an explicit X button, since
      tap-outside-to-close is disabled on mobile (see onDetailBackdropClick in
-     ClassicsExperience.tsx) and swipe-down alone isn't discoverable. Fixed to the viewport
-     (not .detail__card) so it stays put above the active card regardless of the swipe carousel's
-     transform, top-right of the whole overlay. */
-  .classics-exp .detail__close {
+     ClassicsExperience.tsx) and swipe-down alone isn't discoverable.
+     NOT scoped under .classics-exp — this button is portaled straight to document.body (see the
+     JSX comment in ClassicsExperience.tsx) specifically to escape .classics-exp's own stacking
+     context (position:fixed always creates one, even at z-index:auto), so it's never actually a
+     descendant of .classics-exp in the rendered DOM; scoping the selector that way would just
+     never match. Shown via the JS-toggled .is-open class below (openDetail/closeDetail toggle it
+     directly on this element, since portaling also takes it out from under .detail's own
+     is-open-driven opacity/pointer-events). */
+  .detail__close {
     align-items: center; background: #fff; border: 1px solid #dedede; border-radius: 999px;
-    display: flex; height: 36px; justify-content: center; position: fixed;
-    right: var(--margin); top: var(--margin); width: 36px; z-index: 720;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
+    -webkit-appearance: none; appearance: none;
+    display: none; height: 40px; justify-content: center; position: fixed;
+    /* Centered above the card (by request) rather than pinned to the viewport's top-right corner —
+       that spot overlapped the site's own nav (hamburger/logo/Collaborate row). top:76px clears
+       that row's height; left:50%+translateX centers it horizontally regardless of the card's own
+       width (calc(100vw - 2*var(--margin) - 28px), see .detail__card below), independent of this
+       button's own --margin dependency (it has none, see below).
+       Fixed px, not var(--margin) — .detail__close isn't a descendant of .classics-exp (the
+       element that declares --margin) any more, so that variable wouldn't even resolve here.
+       z-index 1300: SiteNav (components/shared/SiteNav.tsx) is a separate fixed, full-width
+       element at z-[1200] that can be revealed (scroll-up reveal) while this popup is open —
+       clearing it only works because this button is portaled to document.body, a true sibling of
+       .classics-exp in the root stacking context, not a descendant trapped inside it. */
+    left: 50%; top: 110px; transform: translateX(-50%); width: 40px; z-index: 1300;
   }
+  .detail__close.is-open { display: flex; }
   /* Scroll affordance for .detail__body: without any cue the text just looks abruptly cut off at
      the card's bottom edge (see max-height on .detail__card above) with nothing to signal there's
      more to read below. A bottom fade reads as "content continues" the same way native iOS/Android
