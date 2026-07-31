@@ -130,6 +130,22 @@ async function main() {
   const payload = await getPayload({ config });
   const failures: { row: number; heading: string; error: string }[] = [];
   let succeeded = 0;
+  let skipped = 0;
+
+  // Heading is the de-facto identity of a card here (data.csv has no id column), so re-running
+  // this script over a CSV that's been appended to would otherwise recreate every earlier row as
+  // a full duplicate — new card doc AND a fresh set of uploaded media docs for each. Loading the
+  // existing headings once up front makes a re-run safely additive: only genuinely new rows are
+  // created. Content edits to an already-imported card are deliberately NOT re-applied — once a
+  // card exists it's owned by the Payload admin, and silently overwriting hand-edits there from a
+  // stale CSV would be worse than skipping.
+  const existing = await payload.find({
+    collection: "classics-cards",
+    limit: 0, // 0 = no limit, fetch all
+    depth: 0,
+    pagination: false,
+  });
+  const existingHeadings = new Set(existing.docs.map(d => d.heading));
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -137,6 +153,12 @@ async function main() {
     try {
       if (!row.heading || !row.category || !row.image || !row.paragraph) {
         throw new Error("Missing a required column (heading, category, image, paragraph)");
+      }
+
+      if (existingHeadings.has(row.heading)) {
+        skipped++;
+        console.log(`· ${label} (already exists — skipped)`);
+        continue;
       }
 
       const mainImage = readImageFile(imagesDir, row.image);
@@ -177,7 +199,7 @@ async function main() {
     }
   }
 
-  console.log(`\n${succeeded}/${rows.length} card(s) created.`);
+  console.log(`\n${succeeded} card(s) created, ${skipped} skipped (already existed), ${rows.length} row(s) in file.`);
   if (failures.length) {
     console.log("Failures:");
     failures.forEach(f => console.log(`  line ${f.row} (${f.heading}): ${f.error}`));

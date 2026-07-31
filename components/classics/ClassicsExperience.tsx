@@ -88,64 +88,39 @@ interface ViewportConfig {
   panelW: number; panelH: number; rowSpacing: number; starScale: number;
 }
 
-// The center star (loadCenterStar) sits ON the camera axis (radius 0), not around the panel
-// cylinder — its on-screen size depends on (distance * tan(fov/2)) exactly like the panels do,
-// but its distance from the camera changed by a DIFFERENT factor than the panels' own
-// near/far ratio the fov narrowing below was tuned to compensate for (see getConfig's own
-// comment). Left uncompensated, the star simply inherited whatever size shift fell out of that
-// panel fix — this is what made it read as "very big" on mobile after that change. Apparent size
-// is proportional to 1/(distance*tan(fov/2)), so multiplying its base scale by
-// (newDist*tan(newFov/2)) / (oldDist*tan(oldFov/2)) keeps its OWN apparent size the same as it was
-// before the camera retune, at every breakpoint, independent of the panel fix.
-function starScaleFactor(oldFov: number, oldCameraZ: number, newFov: number, newCameraZ: number) {
-  const tanHalf = (deg: number) => Math.tan((deg * Math.PI) / 360);
-  return (newCameraZ * tanHalf(newFov)) / (oldCameraZ * tanHalf(oldFov));
-}
-// The star's own base scale constant before any of this — see loadCenterStar's `4.6 / maxDim`.
+// The star's own base scale — see loadCenterStar's `cfg.starScale / maxDim`.
 const STAR_BASE_SCALE = 4.6;
 
-// fov/cameraZ retuned (by request — "images are shrinking... make it normal don't try to fit")
-// for a real, confirmed reason: panels sit at a fixed `radius` around a cylinder (see buildPanels'
-// `mesh.position.set(Math.cos(tR)*cfg.radius, y, Math.sin(tR)*cfg.radius)`), and the fixed camera
-// looks at that cylinder from `cameraZ` away. A panel facing the camera dead-on sits at distance
-// (cameraZ - radius); a panel rotated to the cylinder's side sits at sqrt(cameraZ² + radius²) —
-// on the old desktop values (cameraZ:13, radius:7.8) that's 5.2 vs 15.16, i.e. the side panel is
-// ~2.9x FARTHER from the camera than the front one, and apparent size scales inversely with
-// distance — that ratio, not any per-image aspect/fit logic (there isn't any: every panel shares
-// one PlaneGeometry and the shader maps every texture 0..1 with no cover-crop), is exactly what
-// read as some images "shrinking". Moving the camera much further back while narrowing the FOV to
-// compensate (the same trick a telephoto lens uses to compress depth) cuts that front-to-side
-// distance ratio down to roughly 1.5x at every breakpoint, so a panel's apparent size now depends
-// far less on where it sits around the cylinder. radius/panelW/panelH/rowSpacing are untouched —
-// this only changes how much perspective falloff there is across that same layout, not the layout
-// itself. The center star's `starScale` below counteracts this same camera move's side effect on
-// its own apparent size (see starScaleFactor's comment) — the OLD fov/cameraZ pairs it's computed
-// against (70/7.5, 70/9.5, 65/9, 60/11, 50/13) are exactly what each breakpoint used before this
-// retune; if the star's size ever needs adjusting again independent of the panels, change
-// STAR_BASE_SCALE, not these per-breakpoint factors.
-// rowSpacing halved at every breakpoint below (by request — "too much gap between the top images
-// and below images"). This is a SEPARATE side effect of the same camera/fov retune above, not
-// touched by starScaleFactor: narrowing the fov to flatten horizontal size falloff also narrows
-// how much VERTICAL extent the camera shows at any given distance (a telephoto lens' whole
-// tradeoff — it compresses depth but frames a smaller slice of the scene) — verified this doesn't
-// change the apparent SIZE of any one row (a scale factor computed the same way as
-// starScaleFactor, using each row's own near-panel distance, comes out to ~0.98-1.02, i.e.
-// unchanged), it only reduces how many rows fit in frame at once, since rowSpacing is a fixed
-// world-space gap and there's now less vertical field of view to spend on it. Halving it doesn't
-// undo the horizontal fix (radius/fov/cameraZ untouched) — it just brings rows physically closer
-// together so more of them are visible at once again.
+// fov/cameraZ/rowSpacing are the ORIGINAL values, restored by request ("i think the camera is
+// zoomed in, revert back this change to previous one how it was there").
+//
+// They had been retuned to flatten perspective: panels sit at a fixed `radius` around a cylinder
+// (see buildPanels' `mesh.position.set(Math.cos(tR)*cfg.radius, y, Math.sin(tR)*cfg.radius)`) with
+// the camera `cameraZ` away, so a panel facing the camera dead-on sits at (cameraZ - radius) while
+// a side-rotated one sits at sqrt(cameraZ² + radius²) — on desktop, 5.2 vs 15.16, making side
+// panels ~2.9x farther and therefore visibly smaller (apparent size scales inversely with
+// distance). That's plain perspective, not a per-image fit bug — every panel shares one
+// PlaneGeometry and the shader maps each texture 0..1 with no cover-crop. Pulling the camera way
+// back and narrowing the fov to match (the telephoto trick) compressed that ratio to ~1.5x, but
+// the narrower fov also frames a much smaller slice of the scene, which is what read as "zoomed
+// in" — hence this revert. Two follow-on tweaks made only to compensate for that camera move are
+// gone with it: a per-breakpoint star-scale correction (the star sits on the camera axis, so it
+// took its own unrelated size shift from the move), and a halving of rowSpacing (a narrower fov
+// shows less vertical extent, so the same fixed world-space row gap read as a bigger gap).
+// Reverting the camera makes both unnecessary — starScale is now just the flat base constant, and
+// the row gaps below are the originals again.
 function getConfig(): ViewportConfig {
   const w = window.innerWidth;
   const aspect = window.innerHeight / Math.max(w, 1);
   const portrait = aspect > 1;
-  if (w < 500)  return { fov: 23, cameraZ: 15,  radius: 4.5, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 2.75, starScale: STAR_BASE_SCALE * starScaleFactor(70, 7.5, 23, 15) };
-  if (w < 768)  return { fov: 36, cameraZ: 15,  radius: 4.6, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 1.9, starScale: STAR_BASE_SCALE * starScaleFactor(70, 9.5, 36, 15) };
-  if (w < 1024 && portrait) return { fov: 20, cameraZ: 18,  radius: 5.5, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 3.25, starScale: STAR_BASE_SCALE * starScaleFactor(65, 9, 20, 18) };
-  if (w < 1024) return { fov: 20, cameraZ: 21,   radius: 6.5, panelW: 1.2 * PANEL_SCALE, panelH: 1.6 * PANEL_SCALE, rowSpacing: 2, starScale: STAR_BASE_SCALE * starScaleFactor(60, 11, 20, 21) };
-  // *1.6 (by request, "make it big" — desktop only) on top of the size-preserving compensation
-  // above: that factor alone restores the star's ORIGINAL apparent size, this makes it deliberately
-  // bigger than that original size.
-  return          { fov: 15, cameraZ: 26,   radius: 7.8, panelW: 1.4 * PANEL_SCALE, panelH: 1.9 * PANEL_SCALE, rowSpacing: 3.5, starScale: STAR_BASE_SCALE * starScaleFactor(50, 13, 15, 26) * 1.6 };
+  if (w < 500)  return { fov: 70, cameraZ: 7.5, radius: 4.5, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 5.5, starScale: STAR_BASE_SCALE };
+  if (w < 768)  return { fov: 70, cameraZ: 9.5, radius: 4.6, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 3.8, starScale: STAR_BASE_SCALE };
+  if (w < 1024 && portrait) return { fov: 65, cameraZ: 9,  radius: 5.5, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 6.5, starScale: STAR_BASE_SCALE };
+  if (w < 1024) return { fov: 60, cameraZ: 11,  radius: 6.5, panelW: 1.2 * PANEL_SCALE, panelH: 1.6 * PANEL_SCALE, rowSpacing: 4, starScale: STAR_BASE_SCALE };
+  // *1.6 (by request, "in desktop make it big") — a deliberate desktop-only enlargement of the
+  // star beyond its base size, kept across the camera revert above since it was its own request,
+  // not part of the camera compensation.
+  return          { fov: 50, cameraZ: 13,  radius: 7.8, panelW: 1.4 * PANEL_SCALE, panelH: 1.9 * PANEL_SCALE, rowSpacing: 7, starScale: STAR_BASE_SCALE * 1.6 };
 }
 
 function seededShuffle<T>(arr: T[], seed: number): T[] {
@@ -434,9 +409,8 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         m.traverse(o => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = new THREE.MeshPhysicalMaterial({ color: new THREE.Color("#B8C0CE"), metalness: 0.97, roughness: 0.05, clearcoat: 0.6, clearcoatRoughness: 0.04, envMapIntensity: 2.4, side: THREE.DoubleSide }); });
         const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z) || 1;
-        // cfg.starScale (was a flat 4.6) compensates for the camera/fov retune above so this
-        // star's own apparent size doesn't shift as a side effect of that panel fix — see its own
-        // comment on getConfig.
+        // cfg.starScale is STAR_BASE_SCALE at every breakpoint except desktop, which enlarges it
+        // deliberately (by request) — see getConfig.
         m.scale.setScalar(cfg.starScale / maxDim);
         const ctr = new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3());
         m.position.sub(ctr);
