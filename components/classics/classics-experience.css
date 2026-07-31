@@ -222,6 +222,16 @@
      rule above) is what centers the active card with the ghosts peeking symmetrically either
      side, for free, since the 3-card row is wider than the 100vw container. */
   .classics-exp .detail__inner { overflow: hidden; padding: 0; width: 100vw; }
+  /* .detail's base rule centers its content with justify-content:center (main axis, since
+     flex-direction is column) — fine on desktop, but on mobile that meant the card's required
+     top clearance (144px, to clear SiteNav + .detail__close, see that button's own comment) and
+     its much smaller bottom margin (24px) got treated as ONE symmetric gap split evenly top+bottom,
+     which either wasted huge dead space at the bottom to match the top, or (once the card's own
+     max-height fought back against that) let the card's top edge creep back up toward the navbar.
+     flex-start + an explicit padding-top/bottom here gives each edge its own real reserve instead:
+     the card renders right after the 144px top pad, with whatever it doesn't use inside its own
+     max-height (below) landing above the 24px bottom pad — no more forcing top and bottom to match. */
+  .classics-exp .detail { align-items: center; justify-content: flex-start; box-sizing: border-box; padding: 144px 0 24px; }
   .classics-exp .detail__nav { display: none; }
   /* [ESC] TO CLOSE hidden on mobile — there's no ESC key on a touch device, so the hint doesn't
      apply; closing there is done via the popup's own close affordance instead. */
@@ -242,17 +252,27 @@
     -webkit-appearance: none; appearance: none;
     display: none; height: 40px; justify-content: center; position: fixed;
     /* Centered above the card (by request) rather than pinned to the viewport's top-right corner —
-       that spot overlapped the site's own nav (hamburger/logo/Collaborate row). top:76px clears
-       that row's height; left:50%+translateX centers it horizontally regardless of the card's own
-       width (calc(100vw - 2*var(--margin) - 28px), see .detail__card below), independent of this
-       button's own --margin dependency (it has none, see below).
+       that spot overlapped the site's own nav (hamburger/logo/Collaborate row). left:50%+translateX
+       centers it horizontally regardless of the card's own width (calc(100vw - 2*var(--margin) -
+       28px), see .detail__card below), independent of this button's own --margin dependency (it
+       has none, see below).
+       top:88px (was 28px, before that 110px — by request, "the button is now overlapping with
+       navbar"): SiteNav (components/shared/SiteNav.tsx) is a separate fixed bar pinned to the
+       viewport top at a flat 72px tall (its own `height: 72` style), and this button's old top:28px
+       put its 28-68px band squarely inside that 0-72px navbar strip, painting over it even though
+       this button's z-index (1300) is higher than the navbar's (1200) — same stacking layer,
+       visually overlapping. 88px = 72px navbar + 16px clearance below it, so the button now always
+       sits fully under the navbar, never inside its band.
+       .detail__card's own top clearance (see max-height below) is sized to match: 144px =
+       88px (this button's own top) + 40px (its height) + 16px (gap below it before the card),
+       guaranteeing the card's top edge can never rise into the button (or the navbar above it),
+       regardless of viewport height.
        Fixed px, not var(--margin) — .detail__close isn't a descendant of .classics-exp (the
        element that declares --margin) any more, so that variable wouldn't even resolve here.
-       z-index 1300: SiteNav (components/shared/SiteNav.tsx) is a separate fixed, full-width
-       element at z-[1200] that can be revealed (scroll-up reveal) while this popup is open —
-       clearing it only works because this button is portaled to document.body, a true sibling of
-       .classics-exp in the root stacking context, not a descendant trapped inside it. */
-    left: 50%; top: 110px; transform: translateX(-50%); width: 40px; z-index: 1300;
+       z-index 1300: SiteNav is at z-[1200] and can be revealed (scroll-up reveal) while this popup
+       is open — clearing it only works because this button is portaled to document.body, a true
+       sibling of .classics-exp in the root stacking context, not a descendant trapped inside it. */
+    left: 50%; top: 88px; transform: translateX(-50%); width: 40px; z-index: 1300;
   }
   .detail__close.is-open { display: flex; }
   /* Scroll affordance for .detail__body: without any cue the text just looks abruptly cut off at
@@ -276,18 +296,24 @@
     /* Shortened from unbounded (by request, "make the card height short") — caps the WHOLE card
        so it can never grow past the viewport itself; only .detail__body (below) gets its own
        scroll within whatever height that leaves it, everything else (image, title, badge,
-       instagram icon) stays fully visible and fixed in place, never scrolling. calc() leaves
-       --margin (20px) of breathing room top/bottom so the card never touches the viewport edges.
-       min-height:450px (by request) is the floor this needs regardless of the max-height above —
-       that cap left too little room for title+badge+instagram icon to render at all on some
-       viewports, clipping them along with the card's own overflow:hidden. Per the CSS spec,
-       min-height wins over a conflicting max-height, so this guarantees the card is never
-       shorter than 450px even if max-height would otherwise compute smaller. vh declared before
-       dvh as a fallback for browsers that don't support the dynamic-viewport unit — the later,
-       supported one simply overrides it. */
+       instagram icon) stays fully visible and fixed in place, never scrolling.
+       CLEARANCE is now handled by .detail's own padding (144px top, to clear SiteNav's 72px bar
+       plus .detail__close below it, and 24px bottom — see the comment on .classics-exp .detail
+       above and on .detail__close), not by this card centering itself and eating into a symmetric
+       gap. This rule's max-height just needs to fill whatever .detail's padding leaves it, hence
+       subtracting that same 144px+24px here. min-height:450px (by request) is the floor this needs
+       regardless of the max-height above — that cap left too little room for title+badge+
+       instagram icon to render at all on some viewports, clipping them along with the card's own
+       overflow:hidden. Per the CSS spec, min-height wins over a conflicting max-height, so this
+       guarantees the card is never shorter than 450px even if max-height would otherwise compute
+       smaller — an extremely short viewport (well under phone-sized) could in theory still push
+       the card's bottom past the 24px reserve despite the cap above; accepted as a rare edge case
+       rather than shrinking the 450px floor further. vh declared before dvh as a fallback for
+       browsers that don't support the dynamic-viewport unit — the later, supported one simply
+       overrides it. */
     min-height: 450px;
-    max-height: calc(100vh - 2 * var(--margin));
-    max-height: calc(100dvh - 2 * var(--margin));
+    max-height: calc(100vh - 144px - 24px);
+    max-height: calc(100dvh - 144px - 24px);
     overflow: hidden;
   }
   .classics-exp .detail__card--ghost { display: flex; pointer-events: none; }
@@ -300,9 +326,11 @@
      mediaCol take only its own natural (image) height, so 100% of whatever the card doesn't use
      on the image goes to .detail__content instead. */
   .classics-exp .detail__mediaCol { flex: 0 0 auto; }
-  /* Shortened from 200px (by request, "make the card height short") — leaves more of the card's
-     own capped height (see max-height above) for the actual text. */
-  .classics-exp .detail__media { flex: 0 0 auto; height: 160px; min-height: 0; }
+  /* 200px (by request, "increase the image height in mobile" — was shortened to 160px earlier
+     for "make the card height short"). The card's own top clearance is now handled by .detail's
+     padding rather than eating into the card's max-height (see that rule's own comment), which
+     freed up enough room to give the image back some of that height without reclipping the text. */
+  .classics-exp .detail__media { flex: 0 0 auto; height: 200px; min-height: 0; }
   .classics-exp .detail__img { height: 100%; min-height: 0; }
   .classics-exp .detail__title { font-size: 1.28rem; flex-shrink: 0; }
   /* The min-height:0 chain (.detail__content/.detail__textWrap), .detail__body's own
@@ -315,7 +343,10 @@
      card-swipe handler, and all its touch listeners are registered passive: true — see
      onCardTouch* in ClassicsExperience.tsx — so they can't preventDefault this native scroll). */
   .classics-exp .detail__badgeRow { justify-content: center; margin: 14px 0 12px; }
-  .classics-exp .detail__body { -webkit-overflow-scrolling: touch; font-size: .84rem; line-height: 1.5; }
+  /* text-align:left (by request — the card's own text-align:center above, meant for the
+     title/badge/IG row, was also centering the paragraph body, which reads much harder centered
+     across multiple wrapped lines than a left-aligned block does). */
+  .classics-exp .detail__body { -webkit-overflow-scrolling: touch; font-size: .84rem; line-height: 1.5; text-align: left; }
   /* Thumbnail strip hidden on mobile — autoplay (see renderThumbs/startAutoplay in
      ClassicsExperience.tsx) and the swipe gesture on the image itself already cover browsing a
      multi-image gallery there, so this row was just redundant screen space. display:none (not
