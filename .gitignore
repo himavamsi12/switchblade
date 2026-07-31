@@ -29,3 +29,7 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Client source decks — large binaries, content already imported via classics-import
+*.pptx
+*.ppt
