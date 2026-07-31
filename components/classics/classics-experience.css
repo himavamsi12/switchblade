@@ -136,13 +136,20 @@
    .detail__thumbs (flex-shrink:0, its own natural size) instead of demanding a fixed floor. */
 .classics-exp .detail__mediaCol { display: flex; flex: 1 1 0; flex-direction: column; gap: 10px; min-width: 0; }
 .classics-exp .detail__media { flex: 1 1 auto; min-height: 0; position: relative; }
-.classics-exp .detail__img { display: block; height: 100%; object-fit: cover; position: absolute; inset: 0; width: 100%; will-change: transform, opacity; backface-visibility: hidden; }
+/* object-position:top (by request — "images are cutting on top") — object-fit:cover's default
+   center crop was cutting off the tops of heads/faces on portrait photos placed into this
+   card's wide media box (the card's own fixed height, see .detail__card, crops the image's
+   vertical extent more than a taller box would). Anchoring the crop to the top keeps the subject's
+   head/face intact and crops from the bottom instead, which reads far better for portrait shots. */
+.classics-exp .detail__img { display: block; height: 100%; object-fit: cover; object-position: top; position: absolute; inset: 0; width: 100%; will-change: transform, opacity; backface-visibility: hidden; }
 .classics-exp .detail__thumbs { align-items: center; display: none; flex-shrink: 0; gap: 6px; }
 .classics-exp .detail__thumbs.is-visible { display: flex; }
 .classics-exp .detail__thumbTrack { display: flex; flex: 1; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .classics-exp .detail__thumbTrack::-webkit-scrollbar { display: none; }
 .classics-exp .detail__thumb { border: 2px solid transparent; border-radius: 6px; cursor: pointer; flex-shrink: 0; height: 64px; opacity: .55; overflow: hidden; padding: 0; transition: opacity .2s ease, border-color .2s ease; width: 84px; }
-.classics-exp .detail__thumb img { display: block; height: 100%; object-fit: cover; width: 100%; }
+/* object-position:top — same reason as .detail__img above, so the thumbnail strip's own crop
+   doesn't cut off heads/faces either. */
+.classics-exp .detail__thumb img { display: block; height: 100%; object-fit: cover; object-position: top; width: 100%; }
 .classics-exp .detail__thumb:hover { opacity: .85; }
 .classics-exp .detail__thumb.is-active { border-color: #1d4ed8; opacity: 1; }
 .classics-exp .detail__thumbNav { align-items: center; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; cursor: pointer; display: flex; flex-shrink: 0; height: 32px; justify-content: center; transition: background .2s ease; width: 24px; }
@@ -158,9 +165,16 @@
    flex/scroll rules below actually take effect; without it, badge/body/ig just live in a plain
    block div and layout grows to fit their content regardless of the card's own capped height. */
 .classics-exp .detail__textWrap { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-.classics-exp .detail__badge { align-self: flex-start; background: #1d4ed8; border-radius: 999px; color: #fff; display: inline-block; flex-shrink: 0; font-family: var(--font-archivo), sans-serif; font-size: .7rem; letter-spacing: .08em; margin: 22px 0 18px; opacity: 0; padding: 7px 13px; text-transform: uppercase; transform: translateY(10px); transition: opacity .3s ease .37s, transform .3s cubic-bezier(.22, 1, .36, 1) .37s; }
+/* badge + Instagram icon now sit side by side in one row (by request — "add instagram icon
+   beside the tag") — .detail__ig used to be its own row below .detail__body, taking a chunk of
+   the card's fixed height that the body text could otherwise use. Moving it up here next to the
+   badge (which already had this same vertical margin) frees that space for .detail__body's own
+   flex:1 1 auto below to claim instead — the paragraph area gets taller without the card itself
+   growing. */
+.classics-exp .detail__badgeRow { align-items: center; display: flex; flex-shrink: 0; gap: 12px; margin: 22px 0 18px; }
+.classics-exp .detail__badge { background: #1d4ed8; border-radius: 999px; color: #fff; display: inline-block; font-family: var(--font-archivo), sans-serif; font-size: .7rem; letter-spacing: .08em; opacity: 0; padding: 7px 13px; text-transform: uppercase; transform: translateY(10px); transition: opacity .3s ease .37s, transform .3s cubic-bezier(.22, 1, .36, 1) .37s; }
 /* THIS is the only part of the card that scrolls — image/title/badge/Instagram icon all stay put.
-   flex:1 1 auto claims whatever height .detail__textWrap has left after .detail__badge's fixed
+   flex:1 1 auto claims whatever height .detail__textWrap has left after .detail__badgeRow's fixed
    size; min-height:0 lets it shrink below its own text's natural height so overflow-y can actually
    kick in instead of just pushing the card taller. position:relative + the ::after fade below give
    the same "there's more to read" cue mobile already has; the scrollbar rules make the track itself
@@ -180,7 +194,7 @@
   pointer-events: none; position: sticky; right: 0;
 }
 .classics-exp .detail__body p + p { margin-top: 16px; }
-.classics-exp .detail__ig { align-items: center; color: #111; display: inline-flex; flex-shrink: 0; justify-content: center; margin-top: 20px; opacity: 0; transform: translateY(10px); transition: opacity .3s ease .5s, transform .3s cubic-bezier(.22, 1, .36, 1) .5s; }
+.classics-exp .detail__ig { align-items: center; color: #111; display: inline-flex; flex-shrink: 0; justify-content: center; opacity: 0; transform: translateY(10px); transition: opacity .3s ease .5s, transform .3s cubic-bezier(.22, 1, .36, 1) .5s; }
 .classics-exp .detail.is-open .detail__ig:hover { opacity: .65; }
 .classics-exp .detail.is-open .detail__ig { opacity: 1; transform: translateY(0); }
 .classics-exp .detail.is-open .detail__title, .classics-exp .detail.is-open .detail__badge, .classics-exp .detail.is-open .detail__body { opacity: 1; transform: translateY(0); }
@@ -295,12 +309,12 @@
      flex/overflow-y/scrollbar rules, and .detail__ig's flex-shrink now all live on the BASE
      (unconditional) rules above — desktop got the exact same fixed-height/inner-scroll card
      treatment later, so none of that is mobile-specific anymore. Only genuine mobile overrides
-     remain below: badge centers instead of left-aligning, and body runs a touch scroll momentum +
-     a smaller font size than desktop's. touch-action:pan-y on the CARD above is what actually
-     permits body's vertical scroll gesture (only horizontal drags are grabbed by the card-swipe
-     handler, and all its touch listeners are registered passive: true — see onCardTouch* in
-     ClassicsExperience.tsx — so they can't preventDefault this native scroll). */
-  .classics-exp .detail__badge { align-self: center; margin: 14px 0 12px; }
+     remain below: the badge+IG row centers instead of left-aligning, and body runs a touch scroll
+     momentum + a smaller font size than desktop's. touch-action:pan-y on the CARD above is what
+     actually permits body's vertical scroll gesture (only horizontal drags are grabbed by the
+     card-swipe handler, and all its touch listeners are registered passive: true — see
+     onCardTouch* in ClassicsExperience.tsx — so they can't preventDefault this native scroll). */
+  .classics-exp .detail__badgeRow { justify-content: center; margin: 14px 0 12px; }
   .classics-exp .detail__body { -webkit-overflow-scrolling: touch; font-size: .84rem; line-height: 1.5; }
   /* Thumbnail strip hidden on mobile — autoplay (see renderThumbs/startAutoplay in
      ClassicsExperience.tsx) and the swipe gesture on the image itself already cover browsing a

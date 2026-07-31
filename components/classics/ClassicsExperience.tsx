@@ -88,15 +88,32 @@ interface ViewportConfig {
   panelW: number; panelH: number; rowSpacing: number;
 }
 
+// fov/cameraZ retuned (by request — "images are shrinking... make it normal don't try to fit")
+// for a real, confirmed reason: panels sit at a fixed `radius` around a cylinder (see buildPanels'
+// `mesh.position.set(Math.cos(tR)*cfg.radius, y, Math.sin(tR)*cfg.radius)`), and the fixed camera
+// looks at that cylinder from `cameraZ` away. A panel facing the camera dead-on sits at distance
+// (cameraZ - radius); a panel rotated to the cylinder's side sits at sqrt(cameraZ² + radius²) —
+// on the old desktop values (cameraZ:13, radius:7.8) that's 5.2 vs 15.16, i.e. the side panel is
+// ~2.9x FARTHER from the camera than the front one, and apparent size scales inversely with
+// distance — that ratio, not any per-image aspect/fit logic (there isn't any: every panel shares
+// one PlaneGeometry and the shader maps every texture 0..1 with no cover-crop), is exactly what
+// read as some images "shrinking". Moving the camera much further back while narrowing the FOV to
+// compensate (the same trick a telephoto lens uses to compress depth) cuts that front-to-side
+// distance ratio down to roughly 1.5x at every breakpoint, so a panel's apparent size now depends
+// far less on where it sits around the cylinder. radius/panelW/panelH/rowSpacing are untouched —
+// this only changes how much perspective falloff there is across that same layout, not the layout
+// itself. One side effect worth watching for: the center star model's own fixed scale constant
+// (see loadCenterStar) isn't compensated for this camera move, so it may read as a different size
+// than before — flag it if so and it can be retuned separately.
 function getConfig(): ViewportConfig {
   const w = window.innerWidth;
   const aspect = window.innerHeight / Math.max(w, 1);
   const portrait = aspect > 1;
-  if (w < 500)  return { fov: 70, cameraZ: 7.5,  radius: 4.5, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 5.5 };
-  if (w < 768)  return { fov: 70, cameraZ: 9.5,  radius: 4.6, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 3.8 };
-  if (w < 1024 && portrait) return { fov: 65, cameraZ: 9,  radius: 5.5, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 6.5 };
-  if (w < 1024) return { fov: 60, cameraZ: 11,   radius: 6.5, panelW: 1.2 * PANEL_SCALE, panelH: 1.6 * PANEL_SCALE, rowSpacing: 4 };
-  return          { fov: 50, cameraZ: 13,   radius: 7.8, panelW: 1.4 * PANEL_SCALE, panelH: 1.9 * PANEL_SCALE, rowSpacing: 7 };
+  if (w < 500)  return { fov: 23, cameraZ: 15,  radius: 4.5, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 5.5 };
+  if (w < 768)  return { fov: 36, cameraZ: 15,  radius: 4.6, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 3.8 };
+  if (w < 1024 && portrait) return { fov: 20, cameraZ: 18,  radius: 5.5, panelW: 1.0 * PANEL_SCALE, panelH: 1.4 * PANEL_SCALE, rowSpacing: 6.5 };
+  if (w < 1024) return { fov: 20, cameraZ: 21,   radius: 6.5, panelW: 1.2 * PANEL_SCALE, panelH: 1.6 * PANEL_SCALE, rowSpacing: 4 };
+  return          { fov: 15, cameraZ: 26,   radius: 7.8, panelW: 1.4 * PANEL_SCALE, panelH: 1.9 * PANEL_SCALE, rowSpacing: 7 };
 }
 
 function seededShuffle<T>(arr: T[], seed: number): T[] {
@@ -1417,11 +1434,16 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
                   properties only take effect when its DIRECT parent is a flex container, and this
                   div was plain display:block. */}
               <div className="detail__textWrap">
-                <span className="detail__badge" ref={detailGhostPrevBadgeRef} />
+                {/* badge + Instagram icon side by side (by request — "add instagram icon beside
+                    the tag") — was its own row below the body; moving it up here frees that space
+                    for .detail__body to grow into (see the "little down" request on the body). */}
+                <div className="detail__badgeRow">
+                  <span className="detail__badge" ref={detailGhostPrevBadgeRef} />
+                  <a className="detail__ig" ref={detailGhostPrevIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
+                  </a>
+                </div>
                 <div className="detail__body" ref={detailGhostPrevBodyRef} />
-                <a className="detail__ig" ref={detailGhostPrevIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
-                </a>
               </div>
             </div>
           </div>
@@ -1444,11 +1466,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
             <div className="detail__content">
               <h2 className="detail__title" ref={detailTitleRef} />
               <div className="detail__textWrap">
-                <span className="detail__badge" ref={detailBadgeRef} />
+                <div className="detail__badgeRow">
+                  <span className="detail__badge" ref={detailBadgeRef} />
+                  <a className="detail__ig" ref={detailIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
+                  </a>
+                </div>
                 <div className="detail__body" ref={detailBodyRef} />
-                <a className="detail__ig" ref={detailIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
-                </a>
               </div>
             </div>
           </div>
@@ -1462,11 +1486,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
             <div className="detail__content">
               <h2 className="detail__title" ref={detailGhostNextTitleRef} />
               <div className="detail__textWrap">
-                <span className="detail__badge" ref={detailGhostNextBadgeRef} />
+                <div className="detail__badgeRow">
+                  <span className="detail__badge" ref={detailGhostNextBadgeRef} />
+                  <a className="detail__ig" ref={detailGhostNextIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
+                  </a>
+                </div>
                 <div className="detail__body" ref={detailGhostNextBodyRef} />
-                <a className="detail__ig" ref={detailGhostNextIgRef} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#111" strokeWidth="1.6" /><circle cx="12" cy="12" r="4.2" stroke="#111" strokeWidth="1.6" /><circle cx="17.3" cy="6.7" r="1.1" fill="#111" /></svg>
-                </a>
               </div>
             </div>
           </div>
