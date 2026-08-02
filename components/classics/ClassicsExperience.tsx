@@ -15,26 +15,32 @@ interface Project { title: string; cat: string; img: string; gallery?: string[];
 
 export type CmsProject = Project;
 
-const PROJECTS: Project[] = [
-  { title: "Winter Portrait",  cat: "Archive 2024",   img: "https://picsum.photos/seed/winter-portrait/700/900" },
-  { title: "Red Abstract",     cat: "Visual Study",    img: "https://picsum.photos/seed/red-abstract/700/900" },
-  { title: "Fabric Study",     cat: "Material",        img: "https://picsum.photos/seed/fabric-grey/700/900" },
-  { title: "Mountain Lake",    cat: "Landscape",       img: "https://picsum.photos/seed/mountains-lake/700/900" },
-  { title: "City At Night",    cat: "Urban 2025",      img: "https://picsum.photos/seed/city-night/700/900" },
-  { title: "Forest Path",      cat: "Nature",          img: "https://picsum.photos/seed/forest-path/700/900" },
-  { title: "Desert Sands",     cat: "Expedition",      img: "https://picsum.photos/seed/desert-sand/700/900" },
-  { title: "Still Life I",     cat: "Seasonal",        img: "https://picsum.photos/seed/christmas-tree/700/900" },
-  { title: "Two Of Us",        cat: "Portrait",        img: "https://picsum.photos/seed/couple-selfie/700/900" },
-  { title: "Ocean Wave",       cat: "Seascape",        img: "https://picsum.photos/seed/ocean-wave/700/900" },
-  { title: "Portrait Study",   cat: "Editorial",       img: "https://picsum.photos/seed/portrait-woman/700/900" },
-  { title: "Hands & Wreath",   cat: "Craft",           img: "https://picsum.photos/seed/wreath-hands/700/900" },
-  { title: "Street Art",       cat: "Urban Culture",   img: "https://picsum.photos/seed/street-art/700/900" },
-  { title: "Vintage Drive",    cat: "Transport",       img: "https://picsum.photos/seed/vintage-car/700/900" },
-  { title: "Jazz Club",        cat: "Nightlife",       img: "https://picsum.photos/seed/jazz-club/700/900" },
-  { title: "Rooftop View",     cat: "Cityscape",       img: "https://picsum.photos/seed/rooftop-view/700/900" },
-  { title: "Summer Bloom",     cat: "Botanical",       img: "https://picsum.photos/seed/summer-bloom/700/900" },
-  { title: "Concrete Wall",    cat: "Brutalism",       img: "https://picsum.photos/seed/concrete-wall/700/900" },
-];
+// Disabled by request ("remove the images which are not part of ppt like hardcoded content and
+// images in classic pages... not remove comment that part it for now") — these were placeholder
+// picsum.photos stock images + made-up titles, never part of the client's PPT content, kept only
+// as a fallback so the gallery wasn't empty before real cards existed. Commented out, not deleted,
+// per that same request — allProjects below now resolves to just cmsProjects (the real,
+// Supabase-synced cards). Restore by uncommenting this const AND the `...PROJECTS,` spread below.
+// const PROJECTS: Project[] = [
+//   { title: "Winter Portrait",  cat: "Archive 2024",   img: "https://picsum.photos/seed/winter-portrait/700/900" },
+//   { title: "Red Abstract",     cat: "Visual Study",    img: "https://picsum.photos/seed/red-abstract/700/900" },
+//   { title: "Fabric Study",     cat: "Material",        img: "https://picsum.photos/seed/fabric-grey/700/900" },
+//   { title: "Mountain Lake",    cat: "Landscape",       img: "https://picsum.photos/seed/mountains-lake/700/900" },
+//   { title: "City At Night",    cat: "Urban 2025",      img: "https://picsum.photos/seed/city-night/700/900" },
+//   { title: "Forest Path",      cat: "Nature",          img: "https://picsum.photos/seed/forest-path/700/900" },
+//   { title: "Desert Sands",     cat: "Expedition",      img: "https://picsum.photos/seed/desert-sand/700/900" },
+//   { title: "Still Life I",     cat: "Seasonal",        img: "https://picsum.photos/seed/christmas-tree/700/900" },
+//   { title: "Two Of Us",        cat: "Portrait",        img: "https://picsum.photos/seed/couple-selfie/700/900" },
+//   { title: "Ocean Wave",       cat: "Seascape",        img: "https://picsum.photos/seed/ocean-wave/700/900" },
+//   { title: "Portrait Study",   cat: "Editorial",       img: "https://picsum.photos/seed/portrait-woman/700/900" },
+//   { title: "Hands & Wreath",   cat: "Craft",           img: "https://picsum.photos/seed/wreath-hands/700/900" },
+//   { title: "Street Art",       cat: "Urban Culture",   img: "https://picsum.photos/seed/street-art/700/900" },
+//   { title: "Vintage Drive",    cat: "Transport",       img: "https://picsum.photos/seed/vintage-car/700/900" },
+//   { title: "Jazz Club",        cat: "Nightlife",       img: "https://picsum.photos/seed/jazz-club/700/900" },
+//   { title: "Rooftop View",     cat: "Cityscape",       img: "https://picsum.photos/seed/rooftop-view/700/900" },
+//   { title: "Summer Bloom",     cat: "Botanical",       img: "https://picsum.photos/seed/summer-bloom/700/900" },
+//   { title: "Concrete Wall",    cat: "Brutalism",       img: "https://picsum.photos/seed/concrete-wall/700/900" },
+// ];
 
 const LOREM = [
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
@@ -213,7 +219,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
   // (below, gated on portalMounted) can call the CURRENT closeDetail without needing it in scope.
   const closeDetailFnRef = useRef<() => void>(() => {});
 
-  const allProjects = useMemo(() => [...PROJECTS, ...cmsProjects], [cmsProjects]);
+  // `...PROJECTS,` removed from this spread (see PROJECTS' own comment above, near its now-
+  // commented-out declaration) — the gallery now shows only the real, Supabase-synced cards.
+  const allProjects = useMemo(() => [...cmsProjects], [cmsProjects]);
 
   const bootLoaderRef  = useRef<HTMLDivElement>(null);
   const bootLayerRef   = useRef<HTMLDivElement>(null);
