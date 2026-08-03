@@ -163,7 +163,7 @@ void main(){
 
 const PANEL_FRAG = `
 uniform sampler2D uTexture;uniform float uOpacity,uBlur,uDepthNear,uDepthFar,uDepthStrength;
-uniform vec3 uDepthColor;varying vec2 vUv;varying float vViewZ;${GLSL_SRGB}
+uniform vec3 uDepthColor;uniform vec2 uUvScale,uUvOffset;varying vec2 vUv;varying float vViewZ;${GLSL_SRGB}
 vec4 blurSample(sampler2D t,vec2 uv,float b){
   if(b<=.0005)return texture2D(t,uv);
   vec4 a=texture2D(t,uv)*.25;
@@ -174,7 +174,16 @@ vec4 blurSample(sampler2D t,vec2 uv,float b){
   return a;
 }
 void main(){
-  vec4 col=blurSample(uTexture,vUv,uBlur);
+  // uUvScale/uUvOffset (by request — "images around the 3D model are shrinking/squeezed... make
+  // it cover"): the plane's own UVs (vUv) run a plain 0..1 across the panel regardless of the
+  // loaded texture's own aspect ratio, so a texture whose aspect didn't match the panel's just
+  // got stretched to fill it — squeezed narrower or shorter depending on the source image's shape.
+  // These two uniforms are computed per-texture in loadPanelTexture (JS side) from the actual
+  // image aspect vs. this panel's aspect, the same math CSS object-fit:cover does: scale one axis
+  // up so the image's short side fully covers the panel, centering the crop via the offset so the
+  // excess on the long axis is trimmed evenly off both edges instead of stretching either axis.
+  vec2 uv=vUv*uUvScale+uUvOffset;
+  vec4 col=blurSample(uTexture,uv,uBlur);
   float d=smoothstep(uDepthNear,uDepthFar,vViewZ);
   float luma=dot(col.rgb,vec3(.2126,.7152,.0722));
   vec3 c=mix(col.rgb,vec3(luma),d*.12);
@@ -196,6 +205,8 @@ type PanelMaterial = THREE.ShaderMaterial & { uniforms: {
   uDepthFar: THREE.IUniform<number>;
   uDepthColor: THREE.IUniform<THREE.Color>;
   uDepthStrength: THREE.IUniform<number>;
+  uUvScale: THREE.IUniform<THREE.Vector2>;
+  uUvOffset: THREE.IUniform<THREE.Vector2>;
 } };
 type PanelMesh = THREE.Mesh<THREE.PlaneGeometry, PanelMaterial> & { _scaleTarget?: number };
 
@@ -338,10 +349,27 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           uBendH: { value: 0 }, uBendV: { value: 0 }, uTime: { value: 0 }, uPhase: { value: Math.random() * Math.PI * 2 },
           uDepthNear: { value: cfg.cameraZ * 0.58 }, uDepthFar: { value: cfg.cameraZ * 1.85 },
           uDepthColor: { value: depthColor }, uDepthStrength: { value: 0.22 },
+          uUvScale: { value: new THREE.Vector2(1, 1) }, uUvOffset: { value: new THREE.Vector2(0, 0) },
         },
         vertexShader: PANEL_VERT, fragmentShader: PANEL_FRAG,
         side: THREE.DoubleSide, transparent: true, depthWrite: false, toneMapped: false,
       }) as PanelMaterial;
+    }
+
+    // Same math as CSS object-fit:cover, applied to a shader UV instead of a DOM box: scale
+    // whichever axis needs it so the texture's short side fully covers the panel, then center the
+    // crop with an offset so the excess on the long axis trims evenly off both edges rather than
+    // stretching either axis to fit (see PANEL_FRAG's own comment on uUvScale/uUvOffset).
+    function applyCoverUv(mat: PanelMaterial, tex: THREE.Texture, panelAspect: number) {
+      const img = tex.image as { width?: number; height?: number } | undefined;
+      const w = img?.width, h = img?.height;
+      if (!w || !h) return;
+      const imgAspect = w / h;
+      let scaleX = 1, scaleY = 1;
+      if (imgAspect > panelAspect) scaleX = panelAspect / imgAspect;
+      else scaleY = imgAspect / panelAspect;
+      mat.uniforms.uUvScale.value.set(scaleX, scaleY);
+      mat.uniforms.uUvOffset.value.set((1 - scaleX) / 2, (1 - scaleY) / 2);
     }
 
     const textureCache = new Map<string, THREE.Texture>();
@@ -391,7 +419,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           allMeshes.push(mesh);
           panelMeta.push({ proj, tR, tS, yS, delay: ENTRANCE_DELAY_MIN_MS + Math.random() * ENTRANCE_DELAY_RANGE_MS, done: false });
 
-          loadPanelTexture(proj.img, tex => { mat.uniforms.uTexture.value = tex; });
+          loadPanelTexture(proj.img, tex => {
+            mat.uniforms.uTexture.value = tex;
+            applyCoverUv(mat, tex, cfg.panelW / cfg.panelH);
+          });
         }
       }
     }
