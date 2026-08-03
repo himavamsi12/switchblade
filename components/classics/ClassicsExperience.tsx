@@ -114,8 +114,19 @@ const BG_COLOR = 0xffffff;
 const FLIP_MS = 480;
 // Boot reveal timings. BOOT_FALL_MS must match the .classics-boot__cover.is-falling transition
 // duration in classics-experience.css — it's only used to know when the panel has fully cleared.
+//
+// BOOT_HOLD_MS is now a MINIMUM, not the whole wait: the gradient also holds until every panel
+// texture has finished loading (see the boot gate below), so the gallery is fully imaged and
+// turning by the time it's uncovered instead of revealing a ring of blank panels that pop in one
+// by one. The minimum still matters on a warm cache, where the textures resolve almost instantly
+// and the gradient would otherwise flash by in a frame or two.
 const BOOT_HOLD_MS = 500;
 const BOOT_FALL_MS = 2200;
+// Hard cap on that wait. A single image that 404s, hangs, or crawls on a bad connection must never
+// strand someone on a full-screen gradient — past this the reveal happens regardless of what's
+// still in flight, and those panels fill in as they arrive (the old behaviour). Failed loads are
+// also counted as settled so one broken URL alone can't run the clock out.
+const BOOT_MAX_WAIT_MS = 8000;
 
 interface ViewportConfig {
   fov: number; cameraZ: number; radius: number;
@@ -416,16 +427,48 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       );
     }
 
+    // Boot gate — holds the intro gradient until the gallery is actually ready to be seen.
+    //
+    // Tracks the textures the FIRST buildPanels() asks for (it also re-runs on resize, which must
+    // not re-arm this) and counts them down as they settle. Gating on the panels' own requests
+    // rather than on every project's image matters: the rows deal out a shuffled subset, so this
+    // waits for exactly what's about to be on screen and nothing more.
+    //
+    // tryBootFall is a no-op placeholder until the boot sequence further down installs the real
+    // one — that code runs later in this same effect, so assigning through a mutable binding
+    // avoids a temporal-dead-zone crash if a cached texture settles synchronously during the build.
+    const bootPendingUrls = new Set<string>();
+    let bootCollecting = true;
+    let bootBuildDone = false;
+    let bootTexturesReady = false;
+    let tryBootFall: () => void = () => {};
+    const noteBootTexture = (url: string) => {
+      // Only counts URLs this gate is actually waiting on; ignores resize rebuilds and repeats.
+      if (!bootPendingUrls.delete(url)) return;
+      if (bootBuildDone && bootPendingUrls.size === 0) {
+        bootTexturesReady = true;
+        tryBootFall();
+      }
+    };
+
     const textureCache = new Map<string, THREE.Texture>();
     function loadPanelTexture(url: string, onReady: (tex: THREE.Texture) => void) {
       const cached = textureCache.get(url);
-      if (cached) { onReady(cached); return; }
-      texLoader.load(url, tex => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.minFilter = THREE.LinearFilter;
-        textureCache.set(url, tex);
-        onReady(tex);
-      });
+      if (cached) { onReady(cached); noteBootTexture(url); return; }
+      texLoader.load(
+        url,
+        tex => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.minFilter = THREE.LinearFilter;
+          textureCache.set(url, tex);
+          onReady(tex);
+          noteBootTexture(url);
+        },
+        undefined,
+        // Settled-but-failed still counts, or one dead image URL would hold the gradient up until
+        // BOOT_MAX_WAIT_MS every single load. The panel simply stays untextured, as it did before.
+        () => noteBootTexture(url),
+      );
     }
 
     let panelGeo: THREE.PlaneGeometry | null = null;
@@ -463,6 +506,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           allMeshes.push(mesh);
           panelMeta.push({ proj, tR, tS, yS, delay: ENTRANCE_DELAY_MIN_MS + Math.random() * ENTRANCE_DELAY_RANGE_MS, done: false });
 
+          // Registered before the load starts so a texture that's already cached (and therefore
+          // calls back synchronously) is added and removed in the right order rather than being
+          // counted down before it was ever counted up.
+          if (bootCollecting && proj.img.url) bootPendingUrls.add(proj.img.url);
           loadPanelTexture(proj.img.url, tex => {
             mat.uniforms.uTexture.value = tex;
             applyCoverUv(mat, tex, cfg.panelW / cfg.panelH, proj.img);
@@ -471,6 +518,12 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       }
     }
     buildPanels();
+    // The gate can only be judged complete once the whole build has finished registering — during
+    // the loop a run of cached textures can momentarily empty the set while panels are still to
+    // come, which would otherwise release the gradient early.
+    bootCollecting = false;
+    bootBuildDone = true;
+    if (bootPendingUrls.size === 0) bootTexturesReady = true;
 
     let centerStar: THREE.Group | null = null;
     function loadCenterStar() {
@@ -1287,11 +1340,18 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     };
     window.addEventListener("resize", onResize);
 
-    // Boot reveal — see the .classics-boot markup/CSS. A brief hold on the full gradient (giving the
-    // 3D scene a beat to finish setting up), then the gradient panel falls away and the experience
-    // is uncovered from the top down.
+    // Boot reveal — see the .classics-boot markup/CSS. The full gradient holds until BOTH the
+    // minimum hold has elapsed AND every panel texture has settled (the boot gate up by
+    // loadPanelTexture), then the gradient panel falls away and the experience is uncovered from
+    // the top down — by which point the gallery behind it is fully imaged and already turning,
+    // rather than a ring of blank panels filling in one at a time in front of the visitor.
     const bootTimers: number[] = [];
-    bootTimers.push(window.setTimeout(() => {
+    let bootMinHoldDone = false;
+    let bootFallen = false;
+
+    const fallBoot = () => {
+      if (bootFallen) return;
+      bootFallen = true;
       bootLayerRef.current?.classList.add("is-falling");
       // Reveal + start the scene's own entrance right as the fall begins, NOT after it finishes:
       // the panel takes BOOT_FALL_MS to clear, so the content needs to already be live behind it
@@ -1305,7 +1365,17 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         bootLoaderRef.current?.classList.add("is-done");
         if (bootLoaderRef.current) bootLoaderRef.current.style.display = "none";
       }, BOOT_FALL_MS));
-    }, BOOT_HOLD_MS));
+    };
+
+    // Reassigns the placeholder declared next to the boot gate, so a texture settling later can
+    // reach this. Both conditions are re-checked on every call because either can land first:
+    // a cold load finishes after the hold, a warm cache finishes well before it.
+    tryBootFall = () => {
+      if (bootMinHoldDone && bootTexturesReady) fallBoot();
+    };
+    bootTimers.push(window.setTimeout(() => { bootMinHoldDone = true; tryBootFall(); }, BOOT_HOLD_MS));
+    // Safety net — see BOOT_MAX_WAIT_MS. Reveals regardless of what's still loading.
+    bootTimers.push(window.setTimeout(fallBoot, BOOT_MAX_WAIT_MS));
 
     let lastT = performance.now(), totalT = 0;
     let bendHSmoothed = 0, bendVSmoothed = 0;
