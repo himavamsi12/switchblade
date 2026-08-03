@@ -143,6 +143,10 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
         // "live" at that moment would sample a transient mid-flight position, poisoning the
         // whole path with a start point the star was only ever passing through.
         const DOCK_START_SHRINK = 0.7;
+        // How far above the O's geometric center the star settles, as a fraction of the letter's
+        // height. See targetY below for why it isn't simply centered. Raise to lift it further,
+        // 0 for dead center.
+        const DOCK_Y_LIFT = 0.1;
         // Whether the previous frame wrote to the star — lets the exit path below run its
         // one-time final write on the exact frame the range is left, then go fully idle.
         let wasActive = false;
@@ -216,7 +220,19 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
           const vw = window.innerWidth, vh = window.innerHeight;
           const oRect = oLetter.getBoundingClientRect();
           const targetX = oRect.left + oRect.width / 2;
-          const targetY = oRect.top + oRect.height / 2;
+          // Docked a touch ABOVE the O's geometric center, by request ("it is stopping at the O
+          // letter — stop a little up").
+          //
+          // The star model isn't vertically symmetric: its lower arm is much longer than the upper
+          // one, so centering the canvas box on the letter puts the star's visual weight (the point
+          // where the arms cross) high while that long spike hangs out past the bottom of the O —
+          // it reads as sitting low even though the BOX is exactly centered. Lifting the whole
+          // thing brings the spike back inside the letter.
+          //
+          // Expressed as a fraction of the O's own height so it holds at every heading size (the
+          // heading is clamp(40px,7vw,96px), so the letter's height varies a lot across viewports).
+          // Tune DOCK_Y_LIFT alone to raise/lower it — 0 restores dead-center.
+          const targetY = oRect.top + oRect.height / 2 - oRect.height * DOCK_Y_LIFT;
           // The wrapper's transform-less layout center — what a given gsap x/y is relative to.
           //
           // Read from the element's own resolved left/top rather than recomputing "50% of the
