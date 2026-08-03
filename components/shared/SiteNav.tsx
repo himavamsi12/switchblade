@@ -282,7 +282,16 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
               Left padding moves to the pl-* classes above so it can shrink to match (6px, same as
               the button's other padding) when the label is hidden, instead of leaving the 16px
               gap meant for text next to a now-empty space. */}
-          <span className="hidden sm:inline">Collaborate</span>
+          {/* top-[0.022em] is an optical centering correction, not a layout fix — `items-center`
+              above already centers this label's LINE BOX exactly (measured: 0px off). The text
+              still reads high because a line box is centered by its font metrics, not by its ink:
+              Archivo reserves 3px of descender space below the baseline at this 14px size, but
+              "COLLABORATE" is all caps and uses only 0.17px of it, so the visible glyphs sit
+              (fontAscent - fontDescent)/2 + (capDescent - capAscent)/2 = ~0.3px ABOVE the box's
+              geometric center. Nudging down by that much lands the ink itself on the center line.
+              Expressed in em rather than px so it stays correct if the font-size below changes —
+              the correction is a fixed ratio of the font's own metrics, so it scales with size. */}
+          <span className="hidden sm:inline relative top-[0.022em]">Collaborate</span>
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, background: "#fff", borderRadius: 6 }}>
             <SparkleMark className="h-[21px] w-auto shrink-0 text-[#0F0E0C]" />
           </span>
