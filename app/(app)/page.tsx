@@ -38,6 +38,7 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
     // Set alongside tickerFn — cleanup needs gsap.ticker.remove, but gsap itself only exists
     // inside the dynamic import below, so the remover closes over it.
     let removeTicker: (() => void) | null = null;
+    let removeAnchorListeners: (() => void) | null = null;
 
     import("gsap").then(async ({ gsap }) => {
       if (killed) return;
@@ -134,9 +135,9 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
         const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2);
         // The docked-beside-the-globe rest state the star is guaranteed to be in when this
         // trigger's range begins (globeTravel finishes well before it — see `start` above):
-        // globeTravel parks it at x:22vw / y:8vh, and RadiatesSection's scaleTween holds the
+        // globeTravel parks it at x:24vw / y:8vh, and RadiatesSection's scaleTween holds the
         // model shrink at 0.7 on desktop. startX/startY below hardcode that same resting point
-        // as an analytic formula (0.5vw+0.22vw, 0.38vh+0.08vh) rather than reading it live off
+        // as an analytic formula (anchor + 0.24vw, anchor + 0.08vh) rather than reading it live off
         // the star, specifically because a fast scroll can cross this boundary while globeTravel's
         // own GSAP `scrub` proxy (its internal easing lag) is still catching up — capturing
         // "live" at that moment would sample a transient mid-flight position, poisoning the
@@ -145,6 +146,30 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
         // Whether the previous frame wrote to the star — lets the exit path below run its
         // one-time final write on the exact frame the range is left, then go fully idle.
         let wasActive = false;
+
+        // The wrapper's untransformed center, from its own resolved left/top (see the ticker's own
+        // comment for why that's the right source rather than a percentage of innerWidth).
+        //
+        // Cached rather than read per frame: getComputedStyle forces a style recalculation, and
+        // this only changes when the viewport does — left:50%/top:38% are pure functions of the
+        // containing block. Invalidated on resize (and on ScrollTrigger refresh, which is what
+        // fires when mobile browsers collapse their URL bar and change the viewport height without
+        // ever emitting a resize this code would otherwise notice).
+        let anchorCache: { x: number; y: number } | null = null;
+        const getAnchorCenter = () => {
+          if (!anchorCache) {
+            const cs = getComputedStyle(star);
+            anchorCache = { x: parseFloat(cs.left) || 0, y: parseFloat(cs.top) || 0 };
+          }
+          return anchorCache;
+        };
+        const invalidateAnchor = () => { anchorCache = null; };
+        window.addEventListener("resize", invalidateAnchor);
+        ScrollTrigger.addEventListener("refresh", invalidateAnchor);
+        removeAnchorListeners = () => {
+          window.removeEventListener("resize", invalidateAnchor);
+          ScrollTrigger.removeEventListener("refresh", invalidateAnchor);
+        };
 
         // The star's docked position is a PURE FUNCTION of the current scroll position and the O's
         // current on-screen rect. No temporal smoothing, deliberately — this is the fix for the
@@ -185,15 +210,40 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
           }
           const p = raw;
 
+          // CSS viewport units — these match what `vw`/`vh` mean in the wrapper's own stylesheet
+          // (and to GSAP, see startX/startY below), i.e. INCLUDING any classic scrollbar. Not
+          // interchangeable with the anchor below; see its comment.
           const vw = window.innerWidth, vh = window.innerHeight;
           const oRect = oLetter.getBoundingClientRect();
           const targetX = oRect.left + oRect.width / 2;
           const targetY = oRect.top + oRect.height / 2;
-          const startX = 0.5 * vw + 0.24 * vw;
-          const startY = 0.38 * vh + 0.08 * vh;
           // The wrapper's transform-less layout center — what a given gsap x/y is relative to.
-          const baseX = 0.5 * vw;
-          const baseY = 0.38 * vh;
+          //
+          // Read from the element's own resolved left/top rather than recomputing "50% of the
+          // viewport" in JS, because those are NOT the same number on every machine. The wrapper is
+          // position:fixed with left:50%/top:38%, and a percentage offset on a fixed element
+          // resolves against the containing block, which EXCLUDES a classic scrollbar. CSS
+          // viewport units do not: 100vw includes it. window.innerWidth agrees with vw, not with
+          // the percentage — so basing the anchor on innerWidth overstated it by half the
+          // scrollbar's width and docked the star that far LEFT of the O's center.
+          //
+          // It was invisible here because macOS uses overlay scrollbars (width 0, so the error is
+          // exactly 0); it showed up on a laptop with classic scrollbars, where a 15px scrollbar
+          // put the star 7.5px off. Reading the used value is correct on both, and can't drift out
+          // of sync if the left/top values in the wrapper's own styles are ever changed.
+          //
+          // With the wrapper's baked-in translate(-50%,-50%), the used left/top ARE the box's
+          // center: the box's top-left lands at (left - w/2, top - h/2), so its center is (left, top).
+          const anchor = getAnchorCenter();
+          const baseX = anchor.x;
+          const baseY = anchor.y;
+          // globeTravel parks the star with gsap x:"24vw"/y:"8vh". GSAP resolves those by measuring
+          // a temp div sized in the same unit (see _convertToUnit in CSSPlugin), i.e. real CSS vw/vh
+          // — which DO include the scrollbar. So these two terms genuinely use a different basis
+          // than the anchor above, and must keep using innerWidth/innerHeight to stay in lockstep
+          // with the transform globeTravel actually wrote.
+          const startX = baseX + 0.24 * vw;
+          const startY = baseY + 0.08 * vh;
 
           const e = easeInOut(Math.min(1, Math.max(0, p)));
           // Convex blend between the fixed canonical start and the LIVE target: always lands
@@ -280,6 +330,7 @@ function Hero({ starRef, shrinkRef, entranceRef }: { starRef: React.RefObject<HT
       sts.forEach(s => { s?.kill(); s?.scrollTrigger?.kill(); });
       hideTrigger?.kill();
       removeTicker?.();
+      removeAnchorListeners?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
