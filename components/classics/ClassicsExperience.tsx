@@ -1171,31 +1171,18 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     detailInnerEl?.addEventListener("touchmove", onCardTouchMove, { passive: true });
     detailInnerEl?.addEventListener("touchend", onCardTouchEnd, { passive: true });
 
-    // Swipe-down-to-close (mobile only) — attached to the whole modal (not just the card row)
-    // so it also catches swipes starting on the backdrop/ghost peeks, not just the active card.
-    // Independent of the horizontal card-swipe above: that one already bails out the instant a
-    // gesture reads as more vertical than horizontal, so there's no conflict — this tracker
-    // picks up exactly the gestures the other one ignores.
-    let vSwipeX = 0, vSwipeY = 0, vSwipeTracking = false;
-    const CLOSE_SWIPE_THRESHOLD = 90;
-    const onDetailVSwipeStart = (e: TouchEvent) => {
-      if (window.innerWidth > 820) return;
-      vSwipeX = e.touches[0].clientX;
-      vSwipeY = e.touches[0].clientY;
-      vSwipeTracking = true;
-    };
-    const onDetailVSwipeEnd = (e: TouchEvent) => {
-      if (!vSwipeTracking) return;
-      vSwipeTracking = false;
-      const dx = e.changedTouches[0].clientX - vSwipeX;
-      const dy = e.changedTouches[0].clientY - vSwipeY;
-      // Downward only (dy > 0, not just |dy|) and clearly more vertical than horizontal — a
-      // diagonal flick during a horizontal card-swipe shouldn't also close the popup.
-      if (dy > CLOSE_SWIPE_THRESHOLD && dy > Math.abs(dx)) closeDetail();
-    };
-    const detailElForVSwipe = detailRef.current;
-    detailElForVSwipe?.addEventListener("touchstart", onDetailVSwipeStart, { passive: true });
-    detailElForVSwipe?.addEventListener("touchend", onDetailVSwipeEnd, { passive: true });
+    // Swipe-down-to-close was REMOVED here by request ("on swipe down it is closing, i don't want
+    // that — there is already a close button, so only on close button it should close").
+    //
+    // It listened on the whole modal, so any downward flick anywhere in the popup dismissed it —
+    // including ones meant as a scroll through the body copy, or the vertical component of a
+    // sloppy horizontal card-swipe. The detail view is now dismissed only by its explicit close
+    // button (and Escape on desktop, see the keydown handler below), which is the deliberate,
+    // unambiguous action.
+    //
+    // Nothing else needs to change to compensate: the horizontal card-swipe (project navigation)
+    // and the gallery swipe on the image are both independent trackers that bail out the moment a
+    // gesture reads as more vertical than horizontal, so removing this leaves them untouched.
 
     const onThumbPrev = () => { selectThumb((currentThumbIndex - 1 + currentGalleryImages.length) % currentGalleryImages.length); startAutoplay(); };
     const onThumbNext = () => { selectThumb((currentThumbIndex + 1) % currentGalleryImages.length); startAutoplay(); };
@@ -1272,9 +1259,12 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     // ghost peeks, and .detail__inner's own empty space all close it now, matching what visually
     // reads as "empty" to someone tapping there.
     const onDetailBackdropClick = (e: MouseEvent) => {
-      // Mobile relies on swipe-down-to-close and the explicit "X" button instead — a stray tap
-      // while scrolling the body text or swiping between ghost cards was closing the popup
-      // unintentionally, since almost the entire viewport counts as "backdrop" on a small screen.
+      // Mobile relies on the explicit "X" button instead — a stray tap while scrolling the body
+      // text or swiping between ghost cards was closing the popup unintentionally, since almost
+      // the entire viewport counts as "backdrop" on a small screen. (This used to also list
+      // swipe-down-to-close, which has since been removed by request — see the note where its
+      // handlers used to live.) So on mobile the close button is now the ONLY way out, which is
+      // the intent: nothing accidental can dismiss the popup.
       if (window.innerWidth <= 820) return;
       const target = e.target as HTMLElement;
       if (target.closest(".detail__card:not(.detail__card--ghost)") || target.closest(".detail__nav")) return;
@@ -1411,8 +1401,6 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       detailInnerEl?.removeEventListener("touchstart", onCardTouchStart);
       detailInnerEl?.removeEventListener("touchmove", onCardTouchMove);
       detailInnerEl?.removeEventListener("touchend", onCardTouchEnd);
-      detailElForVSwipe?.removeEventListener("touchstart", onDetailVSwipeStart);
-      detailElForVSwipe?.removeEventListener("touchend", onDetailVSwipeEnd);
       detailThumbPrevEl?.removeEventListener("click", onThumbPrev);
       detailThumbNextEl?.removeEventListener("click", onThumbNext);
       detailImgEl?.removeEventListener("touchstart", onGalleryTouchStart);
@@ -1616,9 +1604,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           "detail-open" class openDetail/closeDetail already toggle on the root element (see
           rootRef) via the .classics-exp.detail-open selector in the CSS, since portaling moves
           this out from under .detail's own opacity/pointer-events toggle too. Tap-outside-to-close
-          is disabled below 820px (see onDetailBackdropClick), so this is the only tap-to-close
-          option left there (swipe-down still works too). portalMounted guards against
-          document.body being unavailable during SSR. */}
+          is disabled below 820px (see onDetailBackdropClick), and swipe-down-to-close has been
+          removed by request, so on mobile this button is the ONLY way to dismiss the popup —
+          worth knowing before changing anything about how it mounts or when it's visible.
+          portalMounted guards against document.body being unavailable during SSR. */}
       {portalMounted && createPortal(
         <button type="button" className="detail__close" ref={detailCloseRef} aria-label="Close">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M18 6L6 18" stroke="#111" strokeWidth="1.8" strokeLinecap="round" /></svg>
