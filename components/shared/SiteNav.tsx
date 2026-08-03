@@ -282,16 +282,25 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
               Left padding moves to the pl-* classes above so it can shrink to match (6px, same as
               the button's other padding) when the label is hidden, instead of leaving the 16px
               gap meant for text next to a now-empty space. */}
-          {/* top-[0.022em] is an optical centering correction, not a layout fix — `items-center`
-              above already centers this label's LINE BOX exactly (measured: 0px off). The text
-              still reads high because a line box is centered by its font metrics, not by its ink:
-              Archivo reserves 3px of descender space below the baseline at this 14px size, but
-              "COLLABORATE" is all caps and uses only 0.17px of it, so the visible glyphs sit
-              (fontAscent - fontDescent)/2 + (capDescent - capAscent)/2 = ~0.3px ABOVE the box's
-              geometric center. Nudging down by that much lands the ink itself on the center line.
-              Expressed in em rather than px so it stays correct if the font-size below changes —
-              the correction is a fixed ratio of the font's own metrics, so it scales with size. */}
-          <span className="hidden sm:inline relative top-[0.022em]">Collaborate</span>
+          {/* Optically centering this label, which `items-center` alone does NOT do: a line box is
+              centered by its font metrics, not by its ink. Archivo reserves 3px of descender space
+              below the baseline at 14px but "COLLABORATE" is all caps and uses only 0.17px of it,
+              so the visible letters sit ~0.3px above the button's geometric center.
+
+              text-box:trim-both trims the line box down to exactly the cap block (measured: the
+              span goes 21px -> 9.6px tall), so `items-center` then centers the LETTERS themselves.
+              Measured cap offset: -0.005px, i.e. exact — and exact in any font, at any size, on any
+              machine, because the browser derives the trim from whatever font actually rendered.
+              That matters here: with `display:swap` the fallback font renders first and has its own
+              metrics, so a correction hardcoded from Archivo's numbers is wrong during that window.
+
+              top-[0.022em] is the fallback for browsers without text-box (Firefox as of writing) —
+              the same ~0.3px nudge in em so it scales with font-size, switched off via supports-[]
+              wherever the trim does the job properly. A previous version shipped that nudge ALONE:
+              it over-corrected slightly, because a sub-pixel `top` snaps to whole device pixels
+              (0.31px became a full pixel on a 2x display), leaving the text a hair LOW instead of a
+              hair high. Trimming the box avoids sub-pixel offsets entirely. */}
+          <span className="hidden sm:inline relative top-[0.022em] [text-box:trim-both_cap_alphabetic] supports-[text-box:trim-both_cap_alphabetic]:top-0">Collaborate</span>
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, background: "#fff", borderRadius: 6 }}>
             <SparkleMark className="h-[21px] w-auto shrink-0 text-[#0F0E0C]" />
           </span>
