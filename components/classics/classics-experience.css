@@ -421,6 +421,14 @@
    right edge drifted out of alignment with the nav's "Collaborate" button at every other width. */
 .classics-exp .topbar { align-items: center; background: rgba(255, 255, 255, .82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid rgba(0, 0, 0, .06); display: flex; gap: 16px; justify-content: space-between; left: 0; opacity: 0; padding: 6px clamp(20px, 5vw, 72px); pointer-events: none; position: fixed; right: 0; top: 72px; transition: opacity .25s ease; z-index: 1000; }
 .classics-exp .topbar.is-revealed { opacity: 1; pointer-events: auto; transition: opacity .7s ease .15s; }
+/* TEMPORARY, by request — hides the "Topics / Editorial / Archive / Studies … Sort by: Featured"
+   filter bar at ALL widths, not just the phone breakpoint that already hid it further down.
+   Deliberately a display:none override rather than deleting the markup: the buttons, their refs
+   (topicGroupRef / sortBtnRef / sortMenuRef) and all their wiring in ClassicsExperience.tsx stay
+   intact and inert, so bringing the bar back is just removing this one rule — no JSX or JS to
+   reinstate, and nothing can rot in the meantime.
+   Sits after .is-revealed above so it wins regardless of that class being toggled on. */
+.classics-exp .topbar { display: none; }
 .classics-exp .topbar__group { align-items: center; display: flex; gap: 8px; min-width: 0; }
 .classics-exp .topbar__label { color: rgba(0, 0, 0, .5); flex-shrink: 0; font-size: .72rem; margin-right: 2px; }
 .classics-exp .tag { background: #fff; border: 1px solid rgba(0, 0, 0, .14); border-radius: 7px; color: var(--color-ink); cursor: pointer; font: inherit; font-size: .72rem; line-height: 1; padding: 5px 11px; pointer-events: auto; transition: background .2s ease, color .2s ease, border-color .2s ease; }
