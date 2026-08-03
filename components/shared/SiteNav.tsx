@@ -273,7 +273,14 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
               window.location.href = "/collaborate";
             }
           }}
-          className="flex items-center gap-2 rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-4 uppercase"
+          // sm:pl-3 + sm:gap-3 shifts the label 4px LEFT by request, without resizing the button:
+          // the 4px taken off the left padding (16px -> 12px) is handed straight to the gap
+          // (8px -> 12px), so the total between the button's left edge and the white tile is
+          // unchanged at 24px and the button stays exactly as wide as before. Both are sm:-only —
+          // below that breakpoint the label is hidden entirely (see its own comment), leaving the
+          // icon alone with pl-[6px] to match the button's other padding, and a gap with nothing
+          // to sit between.
+          className="flex items-center gap-2 sm:gap-3 rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-3 uppercase"
           style={{ background: "#FF802B", fontSize: 14, paddingTop: 6, paddingRight: 6, paddingBottom: 6, cursor: light ? "pointer" : undefined }}
         >
           {/* "Collab" label hidden below sm: at phone widths, this button's full width plus the
