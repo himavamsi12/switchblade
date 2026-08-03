@@ -51,7 +51,7 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
-  title: "SWITCHBLADE™ — Anything but Everything",
+  title: "SWITCHBLADE™",
   description:
     "SWITCHBLADE™ — a philosophy applied to whatever it touches. Strength, compassion, and intent, distilled into a mark for builders who refuse to be boxed in.",
 };
