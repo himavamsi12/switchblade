@@ -273,14 +273,14 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
               window.location.href = "/collaborate";
             }
           }}
-          // sm:pl-3 + sm:gap-3 shifts the label 4px LEFT by request, without resizing the button:
-          // the 4px taken off the left padding (16px -> 12px) is handed straight to the gap
-          // (8px -> 12px), so the total between the button's left edge and the white tile is
-          // unchanged at 24px and the button stays exactly as wide as before. Both are sm:-only —
-          // below that breakpoint the label is hidden entirely (see its own comment), leaving the
-          // icon alone with pl-[6px] to match the button's other padding, and a gap with nothing
-          // to sit between.
-          className="flex items-center gap-2 sm:gap-3 rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-3 uppercase"
+          // sm:pl-[11px] + sm:gap-[13px] shifts the label 5px LEFT of where it started, by request
+          // (16px -> 12px, then one more to 11px), without ever resizing the button: every pixel
+          // taken off the left padding is handed straight to the gap, so the span from the button's
+          // left edge to the white tile stays 24px and the width is unchanged. Keep that sum at
+          // 24px if either is tuned again. Both are sm:-only — below that breakpoint the label is
+          // hidden entirely (see its own comment), leaving the icon alone with pl-[6px] to match
+          // the button's other padding, and a gap with nothing to sit between.
+          className="flex items-center gap-2 sm:gap-[13px] rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-[11px] uppercase"
           style={{ background: "#FF802B", fontSize: 14, paddingTop: 6, paddingRight: 6, paddingBottom: 6, cursor: light ? "pointer" : undefined }}
         >
           {/* "Collab" label hidden below sm: at phone widths, this button's full width plus the
