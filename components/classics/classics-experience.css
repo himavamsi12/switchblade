@@ -161,6 +161,22 @@
 .classics-exp .detail__thumb.is-active { border-color: #1d4ed8; opacity: 1; }
 .classics-exp .detail__thumbNav { align-items: center; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; cursor: pointer; display: flex; flex-shrink: 0; height: 32px; justify-content: center; transition: background .2s ease; width: 24px; }
 .classics-exp .detail__thumbNav:hover { background: #f2f2f2; }
+/* Hidden unless the strip actually overflows — renderThumbs() adds .has-thumbNav only when the
+   thumbnail count is above THUMB_NAV_MIN_COUNT (see ClassicsExperience.tsx). display:none rather
+   than visibility/opacity so the arrows also give up their flex space, letting a short strip use
+   the full width of the card instead of sitting inside a pair of empty gutters. */
+.classics-exp .detail__thumbs .detail__thumbNav { display: none; }
+.classics-exp .detail__thumbs.has-thumbNav .detail__thumbNav { display: flex; }
+/* Without the arrows the strip has nothing left to scroll, so the thumbs stop being fixed-width
+   and share the track equally instead — the row then spans exactly the same width as the main
+   image above it, rather than ending short and leaving a ragged gap on the right.
+   flex-basis:0 (not auto) is what makes them EQUAL: widths are divided from zero rather than from
+   each thumb's own 84px, so every thumb lands the same size regardless of how many there are.
+   min-width:0 lets them shrink below that 84px too, on a narrow card. overflow-x:clip rather than
+   auto because with nothing overflowing there's no scrolling to preserve, and `auto` would still
+   establish a scroll container that can be nudged a pixel or two by rounding. */
+.classics-exp .detail__thumbs:not(.has-thumbNav) .detail__thumbTrack { overflow-x: clip; }
+.classics-exp .detail__thumbs:not(.has-thumbNav) .detail__thumb { flex: 1 1 0; min-width: 0; width: auto; }
 /* min-height:0 — a flex item's default min-height is `auto` (its content size), which otherwise
    refuses to let this column shrink below the text's natural height, so the card's own max-height
    above (and .detail__body's scroll below) would have nothing to actually take effect against. */

@@ -103,6 +103,10 @@ function detailBodyHtml(body: string[] | undefined) {
 }
 
 const PANELS_PER_ROW = 12, ROWS = 5;
+// Most thumbnails the detail popup's strip can show before its prev/next arrows are worth having,
+// by request ("if the gallery images are less/equal to 5 don't show the arrows"). At or below this
+// the whole strip fits on screen, so the arrows would scroll nothing.
+const THUMB_NAV_MIN_COUNT = 5;
 const PANEL_SCALE = 1.1;
 const SPIRAL_RADIUS_RATIO = 0.72;
 const SPIRAL_SCALE_DESKTOP = 1.26, SPIRAL_SCALE_MOBILE = 0.88;
@@ -1011,6 +1015,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       currentGalleryImages = [proj.img, ...(proj.gallery ?? [])];
       currentThumbIndex = 0;
       track.innerHTML = "";
+      // The prev/next arrows only exist to scroll a thumbnail strip that overflows its track, so
+      // they're shown only once there are actually more thumbs than fit — at or below
+      // THUMB_NAV_MIN_COUNT the whole strip is visible at once and the arrows are decoration that
+      // does nothing when clicked. Toggled here rather than in CSS because the count isn't
+      // something CSS can see. Counts the thumbs as rendered, i.e. the main image plus the gallery,
+      // which is what's actually on screen to scroll through.
+      wrap.classList.toggle("has-thumbNav", currentGalleryImages.length > THUMB_NAV_MIN_COUNT);
       if (currentGalleryImages.length <= 1) {
         wrap.classList.remove("is-visible");
         stopAutoplay();
