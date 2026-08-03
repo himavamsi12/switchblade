@@ -11,9 +11,37 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import "./classics-experience.css";
 
-interface Project { title: string; cat: string; img: string; gallery?: string[]; body?: string[]; instagram?: string }
+/**
+ * One image plus the focal point an editor picked for it in the Payload admin ("Edit Image" →
+ * focal point), as percentages 0-100 from the image's top-left. 50/50 is dead center.
+ *
+ * Every surface here cover-crops to a different aspect ratio — the 3D panels to a ~3:4 portrait
+ * plane, the detail popup to a wide media box, the thumbnail strip to 84x64 — so a single upload
+ * gets framed three different ways and no fixed anchor is right for every photo. These coordinates
+ * are what each of those crops centers on, so the subject survives all three.
+ *
+ * Set by collections/Media.ts (focalPoint), carried through Supabase by
+ * lib/payload/syncClassicsCard.ts, and applied by applyCoverUv (WebGL) and applyImage (DOM) below.
+ */
+export interface CmsImage { url: string; focalX: number; focalY: number }
+
+interface Project { title: string; cat: string; img: CmsImage; gallery?: CmsImage[]; body?: string[]; instagram?: string }
 
 export type CmsProject = Project;
+
+/**
+ * Points a DOM <img> at an image and anchors its object-fit:cover crop to that image's focal point.
+ *
+ * Replaces the blanket `object-position: top` that .detail__img and .detail__thumb img used to
+ * hardcode (see classics-experience.css) — that was a workaround for portrait photos getting their
+ * subjects' heads cut off by the default centered crop, but it just traded one fixed guess for
+ * another, cropping the bottom off anything where the subject sat low in the frame.
+ */
+function applyImage(el: HTMLImageElement | null, image: CmsImage | undefined) {
+  if (!el || !image) return;
+  el.src = image.url;
+  el.style.objectPosition = `${image.focalX}% ${image.focalY}%`;
+}
 
 // Disabled by request ("remove the images which are not part of ppt like hardcoded content and
 // images in classic pages... not remove comment that part it for now") — these were placeholder
@@ -356,11 +384,21 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       }) as PanelMaterial;
     }
 
-    // Same math as CSS object-fit:cover, applied to a shader UV instead of a DOM box: scale
-    // whichever axis needs it so the texture's short side fully covers the panel, then center the
-    // crop with an offset so the excess on the long axis trims evenly off both edges rather than
-    // stretching either axis to fit (see PANEL_FRAG's own comment on uUvScale/uUvOffset).
-    function applyCoverUv(mat: PanelMaterial, tex: THREE.Texture, panelAspect: number) {
+    // Same math as CSS object-fit:cover + object-position, applied to a shader UV instead of a DOM
+    // box: scale whichever axis needs it so the texture's short side fully covers the panel, then
+    // slide the crop window along the overflowing axis so it sits over the image's focal point
+    // rather than stretching either axis to fit (see PANEL_FRAG's own comment on
+    // uUvScale/uUvOffset).
+    //
+    // The window has (1 - scale) of travel on each axis, and gets clamped into that range: a focal
+    // point near an edge pins the crop to that edge instead of sliding past it and sampling the
+    // texture's clamped border pixels. An unadjusted image is 50/50, which lands the window dead
+    // center — exactly what this did before focal points existed.
+    //
+    // The Y axis is flipped relative to focalY. THREE textures default to flipY = true, so v = 0
+    // is the BOTTOM of the image as displayed, while focalY (like CSS object-position) counts
+    // percent down from the TOP — hence 1 - focalY rather than focalY.
+    function applyCoverUv(mat: PanelMaterial, tex: THREE.Texture, panelAspect: number, image: CmsImage) {
       const img = tex.image as { width?: number; height?: number } | undefined;
       const w = img?.width, h = img?.height;
       if (!w || !h) return;
@@ -368,8 +406,14 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       let scaleX = 1, scaleY = 1;
       if (imgAspect > panelAspect) scaleX = panelAspect / imgAspect;
       else scaleY = imgAspect / panelAspect;
+      const focalU = image.focalX / 100;
+      const focalV = 1 - image.focalY / 100;
+      const clamp = (v: number, max: number) => Math.max(0, Math.min(max, v));
       mat.uniforms.uUvScale.value.set(scaleX, scaleY);
-      mat.uniforms.uUvOffset.value.set((1 - scaleX) / 2, (1 - scaleY) / 2);
+      mat.uniforms.uUvOffset.value.set(
+        clamp(focalU - scaleX / 2, 1 - scaleX),
+        clamp(focalV - scaleY / 2, 1 - scaleY),
+      );
     }
 
     const textureCache = new Map<string, THREE.Texture>();
@@ -419,9 +463,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           allMeshes.push(mesh);
           panelMeta.push({ proj, tR, tS, yS, delay: ENTRANCE_DELAY_MIN_MS + Math.random() * ENTRANCE_DELAY_RANGE_MS, done: false });
 
-          loadPanelTexture(proj.img, tex => {
+          loadPanelTexture(proj.img.url, tex => {
             mat.uniforms.uTexture.value = tex;
-            applyCoverUv(mat, tex, cfg.panelW / cfg.panelH);
+            applyCoverUv(mat, tex, cfg.panelW / cfg.panelH, proj.img);
           });
         }
       }
@@ -658,11 +702,15 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           // above it. Right-positioned cards keep the default (their right edge already lines
           // up); left-positioned cards get the title anchored to their left edge instead.
           const titleStyle = alignRight ? "" : ' style="right:auto;left:2px;text-align:left;"';
-          // p.title/p.img can come from a classics card entered in the Payload admin (see
+          // p.title/p.img.url can come from a classics card entered in the Payload admin (see
           // ClassicsPageClient's cmsProjects prop) — escaped here the same way detailBodyHtml
           // escapes card body text below, so a crafted heading/image URL can't break out of these
           // attributes into a stored XSS payload.
-          card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(p.img)}" alt="${escapeHtml(p.title)}">
+          //
+          // No object-position needed on these: .pg-card__img is width:100%/height:auto, so it
+          // renders at the image's natural aspect and never crops. The focal point only matters
+          // where something cover-crops (the 3D panels, the detail popup, the thumb strip).
+          card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(p.img.url)}" alt="${escapeHtml(p.title)}">
             <span class="pg-card__cta">CLICK TO SEE</span>
             <span class="pg-card__title"${titleStyle}>/${escapeHtml(p.title.toUpperCase())}</span>`;
           const onClick = () => { if (!detailOpen) openDetail(p, card); };
@@ -687,7 +735,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         card.className = "pg-card";
         card.style.left = left + "%"; card.style.top = top + "px"; card.style.width = w + "px";
         card.style.transform = `rotate(${rot.toFixed(2)}deg)`;
-        card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(p.img)}" alt="${escapeHtml(p.title)}">
+        card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(p.img.url)}" alt="${escapeHtml(p.title)}">
           <span class="pg-card__cta">CLICK TO SEE</span>
           <span class="pg-card__title">/${escapeHtml(p.title.toUpperCase())}</span>`;
         const onClick = () => { if (!detailOpen) openDetail(p, card); };
@@ -822,7 +870,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     let currentSource: PanelMesh | HTMLElement | null = null;
     let detailClosing = false;
     let currentProjectIndex = 0;
-    let currentGalleryImages: string[] = [];
+    let currentGalleryImages: CmsImage[] = [];
     let currentThumbIndex = 0;
     let autoplayTimer: number | null = null;
     const _v3 = new THREE.Vector3();
@@ -851,13 +899,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     function selectThumb(idx: number) {
       const img = detailImgRef.current;
       const track = detailThumbTrackRef.current;
-      const src = currentGalleryImages[idx];
-      if (!img || !track || !src || img.src === src) return;
+      const next = currentGalleryImages[idx];
+      if (!img || !track || !next || img.src === next.url) return;
       currentThumbIndex = idx;
       img.style.transition = "opacity .15s ease";
       img.style.opacity = "0";
       setTimeout(() => {
-        img.src = src;
+        applyImage(img, next);
         img.style.opacity = "1";
       }, 150);
       track.querySelectorAll<HTMLButtonElement>(".detail__thumb").forEach((el, i) => {
@@ -891,12 +939,12 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       if (allProjects.length === 0) return;
       const prevProj = allProjects[(currentProjectIndex - 1 + allProjects.length) % allProjects.length];
       const nextProj = allProjects[(currentProjectIndex + 1) % allProjects.length];
-      if (detailGhostPrevImgRef.current) detailGhostPrevImgRef.current.src = prevProj.img;
+      applyImage(detailGhostPrevImgRef.current, prevProj.img);
       if (detailGhostPrevTitleRef.current) detailGhostPrevTitleRef.current.textContent = prevProj.title.toUpperCase();
       if (detailGhostPrevBadgeRef.current) detailGhostPrevBadgeRef.current.textContent = prevProj.cat.toUpperCase();
       if (detailGhostPrevBodyRef.current) detailGhostPrevBodyRef.current.innerHTML = detailBodyHtml(prevProj.body);
       applyIgLink(detailGhostPrevIgRef.current, prevProj.instagram);
-      if (detailGhostNextImgRef.current) detailGhostNextImgRef.current.src = nextProj.img;
+      applyImage(detailGhostNextImgRef.current, nextProj.img);
       if (detailGhostNextTitleRef.current) detailGhostNextTitleRef.current.textContent = nextProj.title.toUpperCase();
       if (detailGhostNextBadgeRef.current) detailGhostNextBadgeRef.current.textContent = nextProj.cat.toUpperCase();
       if (detailGhostNextBodyRef.current) detailGhostNextBodyRef.current.innerHTML = detailBodyHtml(nextProj.body);
@@ -916,13 +964,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         return;
       }
       wrap.classList.add("is-visible");
-      currentGalleryImages.forEach((src, i) => {
+      currentGalleryImages.forEach((image, i) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "detail__thumb" + (i === 0 ? " is-active" : "");
         btn.setAttribute("aria-label", `Show image ${i + 1} of ${currentGalleryImages.length}`);
         const im = document.createElement("img");
-        im.src = src;
+        applyImage(im, image);
         im.alt = "";
         btn.appendChild(im);
         btn.addEventListener("click", () => { selectThumb(i); startAutoplay(); });
@@ -937,7 +985,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       currentProjectIndex = allProjects.indexOf(proj);
       const img = detailImgRef.current;
       if (!img || !detailTitleRef.current || !detailBadgeRef.current || !detailBodyRef.current) return;
-      img.src = proj.img;
+      applyImage(img, proj.img);
       detailTitleRef.current.textContent = proj.title.toUpperCase();
       detailBadgeRef.current.textContent = proj.cat.toUpperCase();
       detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
@@ -1021,7 +1069,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       img.style.transition = "opacity .15s ease";
       img.style.opacity = "0";
       setTimeout(() => {
-        img.src = proj.img;
+        applyImage(img, proj.img);
         detailTitleRef.current!.textContent = proj.title.toUpperCase();
         detailBadgeRef.current!.textContent = proj.cat.toUpperCase();
         detailBodyRef.current!.innerHTML = detailBodyHtml(proj.body);
@@ -1106,7 +1154,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         setTimeout(() => {
           currentProjectIndex = (currentProjectIndex + dir + allProjects.length) % allProjects.length;
           const proj = allProjects[currentProjectIndex];
-          if (detailImgRef.current) detailImgRef.current.src = proj.img;
+          applyImage(detailImgRef.current, proj.img);
           if (detailTitleRef.current) detailTitleRef.current.textContent = proj.title.toUpperCase();
           if (detailBadgeRef.current) detailBadgeRef.current.textContent = proj.cat.toUpperCase();
           if (detailBodyRef.current) detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);

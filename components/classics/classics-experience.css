@@ -136,19 +136,26 @@
    .detail__thumbs (flex-shrink:0, its own natural size) instead of demanding a fixed floor. */
 .classics-exp .detail__mediaCol { display: flex; flex: 1 1 0; flex-direction: column; gap: 10px; min-width: 0; }
 .classics-exp .detail__media { flex: 1 1 auto; min-height: 0; position: relative; }
-/* object-position:top (by request — "images are cutting on top") — object-fit:cover's default
-   center crop was cutting off the tops of heads/faces on portrait photos placed into this
+/* object-position is set per-image from JS (applyImage in ClassicsExperience.tsx) using the focal
+   point an editor picked in the Payload admin, so each photo decides for itself which part
+   survives this box's crop.
+
+   It used to be hardcoded `top` (by request — "images are cutting on top"): object-fit:cover's
+   default center crop was cutting off the tops of heads/faces on portrait photos placed into this
    card's wide media box (the card's own fixed height, see .detail__card, crops the image's
-   vertical extent more than a taller box would). Anchoring the crop to the top keeps the subject's
-   head/face intact and crops from the bottom instead, which reads far better for portrait shots. */
+   vertical extent more than a taller box would). That fixed the portraits and broke anything with
+   its subject low in the frame — a fixed anchor is only ever right for some photos. The `top`
+   below is now just the pre-JS fallback, keeping that same better-for-portraits default for the
+   moment before applyImage runs. */
 .classics-exp .detail__img { display: block; height: 100%; object-fit: cover; object-position: top; position: absolute; inset: 0; width: 100%; will-change: transform, opacity; backface-visibility: hidden; }
 .classics-exp .detail__thumbs { align-items: center; display: none; flex-shrink: 0; gap: 6px; }
 .classics-exp .detail__thumbs.is-visible { display: flex; }
 .classics-exp .detail__thumbTrack { display: flex; flex: 1; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .classics-exp .detail__thumbTrack::-webkit-scrollbar { display: none; }
 .classics-exp .detail__thumb { border: 2px solid transparent; border-radius: 6px; cursor: pointer; flex-shrink: 0; height: 64px; opacity: .55; overflow: hidden; padding: 0; transition: opacity .2s ease, border-color .2s ease; width: 84px; }
-/* object-position:top — same reason as .detail__img above, so the thumbnail strip's own crop
-   doesn't cut off heads/faces either. */
+/* object-position:top — same story as .detail__img above: a pre-JS fallback that applyImage
+   overwrites with this image's own focal point, so the thumbnail strip's much tighter crop
+   (84x64) doesn't cut off heads/faces either. */
 .classics-exp .detail__thumb img { display: block; height: 100%; object-fit: cover; object-position: top; width: 100%; }
 .classics-exp .detail__thumb:hover { opacity: .85; }
 .classics-exp .detail__thumb.is-active { border-color: #1d4ed8; opacity: 1; }

@@ -192,7 +192,7 @@ export interface ClassicsCard {
    */
   paragraph: string;
   /**
-   * Main image shown in the grid tile and as the large image in the detail popup.
+   * Main image shown in the grid tile and as the large image in the detail popup. To control how it gets framed, open the image and use "Edit Image": drag the focal point to whatever must stay visible (a face, the product) and the site anchors every crop to it, or use the crop tool to cut the photo down permanently. Saving the image is enough — the card updates on its own.
    */
   image: number | Media;
   /**
@@ -200,7 +200,7 @@ export interface ClassicsCard {
    */
   instagram?: string | null;
   /**
-   * Optional extra images. When present, a thumbnail strip appears below the main image in the detail popup so visitors can browse through all the photos for this card.
+   * Optional extra images. When present, a thumbnail strip appears below the main image in the detail popup so visitors can browse through all the photos for this card. Each one takes its own focal point and crop via "Edit Image", same as the main image above.
    */
   gallery?:
     | {

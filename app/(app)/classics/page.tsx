@@ -1,7 +1,25 @@
 import type { Metadata } from "next";
 import { ClassicsPageClient } from "@/components/classics/ClassicsPageClient";
-import type { CmsProject } from "@/components/classics/ClassicsExperience";
+import type { CmsImage, CmsProject } from "@/components/classics/ClassicsExperience";
 import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Normalizes one gallery entry into the { url, focalX, focalY } shape the experience renders.
+ *
+ * Accepts the bare URL string that gallery entries used to be, as well as the current
+ * { url, focal_x, focal_y } object — rows are migrated in place by
+ * supabase/migrations/0005_classics_cards_focal.sql, but a row written by an older deploy
+ * mid-rollout should render with the old centered framing rather than blank out.
+ */
+function toCmsImage(entry: unknown, fallbackUrl = ""): CmsImage {
+  if (typeof entry === "string") return { url: entry, focalX: 50, focalY: 50 };
+  const o = (entry ?? {}) as Record<string, unknown>;
+  return {
+    url: typeof o.url === "string" ? o.url : fallbackUrl,
+    focalX: typeof o.focal_x === "number" ? o.focal_x : 50,
+    focalY: typeof o.focal_y === "number" ? o.focal_y : 50,
+  };
+}
 
 export const metadata: Metadata = {
   title: "SWITCHBLADE CLASSICS — The Brand Journey | SWITCHBLADE™",
@@ -27,7 +45,7 @@ export default async function ClassicsPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("classics_cards")
-    .select("heading, category, image_url, gallery, body, instagram_url")
+    .select("heading, category, image_url, image_focal_x, image_focal_y, gallery, body, instagram_url")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -37,8 +55,12 @@ export default async function ClassicsPage() {
   const cmsProjects: CmsProject[] = (data ?? []).map((row) => ({
     title: row.heading,
     cat: row.category,
-    img: row.image_url,
-    gallery: (row.gallery as string[] | null) ?? undefined,
+    img: {
+      url: row.image_url,
+      focalX: row.image_focal_x ?? 50,
+      focalY: row.image_focal_y ?? 50,
+    },
+    gallery: (row.gallery as unknown[] | null)?.map((g) => toCmsImage(g)) ?? undefined,
     body: (row.body as string[] | null) ?? undefined,
     instagram: row.instagram_url ?? undefined,
   }));
