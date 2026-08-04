@@ -10,6 +10,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { SparkleMark } from "@/components/shared/SparkleMark";
+import { SweepText } from "@/components/shared/SweepText";
 import "./classics-experience.css";
 
 /**
@@ -120,12 +121,19 @@ const FLIP_MS = 480;
 // Boot reveal timings. BOOT_FALL_MS must match the .classics-boot__cover.is-falling transition
 // duration in classics-experience.css — it's only used to know when the panel has fully cleared.
 //
-// BOOT_HOLD_MS is now a MINIMUM, not the whole wait: the gradient also holds until every panel
-// texture has finished loading (see the boot gate below), so the gallery is fully imaged and
-// turning by the time it's uncovered instead of revealing a ring of blank panels that pop in one
-// by one. The minimum still matters on a warm cache, where the textures resolve almost instantly
-// and the gradient would otherwise flash by in a frame or two.
-const BOOT_HOLD_MS = 500;
+// BOOT_HOLD_MS is a MINIMUM, not the whole wait: the gradient also holds until every panel texture
+// has finished loading (see the boot gate below), so the gallery is fully imaged and turning by
+// the time it's uncovered instead of revealing a ring of blank panels that pop in one by one. The
+// minimum is what governs a warm cache, where the textures resolve almost instantly and the
+// loading screen would otherwise flash by before it could be read.
+// Beat before the loading screen's title wipes in, so the gradient has visibly arrived first and
+// the reveal reads as a deliberate entrance rather than something that was always there.
+const BOOT_SWEEP_DELAY_MS = 220;
+// Long enough for that wipe to finish (delay + SweepText's own 1300ms), plus a moment to read the
+// finished word. Sized off the sweep deliberately: a shorter hold means a warm cache can reveal
+// the gallery while the title is still half wiped in, so the word never actually resolves — the
+// visitor sees a partial word fade out, which looks like a glitch rather than an intro.
+const BOOT_HOLD_MS = BOOT_SWEEP_DELAY_MS + 1300 + 250;
 const BOOT_FALL_MS = 2200;
 // Failsafe on that wait — deliberately generous, because the loading screen shows a real
 // percentage now. A visitor watching a counter climb will happily wait far longer than one staring
@@ -1618,7 +1626,14 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       <div className="classics-boot__ui">
         <div className="classics-boot__center">
           <span className="classics-boot__eyebrow">Know information in ease</span>
-          <div className="classics-boot__title">Classics</div>
+          {/* Same gradient-wipe reveal the site's headings use (SweepText), so the loading screen
+              introduces itself the way every other title on the site does rather than just being
+              there. trigger="load" because this is never scrolled to — it's on screen from the
+              first frame, so the IntersectionObserver path would have nothing to wait for.
+              tone="light": white resting colour, against the blue upper half of the gradient. */}
+          <div className="classics-boot__title">
+            <SweepText tone="light" trigger="load" delay={BOOT_SWEEP_DELAY_MS}>Classics</SweepText>
+          </div>
         </div>
         <div className="classics-boot__bottom">
           <div className="classics-boot__row">
