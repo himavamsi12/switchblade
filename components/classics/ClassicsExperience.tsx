@@ -10,7 +10,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { SparkleMark } from "@/components/shared/SparkleMark";
-import { SweepText } from "@/components/shared/SweepText";
 import "./classics-experience.css";
 
 /**
@@ -128,15 +127,11 @@ const FLIP_MS = 480;
 // loading screen would otherwise flash by before it could be read.
 // Beat before the loading screen's title wipes in, so the gradient has visibly arrived first and
 // the reveal reads as a deliberate entrance rather than something that was always there.
-const BOOT_SWEEP_DELAY_MS = 90;
-// Passed to SweepText as its `duration`, well under the 1300ms it uses elsewhere on the site. The
-// scroll-triggered headings can afford a slow, luxurious wipe — the visitor found them. Here the
-// wipe is the thing standing between someone and the page they asked for, so it reads as the site
-// being slow rather than as a flourish. Kept as a constant because the beats below derive from it.
-const BOOT_SWEEP_MS = 650;
-// The "Know information in ease" tag fades in only once the title has fully wiped in, so the two
-// read as a sequence rather than arriving together.
-const BOOT_EYEBROW_DELAY_MS = BOOT_SWEEP_DELAY_MS + BOOT_SWEEP_MS;
+const BOOT_TITLE_DELAY_MS = 90;
+const BOOT_TITLE_FADE_MS = 400;
+// The "Know information in ease" tag fades in only once the title has finished, so the two read as
+// a sequence rather than arriving together.
+const BOOT_EYEBROW_DELAY_MS = BOOT_TITLE_DELAY_MS + BOOT_TITLE_FADE_MS;
 const BOOT_EYEBROW_FADE_MS = 400;
 // Long enough for that whole sequence — title wipe, then tag fade — plus a moment to actually read
 // the result. Derived rather than hardcoded: a shorter hold lets a warm cache reveal the gallery
@@ -1642,13 +1637,17 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           >
             Know information in ease
           </span>
-          {/* Same gradient-wipe reveal the site's headings use (SweepText), so the loading screen
-              introduces itself the way every other title on the site does rather than just being
-              there. trigger="load" because this is never scrolled to — it's on screen from the
-              first frame, so the IntersectionObserver path would have nothing to wait for.
-              tone="light": white resting colour, against the blue upper half of the gradient. */}
-          <div className="classics-boot__title">
-            <SweepText tone="light" trigger="load" delay={BOOT_SWEEP_DELAY_MS} duration={BOOT_SWEEP_MS}>Classics</SweepText>
+          {/* Plain fade, matching the tag below it — by request, replacing the gradient wipe this
+              used to share with the site's scroll-triggered headings. Two things improved with it:
+              the whole intro got shorter, and the title no longer depends on rAF to become
+              visible. SweepText renders fully transparent at rest and only resolves as its wipe
+              runs, so a browser that throttles rAF (any hidden/background tab) could leave the
+              word invisible; a CSS animation with fill-mode:both cannot. */}
+          <div
+            className="classics-boot__title"
+            style={{ animationDelay: `${BOOT_TITLE_DELAY_MS}ms`, animationDuration: `${BOOT_TITLE_FADE_MS}ms` }}
+          >
+            Classics
           </div>
         </div>
         <div className="classics-boot__bottom">

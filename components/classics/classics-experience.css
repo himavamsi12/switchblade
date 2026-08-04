@@ -79,7 +79,14 @@
 @media (prefers-reduced-motion: reduce) {
   .classics-boot__eyebrow { animation: none; }
 }
-.classics-boot__title { color: #fff; font-family: var(--font-barlow), sans-serif; font-size: clamp(46px, 9.2vw, 150px); letter-spacing: -.005em; line-height: .95; margin-top: clamp(4px, .5vw, 10px); text-transform: uppercase; }
+/* Fades in ahead of the tag below it — same animation, delay/duration supplied inline from the
+   component so both beats stay derived from one set of constants. `both` fill mode holds it
+   invisible through the delay; without it the word shows immediately and then blinks out when the
+   animation starts. */
+.classics-boot__title { animation: classicsBootFadeIn 400ms ease both; color: #fff; font-family: var(--font-barlow), sans-serif; font-size: clamp(46px, 9.2vw, 150px); letter-spacing: -.005em; line-height: .95; margin-top: clamp(4px, .5vw, 10px); text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) {
+  .classics-boot__title { animation: none; }
+}
 
 /* Bottom readout. Sits over the gradient's pale end, so this half is dark-on-light. */
 .classics-boot__bottom { bottom: 0; left: 0; padding: 0 clamp(18px, 3.4vw, 56px) clamp(14px, 1.6vw, 26px); position: absolute; right: 0; }
