@@ -128,19 +128,21 @@ const FLIP_MS = 480;
 // loading screen would otherwise flash by before it could be read.
 // Beat before the loading screen's title wipes in, so the gradient has visibly arrived first and
 // the reveal reads as a deliberate entrance rather than something that was always there.
-const BOOT_SWEEP_DELAY_MS = 220;
-// SweepText's own animation length. Duplicated from that component (it isn't exported) purely so
-// the beats below can be derived rather than guessed — keep the two in step if it's ever retuned.
-const BOOT_SWEEP_MS = 1300;
+const BOOT_SWEEP_DELAY_MS = 90;
+// Passed to SweepText as its `duration`, well under the 1300ms it uses elsewhere on the site. The
+// scroll-triggered headings can afford a slow, luxurious wipe — the visitor found them. Here the
+// wipe is the thing standing between someone and the page they asked for, so it reads as the site
+// being slow rather than as a flourish. Kept as a constant because the beats below derive from it.
+const BOOT_SWEEP_MS = 650;
 // The "Know information in ease" tag fades in only once the title has fully wiped in, so the two
 // read as a sequence rather than arriving together.
 const BOOT_EYEBROW_DELAY_MS = BOOT_SWEEP_DELAY_MS + BOOT_SWEEP_MS;
-const BOOT_EYEBROW_FADE_MS = 500;
+const BOOT_EYEBROW_FADE_MS = 400;
 // Long enough for that whole sequence — title wipe, then tag fade — plus a moment to actually read
 // the result. Derived rather than hardcoded: a shorter hold lets a warm cache reveal the gallery
 // mid-sequence, so the word never resolves and the tag never appears. A partial word fading out
 // reads as a glitch, not an intro.
-const BOOT_HOLD_MS = BOOT_EYEBROW_DELAY_MS + BOOT_EYEBROW_FADE_MS + 250;
+const BOOT_HOLD_MS = BOOT_EYEBROW_DELAY_MS + BOOT_EYEBROW_FADE_MS + 200;
 const BOOT_FALL_MS = 2200;
 // Failsafe on that wait — deliberately generous, because the loading screen shows a real
 // percentage now. A visitor watching a counter climb will happily wait far longer than one staring
@@ -1646,7 +1648,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               first frame, so the IntersectionObserver path would have nothing to wait for.
               tone="light": white resting colour, against the blue upper half of the gradient. */}
           <div className="classics-boot__title">
-            <SweepText tone="light" trigger="load" delay={BOOT_SWEEP_DELAY_MS}>Classics</SweepText>
+            <SweepText tone="light" trigger="load" delay={BOOT_SWEEP_DELAY_MS} duration={BOOT_SWEEP_MS}>Classics</SweepText>
           </div>
         </div>
         <div className="classics-boot__bottom">

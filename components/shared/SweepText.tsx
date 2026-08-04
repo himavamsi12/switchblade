@@ -4,7 +4,8 @@ import { useEffect, useRef } from "react";
 type SweepTone = "dark" | "light";
 type SweepTrigger = "scroll" | "load";
 
-const DURATION = 1300;
+/** Default wipe length. Overridable per instance via the `duration` prop. */
+const DEFAULT_DURATION = 1300;
 const START = -30;
 const RANGE = 160;
 
@@ -12,7 +13,7 @@ function ease(p: number) {
   return p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
 }
 
-function runSweep(el: HTMLElement, delayMs: number) {
+function runSweep(el: HTMLElement, delayMs: number, durationMs: number = DEFAULT_DURATION) {
   let raf = 0;
   let cancelled = false;
   const timeout = window.setTimeout(() => {
@@ -20,7 +21,7 @@ function runSweep(el: HTMLElement, delayMs: number) {
     const start = performance.now();
     const tick = (now: number) => {
       if (cancelled) return;
-      const p = Math.min((now - start) / DURATION, 1);
+      const p = Math.min((now - start) / durationMs, 1);
       el.style.setProperty("--sweep", `${START + ease(p) * RANGE}%`);
       if (p < 1) raf = requestAnimationFrame(tick);
     };
@@ -47,6 +48,9 @@ export type SweepTextProps = {
   tone?: SweepTone;
   trigger?: SweepTrigger;
   delay?: number;
+  /** Wipe length in ms. Defaults to 1300 — shorten it where the reveal is holding something up,
+   *  e.g. a loading screen the visitor is waiting behind. */
+  duration?: number;
   /** Final resting color once the sweep completes — should match the heading's original color. */
   color?: string;
   /** Blue leading-edge glow color(s) that travel ahead of the reveal, fading to transparent. */
@@ -62,6 +66,7 @@ export function SweepText({
   tone = "dark",
   trigger = "scroll",
   delay = 0,
+  duration = DEFAULT_DURATION,
   color,
   glow = "#0456DD",
   glow2 = "#8FB2FF",
@@ -81,7 +86,7 @@ export function SweepText({
     if (el.closest("[data-sweep-group]")) return;
 
     if (trigger === "load") {
-      return runSweep(el, delay);
+      return runSweep(el, delay, duration);
     }
 
     let stop: (() => void) | undefined;
@@ -89,7 +94,7 @@ export function SweepText({
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
-          stop = runSweep(el, delay);
+          stop = runSweep(el, delay, duration);
           observer.unobserve(entry.target);
         });
       },
@@ -100,7 +105,7 @@ export function SweepText({
       observer.disconnect();
       stop?.();
     };
-  }, [trigger, delay]);
+  }, [trigger, delay, duration]);
 
   return (
     <span
