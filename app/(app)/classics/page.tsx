@@ -22,9 +22,11 @@ function toCmsImage(entry: unknown, fallbackUrl = ""): CmsImage {
 }
 
 export const metadata: Metadata = {
-  title: "SWITCHBLADE CLASSICS — The Brand Journey | SWITCHBLADE™",
+  // The trailing "| SWITCHBLADE™" is gone now that the mark leads the title — repeating the brand
+  // at both ends only ate room in the tab and in search results, where titles get truncated.
+  title: "SWITCHBLADE™ CLASSICS — The Brand Journey",
   description:
-    "From Cosmos to Classic to Evolution — explore the three-phase journey of the Switchblade star, and the archive of inspirations that shaped an unmistakable mark.",
+    "From Cosmos to Classic to Evolution — explore the three-phase journey of the SWITCHBLADE™ star, and the archive of inspirations that shaped an unmistakable mark.",
 };
 
 /**
