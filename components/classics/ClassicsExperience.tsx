@@ -9,6 +9,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // useGLTF (Star3D, JourneyStar3D) wires it automatically; these raw GLTFLoaders do not.
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { SparkleMark } from "@/components/shared/SparkleMark";
 import "./classics-experience.css";
 
 /**
@@ -126,11 +127,13 @@ const FLIP_MS = 480;
 // and the gradient would otherwise flash by in a frame or two.
 const BOOT_HOLD_MS = 500;
 const BOOT_FALL_MS = 2200;
-// Hard cap on that wait. A single image that 404s, hangs, or crawls on a bad connection must never
-// strand someone on a full-screen gradient — past this the reveal happens regardless of what's
-// still in flight, and those panels fill in as they arrive (the old behaviour). Failed loads are
-// also counted as settled so one broken URL alone can't run the clock out.
-const BOOT_MAX_WAIT_MS = 8000;
+// Failsafe on that wait — deliberately generous, because the loading screen shows a real
+// percentage now. A visitor watching a counter climb will happily wait far longer than one staring
+// at a blank gradient, so this is set to catch a genuinely stuck load (a hung request, a dead
+// connection) rather than to bound normal waiting. Failed loads already count as settled, so one
+// broken URL can't run the clock out on its own. Past this the bar is swept to 100% and the reveal
+// proceeds with whatever is still in flight filling in behind it.
+const BOOT_MAX_WAIT_MS = 20000;
 
 interface ViewportConfig {
   fov: number; cameraZ: number; radius: number;
@@ -279,6 +282,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
   const bootLoaderRef  = useRef<HTMLDivElement>(null);
   const bootLayerRef   = useRef<HTMLDivElement>(null);
+  // Loading-screen readouts, driven from the boot gate's real texture-load progress (see
+  // updateBootUi). Written imperatively rather than through state: this updates every frame while
+  // the gradient is up, and re-rendering the whole experience tree at 60fps for a percentage
+  // counter would be wasteful and could stutter the 3D scene setting up behind it.
+  const bootPctRef     = useRef<HTMLSpanElement>(null);
+  const bootFillRef    = useRef<HTMLDivElement>(null);
+  const bootKnobRef    = useRef<HTMLDivElement>(null);
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -441,15 +451,24 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     // tryBootFall is a no-op placeholder until the boot sequence further down installs the real
     // one — that code runs later in this same effect, so assigning through a mutable binding
     // avoids a temporal-dead-zone crash if a cached texture settles synchronously during the build.
-    const bootPendingUrls = new Set<string>();
+    // Two sets rather than one countdown, so the loading screen can show a real fraction: `wanted`
+    // is every DISTINCT url the first build asked for, `settled` is how many of those have
+    // finished. Distinct matters — the rows deal the same project into several panels, and a
+    // plain counter would then count one image two or three times and stall the bar short of 100%.
+    const bootWanted = new Set<string>();
+    const bootSettled = new Set<string>();
     let bootCollecting = true;
     let bootBuildDone = false;
     let bootTexturesReady = false;
     let tryBootFall: () => void = () => {};
+    let onBootProgress: (() => void) | null = null;
     const noteBootTexture = (url: string) => {
-      // Only counts URLs this gate is actually waiting on; ignores resize rebuilds and repeats.
-      if (!bootPendingUrls.delete(url)) return;
-      if (bootBuildDone && bootPendingUrls.size === 0) {
+      // Ignores urls this gate isn't waiting on (resize rebuilds) and repeat callbacks for one
+      // already counted, either of which would otherwise push the fraction past 100%.
+      if (!bootWanted.has(url) || bootSettled.has(url)) return;
+      bootSettled.add(url);
+      onBootProgress?.();
+      if (bootBuildDone && bootSettled.size >= bootWanted.size) {
         bootTexturesReady = true;
         tryBootFall();
       }
@@ -513,7 +532,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           // Registered before the load starts so a texture that's already cached (and therefore
           // calls back synchronously) is added and removed in the right order rather than being
           // counted down before it was ever counted up.
-          if (bootCollecting && proj.img.url) bootPendingUrls.add(proj.img.url);
+          if (bootCollecting && proj.img.url) bootWanted.add(proj.img.url);
           loadPanelTexture(proj.img.url, tex => {
             mat.uniforms.uTexture.value = tex;
             applyCoverUv(mat, tex, cfg.panelW / cfg.panelH, proj.img);
@@ -527,7 +546,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     // come, which would otherwise release the gradient early.
     bootCollecting = false;
     bootBuildDone = true;
-    if (bootPendingUrls.size === 0) bootTexturesReady = true;
+    if (bootSettled.size >= bootWanted.size) bootTexturesReady = true;
 
     let centerStar: THREE.Group | null = null;
     function loadCenterStar() {
@@ -1359,10 +1378,25 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     const bootTimers: number[] = [];
     let bootMinHoldDone = false;
     let bootFallen = false;
+    let bootRaf = 0;
+    // What the bar/percentage currently SHOW, eased toward the true fraction rather than snapping
+    // to it. Real load progress arrives as a step per image — with 50 images that's 2% jumps, and
+    // on a warm cache most of them land in the same frame, which reads as a broken counter
+    // flicking straight to 100. Easing turns it into a continuous sweep while still being driven
+    // entirely by genuine completions, never a fake timed animation.
+    let bootShown = 0;
+    // Set by the failsafe below so the bar still animates cleanly to 100% and falls, rather than
+    // the reveal cutting away mid-count.
+    let bootForceComplete = false;
 
     const fallBoot = () => {
       if (bootFallen) return;
       bootFallen = true;
+      if (bootRaf) cancelAnimationFrame(bootRaf);
+      // Fades the loading screen's text/bar out (see .classics-boot.is-revealing) while the
+      // gradient itself slides down, so the copy dissolves in place instead of being dragged off
+      // the bottom of the screen with the panel.
+      bootLoaderRef.current?.classList.add("is-revealing");
       bootLayerRef.current?.classList.add("is-falling");
       // Reveal + start the scene's own entrance right as the fall begins, NOT after it finishes:
       // the panel takes BOOT_FALL_MS to clear, so the content needs to already be live behind it
@@ -1379,14 +1413,60 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     };
 
     // Reassigns the placeholder declared next to the boot gate, so a texture settling later can
-    // reach this. Both conditions are re-checked on every call because either can land first:
-    // a cold load finishes after the hold, a warm cache finishes well before it.
+    // reach this. All three are re-checked on every call because any can land last: on a cold load
+    // the textures finish well after the hold, on a warm cache the hold is the long pole, and the
+    // bar's own easing always needs a few frames to actually arrive at 100.
     tryBootFall = () => {
-      if (bootMinHoldDone && bootTexturesReady) fallBoot();
+      if (!bootMinHoldDone || !bootTexturesReady) return;
+      // Normally waits for the bar to visibly reach 100 before revealing. But that value only
+      // advances on rAF, which browsers PAUSE entirely in a hidden tab — so a visitor who opens
+      // this page and immediately switches away would come back to a gradient still sitting at
+      // whatever percent it froze on. Nobody is watching the sweep in that case, so don't hold the
+      // reveal hostage to it.
+      if (bootShown >= 1 || document.visibilityState === "hidden") fallBoot();
     };
+
+    // Drives the percentage, the bar fill and the star knob from the real fraction of panel
+    // textures that have finished. Runs on its own rAF rather than the scene's render loop,
+    // because it has to be animating during exactly the window where that loop is still starting
+    // up — which is the whole reason there's a loading screen at all.
+    const updateBootUi = () => {
+      // Cleared up front, not on exit, so onBootProgress below can always tell whether a loop is
+      // actually pending — leaving a stale id here would make it think one is and never restart.
+      bootRaf = 0;
+      const target = bootForceComplete || bootWanted.size === 0
+        ? 1
+        : bootSettled.size / bootWanted.size;
+      bootShown += (target - bootShown) * 0.12;
+      // Snap once close enough, so the asymptote can't leave it frozen at 99% forever.
+      if (target - bootShown < 0.004) bootShown = target;
+      const pct = Math.min(100, Math.round(bootShown * 100));
+      // Digits only — the "%" is a separate, smaller span in the markup and never changes.
+      if (bootPctRef.current) bootPctRef.current.textContent = String(pct).padStart(2, "0");
+      // scaleX on a full-width bar rather than animating `width` — a transform is composited, and
+      // this runs every frame alongside the 3D scene building itself behind the gradient.
+      if (bootFillRef.current) bootFillRef.current.style.transform = `scaleX(${bootShown})`;
+      if (bootKnobRef.current) bootKnobRef.current.style.left = `${bootShown * 100}%`;
+      if (bootShown >= 1) { tryBootFall(); return; }   // arrived: stop the loop
+      bootRaf = requestAnimationFrame(updateBootUi);
+    };
+    // Nudges the loop awake when a texture lands, in case it already stopped at a completed frame.
+    onBootProgress = () => { if (!bootFallen && !bootRaf) bootRaf = requestAnimationFrame(updateBootUi); };
+    bootRaf = requestAnimationFrame(updateBootUi);
+
     bootTimers.push(window.setTimeout(() => { bootMinHoldDone = true; tryBootFall(); }, BOOT_HOLD_MS));
-    // Safety net — see BOOT_MAX_WAIT_MS. Reveals regardless of what's still loading.
-    bootTimers.push(window.setTimeout(fallBoot, BOOT_MAX_WAIT_MS));
+    // Failsafe — see BOOT_MAX_WAIT_MS. Rather than cutting the reveal in mid-count, it declares the
+    // load complete so the bar sweeps up to 100% and falls through the normal path.
+    bootTimers.push(window.setTimeout(() => {
+      bootForceComplete = true;
+      bootTexturesReady = true;
+      bootMinHoldDone = true;
+      if (!bootRaf) bootRaf = requestAnimationFrame(updateBootUi);
+      // Also attempted directly, not left to the loop alone — same hidden-tab reasoning as
+      // tryBootFall above: with rAF paused, the frame that would have triggered this never comes,
+      // and the failsafe would fail to be a failsafe in exactly the case it exists for.
+      tryBootFall();
+    }, BOOT_MAX_WAIT_MS));
 
     let lastT = performance.now(), totalT = 0;
     let bendHSmoothed = 0, bendVSmoothed = 0;
@@ -1461,6 +1541,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       document.body.style.overflow = prevOverflow;
 
       cancelAnimationFrame(mainRaf);
+      // The loading-screen loop is normally stopped by fallBoot, but unmounting mid-load (a route
+      // change while images are still downloading) leaves it running against detached elements.
+      if (bootRaf) cancelAnimationFrame(bootRaf);
+      onBootProgress = null;
       bootTimers.forEach(clearTimeout);
       cancelAnimationFrame(cursorRaf);
       cancelAnimationFrame(starRaf);
@@ -1525,8 +1609,36 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         context — so the site navbar (z-1200, a root-level sibling) painted straight over the
         falling gradient no matter how high the panel's own z-index went. As a sibling its z-index
         competes at the root level, where it can actually cover the nav. */}
+    {/* The loading screen that sits ON the gradient while the gallery's images download — the
+        gradient is the backdrop, this is the content on top of it. Both live inside .classics-boot
+        so they're removed together once the reveal finishes; the cover slides away while this
+        fades, so the falling gradient isn't dragging text down the screen with it. */}
     <div className="classics-boot" ref={bootLoaderRef} aria-hidden="true">
       <div className="classics-boot__cover" ref={bootLayerRef} />
+      <div className="classics-boot__ui">
+        <div className="classics-boot__center">
+          <span className="classics-boot__eyebrow">Know information in ease</span>
+          <div className="classics-boot__title">Classics</div>
+        </div>
+        <div className="classics-boot__bottom">
+          <div className="classics-boot__row">
+            <p className="classics-boot__caption">Curating list of<br />archives for you</p>
+            {/* Starts at 00% rather than blank so the reveal never flashes an empty slot on a warm
+                cache, where the first paint can already be most of the way through the load.
+                The "%" is its own span because the display font draws it 1.7x taller than its own
+                digits (measured) — left inline it towers over the number. See __pctSign. */}
+            <span className="classics-boot__pct">
+              <span ref={bootPctRef}>00</span><span className="classics-boot__pctSign">%</span>
+            </span>
+          </div>
+          <div className="classics-boot__track">
+            <div className="classics-boot__fill" ref={bootFillRef} />
+            <div className="classics-boot__knob" ref={bootKnobRef}>
+              <SparkleMark className="classics-boot__knobMark" />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div ref={rootRef} className="classics-exp">

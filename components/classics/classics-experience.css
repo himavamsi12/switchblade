@@ -56,6 +56,44 @@
   .classics-boot__cover.is-falling { transition: opacity .3s ease; transform: translateY(0); opacity: 0; }
 }
 
+/* The loading screen drawn ON the gradient: wordmark in the middle, progress readout along the
+   bottom. Everything here is driven from real image-load progress (see updateBootUi in
+   ClassicsExperience.tsx) — there is no timed fake animation.
+   Fades out as the gradient starts to fall, so the copy dissolves in place rather than being
+   dragged off the bottom of the screen with the panel. */
+.classics-boot__ui { position: absolute; inset: 0; opacity: 1; transition: opacity .35s ease; }
+.classics-boot.is-revealing .classics-boot__ui { opacity: 0; }
+
+/* Centred block. left:50%/top:50% + translate rather than flex centring so the bottom readout
+   below can be absolutely positioned in the same layer without the two fighting over layout. */
+.classics-boot__center { left: 50%; position: absolute; text-align: center; top: 50%; transform: translate(-50%, -50%); width: 100%; }
+/* Knocked-out label: dark text on a white plate, against the blue upper half of the gradient. */
+.classics-boot__eyebrow { background: #fff; color: #0D0D0D; display: inline-block; font-family: var(--font-archivo), sans-serif; font-size: clamp(10px, .78vw, 14px); font-weight: 500; letter-spacing: -.01em; line-height: 1.45; padding: 1px 7px; }
+.classics-boot__title { color: #fff; font-family: var(--font-barlow), sans-serif; font-size: clamp(46px, 9.2vw, 150px); letter-spacing: -.005em; line-height: .95; margin-top: clamp(4px, .5vw, 10px); text-transform: uppercase; }
+
+/* Bottom readout. Sits over the gradient's pale end, so this half is dark-on-light. */
+.classics-boot__bottom { bottom: 0; left: 0; padding: 0 clamp(18px, 3.4vw, 56px) clamp(14px, 1.6vw, 26px); position: absolute; right: 0; }
+.classics-boot__row { align-items: flex-end; display: flex; gap: 16px; justify-content: space-between; margin-bottom: clamp(10px, 1.1vw, 18px); }
+.classics-boot__caption { color: #0D0D0D; font-family: var(--font-archivo), sans-serif; font-size: clamp(11px, .95vw, 15px); font-weight: 400; line-height: 1.3; }
+.classics-boot__pct { color: #0D0D0D; font-family: var(--font-barlow), sans-serif; font-size: clamp(34px, 5.4vw, 86px); letter-spacing: -.01em; line-height: .85;
+  /* tabular figures — without them the counter's width jitters as digits change, which drags the
+     whole right-aligned number sideways on nearly every tick. */
+  font-variant-numeric: tabular-nums; }
+/* The display font's own "%" is 1.715x the height of its digits (measured against the loaded face,
+   not a fallback — the glyph is genuinely drawn that large). Scaling it by the reciprocal lands
+   its cap height on the digits', so the two read as one number instead of a giant symbol with a
+   small figure beside it. */
+.classics-boot__pctSign { font-size: .583em; }
+
+.classics-boot__track { background: rgba(13, 13, 13, .13); height: 2px; position: relative; }
+/* scaleX from a full-width bar, driven per frame — a transform is composited, whereas animating
+   `width` would relayout this element every single frame while the 3D scene is building behind. */
+.classics-boot__fill { background: #4E7FE0; height: 100%; left: 0; position: absolute; top: 0; transform: scaleX(0); transform-origin: left center; width: 100%; }
+/* Rides the bar at the current progress: `left` is a percentage set from JS, and the -50% keeps
+   the knob centred on that point rather than starting at it. */
+.classics-boot__knob { align-items: center; background: #0D0D0D; border-radius: 7px; display: flex; height: clamp(24px, 2vw, 32px); justify-content: center; left: 0; position: absolute; top: 50%; transform: translate(-50%, -50%); width: clamp(24px, 2vw, 32px); }
+.classics-boot__knobMark { color: #fff; height: 58%; width: auto; }
+
 /* App */
 .classics-exp .app-bg { background-color: var(--color-bg); background-image: radial-gradient(rgba(0, 0, 0, .16) 1.3px, transparent 1.3px); background-size: 30px 30px; background-position: 0 0; position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 
