@@ -672,20 +672,14 @@ export default function CollaboratePage() {
               // tight for the whole word — everywhere else the word fits and this has no effect.
               overflowWrap: "break-word",
             }}>
-              {/* The custom Barlow display font (TBJ One More Demo.ttf) has NO apostrophe glyph
-                  at all — verified directly against the font file (fontTools cmap), neither
-                  U+0027 nor U+2019 exist in it, only letters/digits. A missing glyph makes the
-                  browser silently substitute a fallback font for just that character, and that
-                  substituted glyph fails to paint under SweepText's gradient reveal
-                  (-webkit-background-clip: text + -webkit-text-fill-color: transparent, see
-                  .sweep-text in globals.css) — it renders invisible rather than just unstyled.
-                  Swapping curly &rsquo; for a plain ' alone does NOT fix this (tried first): the
-                  font has neither, so it's still a fallback substitution either way. The actual
-                  fix is forcing an EXPLICIT fallback font on just the apostrophe (not an implicit
-                  substitution), so the browser has an unambiguous font decision for that glyph
-                  and paints it as a normal (non-substituted) render within the clip. */}
+              {/* The apostrophe used to be forced into system-ui here: the old TBJ One More *Demo*
+                  file had no apostrophe glyph at all (neither U+0027 nor U+2019), and the
+                  browser's silent fallback substitution rendered invisible under SweepText's
+                  gradient clip rather than merely unstyled. The licensed TBJ One More Modern Sans
+                  has both glyphs (verified against the loaded face), so the override is gone — it
+                  would now only force a mismatched system apostrophe into a display heading. */}
               <SweepText tone="dark" color="#0F0E0C">
-                Let<span style={{ fontFamily: "system-ui, -apple-system, Arial, sans-serif" }}>&apos;</span>s<br />Collaborate
+                Let&apos;s<br />Collaborate
               </SweepText>
             </h2>
             <div className="rise">

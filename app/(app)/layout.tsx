@@ -16,8 +16,21 @@ const averiaSerif = Averia_Serif_Libre({
 // existing `var(--font-barlow)` / `font-barlow` reference across the site picks it up with no
 // other changes. This is a single-weight display font (no 300-900 range like Barlow had), so it
 // renders at its own native weight regardless of any font-weight the CSS asks for.
+//
+// This is the LICENSED "TBJ One More Modern Sans" (Taboja Studio), which replaced the cut-down
+// "TBJ One More Demo" the site previously shipped — that trial file was missing glyphs the copy
+// actually needs, most visibly the apostrophe, which several components had hand-written
+// workarounds for.
+//
+// Deliberately NOT under public/: anything there is served verbatim at its own guessable URL
+// (/classics/<name>.ttf), which for a licensed font means handing out the file itself. Loaded from
+// here, next/font emits it under a hashed build path instead, and the woff2 is a third the size of
+// the ttf on top of that. The woff fallback covers browsers without woff2 support.
 const barlow = localFont({
-  src: "../../public/classics/TBJ One More Demo.ttf",
+  src: [
+    { path: "./fonts/TBJOneMoreModernSans.woff2", style: "normal" },
+    { path: "./fonts/TBJOneMoreModernSans.woff", style: "normal" },
+  ],
   variable: "--font-barlow",
   display: "swap",
 });

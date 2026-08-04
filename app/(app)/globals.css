@@ -30,7 +30,7 @@ body {
   background-color: #ffffff;
   color: var(--ink);
   /* var(--font-barlow), not a literal 'Barlow' string: the variable is what next/font actually
-     binds to a loaded @font-face (Google Barlow before, now the local TBJ One More Demo file) —
+     binds to a loaded @font-face (Google Barlow before, now the local TBJ One More Modern Sans file) —
      a hardcoded 'Barlow' name stops matching anything the moment the underlying font changes,
      silently falling through to Inter for every element that relies on this inherited body
      font-family instead of setting fontFamily: var(--font-barlow) explicitly. */

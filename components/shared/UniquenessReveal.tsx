@@ -34,7 +34,7 @@ export function UniquenessReveal() {
           <p
             className="text-[#0D0D0D] font-black text-center"
             // lineHeight was 0.82, tuned tight for Barlow's specific vertical metrics. The new
-            // display font (TBJ One More Demo, swapped in site-wide for --font-barlow) has taller
+            // display font (TBJ One More Modern Sans, swapped in site-wide for --font-barlow) has taller
             // glyphs relative to its em box, so that same tight line-height clipped the tops of
             // the letters against the line box (visible as a flat-sheared cut across S/W/T/H/etc
             // at this component's giant scale). 0.92 gives the glyphs enough vertical room.

@@ -89,11 +89,6 @@
   /* tabular figures — without them the counter's width jitters as digits change, which drags the
      whole right-aligned number sideways on nearly every tick. */
   font-variant-numeric: tabular-nums; }
-/* The display font's own "%" is 1.715x the height of its digits (measured against the loaded face,
-   not a fallback — the glyph is genuinely drawn that large). Scaling it by the reciprocal lands
-   its cap height on the digits', so the two read as one number instead of a giant symbol with a
-   small figure beside it. */
-.classics-boot__pctSign { font-size: .583em; }
 
 .classics-boot__track { background: rgba(13, 13, 13, .13); height: 2px; position: relative; }
 /* scaleX from a full-width bar, driven per frame — a transform is composited, whereas animating

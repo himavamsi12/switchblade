@@ -299,7 +299,7 @@ export function BrandJourney() {
             </svg>
           )}
         </button>
-        {/* --font-barlow is a single-weight custom display font (TBJ One More Demo.ttf, see
+        {/* --font-barlow is a single-weight custom display font (TBJ One More Modern Sans, see
             layout.tsx) — it renders at its own native (heavy) weight regardless of what
             fontWeight CSS asks for, so "reduce the weight" can't be done on that font at all.
             Uses font-archivo instead (a real variable-weight font, see layout.tsx) everywhere now,

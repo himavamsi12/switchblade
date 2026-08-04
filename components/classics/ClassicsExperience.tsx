@@ -1456,8 +1456,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       // Snap once close enough, so the asymptote can't leave it frozen at 99% forever.
       if (target - bootShown < 0.004) bootShown = target;
       const pct = Math.min(100, Math.round(bootShown * 100));
-      // Digits only — the "%" is a separate, smaller span in the markup and never changes.
-      if (bootPctRef.current) bootPctRef.current.textContent = String(pct).padStart(2, "0");
+      if (bootPctRef.current) bootPctRef.current.textContent = `${String(pct).padStart(2, "0")}%`;
       // scaleX on a full-width bar rather than animating `width` — a transform is composited, and
       // this runs every frame alongside the 3D scene building itself behind the gradient.
       if (bootFillRef.current) bootFillRef.current.style.transform = `scaleX(${bootShown})`;
@@ -1655,11 +1654,11 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
             <p className="classics-boot__caption">Curating list of<br />archives for you</p>
             {/* Starts at 00% rather than blank so the reveal never flashes an empty slot on a warm
                 cache, where the first paint can already be most of the way through the load.
-                The "%" is its own span because the display font draws it 1.7x taller than its own
-                digits (measured) — left inline it towers over the number. See __pctSign. */}
-            <span className="classics-boot__pct">
-              <span ref={bootPctRef}>00</span><span className="classics-boot__pctSign">%</span>
-            </span>
+                The "%" used to be a separate, shrunken span: the TBJ *Demo* font drew it at 1.715x
+                its own digit height, so inline it towered over the number. The licensed release
+                draws it at 1.103x with a proper descender — i.e. designed to sit with the figures —
+                so the correction is gone and the glyph is left as the type designer drew it. */}
+            <span className="classics-boot__pct" ref={bootPctRef}>00%</span>
           </div>
           <div className="classics-boot__track">
             <div className="classics-boot__fill" ref={bootFillRef} />
