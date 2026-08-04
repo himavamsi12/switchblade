@@ -67,8 +67,18 @@
 /* Centred block. left:50%/top:50% + translate rather than flex centring so the bottom readout
    below can be absolutely positioned in the same layer without the two fighting over layout. */
 .classics-boot__center { left: 50%; position: absolute; text-align: center; top: 50%; transform: translate(-50%, -50%); width: 100%; }
-/* Knocked-out label: dark text on a white plate, against the blue upper half of the gradient. */
-.classics-boot__eyebrow { background: #fff; color: #0D0D0D; display: inline-block; font-family: var(--font-archivo), sans-serif; font-size: clamp(10px, .78vw, 14px); font-weight: 500; letter-spacing: -.01em; line-height: 1.45; padding: 1px 7px; }
+/* Knocked-out label: dark text on a white plate, against the blue upper half of the gradient.
+   Fades in only after the title's wipe has landed, so the two read as a sequence. `both` fill mode
+   is what holds it invisible through the delay — without it the tag would show immediately, then
+   blink out when the animation started. Delay/duration come from the component as inline styles
+   (see BOOT_EYEBROW_DELAY_MS) so they stay derived from the sweep's timing. */
+@keyframes classicsBootFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.classics-boot__eyebrow { animation: classicsBootFadeIn 500ms ease both; background: #fff; color: #0D0D0D; display: inline-block; font-family: var(--font-archivo), sans-serif; font-size: clamp(10px, .78vw, 14px); font-weight: 500; letter-spacing: -.01em; line-height: 1.45; padding: 1px 7px; }
+/* Reduced motion: no staged entrance at all — the tag is simply there, matching SweepText, which
+   also skips its wipe and renders the title solid. */
+@media (prefers-reduced-motion: reduce) {
+  .classics-boot__eyebrow { animation: none; }
+}
 .classics-boot__title { color: #fff; font-family: var(--font-barlow), sans-serif; font-size: clamp(46px, 9.2vw, 150px); letter-spacing: -.005em; line-height: .95; margin-top: clamp(4px, .5vw, 10px); text-transform: uppercase; }
 
 /* Bottom readout. Sits over the gradient's pale end, so this half is dark-on-light. */

@@ -129,11 +129,18 @@ const FLIP_MS = 480;
 // Beat before the loading screen's title wipes in, so the gradient has visibly arrived first and
 // the reveal reads as a deliberate entrance rather than something that was always there.
 const BOOT_SWEEP_DELAY_MS = 220;
-// Long enough for that wipe to finish (delay + SweepText's own 1300ms), plus a moment to read the
-// finished word. Sized off the sweep deliberately: a shorter hold means a warm cache can reveal
-// the gallery while the title is still half wiped in, so the word never actually resolves — the
-// visitor sees a partial word fade out, which looks like a glitch rather than an intro.
-const BOOT_HOLD_MS = BOOT_SWEEP_DELAY_MS + 1300 + 250;
+// SweepText's own animation length. Duplicated from that component (it isn't exported) purely so
+// the beats below can be derived rather than guessed — keep the two in step if it's ever retuned.
+const BOOT_SWEEP_MS = 1300;
+// The "Know information in ease" tag fades in only once the title has fully wiped in, so the two
+// read as a sequence rather than arriving together.
+const BOOT_EYEBROW_DELAY_MS = BOOT_SWEEP_DELAY_MS + BOOT_SWEEP_MS;
+const BOOT_EYEBROW_FADE_MS = 500;
+// Long enough for that whole sequence — title wipe, then tag fade — plus a moment to actually read
+// the result. Derived rather than hardcoded: a shorter hold lets a warm cache reveal the gallery
+// mid-sequence, so the word never resolves and the tag never appears. A partial word fading out
+// reads as a glitch, not an intro.
+const BOOT_HOLD_MS = BOOT_EYEBROW_DELAY_MS + BOOT_EYEBROW_FADE_MS + 250;
 const BOOT_FALL_MS = 2200;
 // Failsafe on that wait — deliberately generous, because the loading screen shows a real
 // percentage now. A visitor watching a counter climb will happily wait far longer than one staring
@@ -1625,7 +1632,15 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       <div className="classics-boot__cover" ref={bootLayerRef} />
       <div className="classics-boot__ui">
         <div className="classics-boot__center">
-          <span className="classics-boot__eyebrow">Know information in ease</span>
+          {/* Fades in after the title has finished wiping in — the delay is driven from the sweep's
+              own timing (see BOOT_EYEBROW_DELAY_MS) rather than a number duplicated in the
+              stylesheet, so retuning the sweep can't leave the two out of step. */}
+          <span
+            className="classics-boot__eyebrow"
+            style={{ animationDelay: `${BOOT_EYEBROW_DELAY_MS}ms`, animationDuration: `${BOOT_EYEBROW_FADE_MS}ms` }}
+          >
+            Know information in ease
+          </span>
           {/* Same gradient-wipe reveal the site's headings use (SweepText), so the loading screen
               introduces itself the way every other title on the site does rather than just being
               there. trigger="load" because this is never scrolled to — it's on screen from the
