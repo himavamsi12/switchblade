@@ -22,24 +22,24 @@ import { beginShopDeepLink, endShopDeepLink } from "@/components/shared/shopDeep
 // scroll target works off index instead (see COSMOS_START below).
 const STORY_PARAGRAPHS = [
   "There\u2019s a book I was reading, The Creative Act by Rick Rubin. He writes about how good ideas exist around us like signals in the air and the human antenna catches them. When you think of something and see it come to life later through someone else\u2019s hands, you wonder. But the truth is good ideas are bound to exist and they move towards the people willing to receive them and bring them to life.",
-  "I read that and something settled in me. This logo has lived with me since I was 11. Not in a drawer \u2014 in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn\u2019t fully understand yet, I still don\u2019t think I do, but I\u2019ve carried it for over two decades \u2014 and at some point, carrying an idea this long becomes a responsibility.",
+  "I read that and something settled in me. This logo has lived with me since I was 11. Not in a drawer, in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn\u2019t fully understand yet, I still don\u2019t think I do, but I\u2019ve carried it for over two decades, and at some point, carrying an idea this long becomes a responsibility.",
   "That\u2019s reason number one to establish Switchblade.",
   "Reason number two is simpler. You get one life. I\u2019ve spent enough time waiting to know everything before I begin. I don\u2019t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I\u2019ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.",
-  "I want to be honest from the start \u2014 that\u2019s the only way I know how to do this.",
-  "I am inspired by neatness, practicality & innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley \u2014 these are brands I have immense respect for and they have shaped how I think about what a brand can be.",
+  "I want to be honest from the start, that\u2019s the only way I know how to do this.",
+  "I am inspired by neatness, practicality & innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley, these are brands I have immense respect for and they have shaped how I think about what a brand can be.",
   "And I owe transparency about something - when I drew this logo at age 11 I had no idea what Stone Island\u2019s logo looked like and when I discovered the resemblance a couple of years ago,I had sleepless nights. I still think about it. But I believe the people at Stone Island would understand and I\u2019m certain that Massimo Osti would. They all will always be light years ahead of Switchblade. They will always keep inspiring me. And I genuinely hope someday we work together with them that have made possible for Switchblade to exist.",
   "As a personal belief, at the depth of the human heart, there is no competition - only compassion, strength, kindness, and love. That is the core belief Switchblade is built on. It is not a strategy. It is who I am.",
   "Switchblade is for people who carry competence without seeking validation.",
   "Who are just as sharp as they are kind and know those are not opposites.",
   "The builders, thinkers & doers who value depth & attention to detail.",
   "Who choose the edge not because it\u2019s cool, but because something in them simply cannot settle for less.",
-  "And if anything about this gives you the courage to begin something you love \u2014 something you\u2019ve been carrying too long without acting on \u2014 that would be the highest thing this brand could ever achieve.",
+  "And if anything about this gives you the courage to begin something you love, something you\u2019ve been carrying too long without acting on, that would be the highest thing this brand could ever achieve.",
   "More than any product. More than any collaboration. More than anything.",
-  "This journey begins now \u2014 not fully formed, but fully committed.",
+  "This journey begins now, not fully formed, but fully committed.",
   "The vision will take shape across three phases: Cosmos, Classic, and Evolution.",
-  "Each phase is a chapter of 1 to 2 years \u2014 of change, growth, and exploration.",
+  "Each phase is a chapter of 1 to 2 years, of change, growth, and exploration.",
   "We begin with Cosmos. The first products are being built. Apparel comes first.",
-  "To follow the inspiration and the ongoing research behind what\u2019s being made \u2014 explore Switchblade Classics.",
+  "To follow the inspiration and the ongoing research behind what\u2019s being made, explore Switchblade Classics.",
   "Love you Mom & Dad!",
 ];
 
@@ -213,14 +213,14 @@ function StoryPreview({ onReadMore }: { onReadMore: () => void }) {
             <br/>
             <br />
             <span>
-              Not in a drawer — in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
+              Not in a drawer, in my mind. I drew it in 9th grade, in the back of a classroom after a friend showed me a new way to draw 3D text. I tried it in my own way and what came out was a four-pointed star I didn&rsquo;t fully understand yet, I still don&rsquo;t think I do, but I&rsquo;ve carried it for over two decades  and at some point, carrying an idea this long becomes a responsibility.
               <br /><br />That&rsquo;s reason number one to establish Switchblade.
               <br /><br />Reason number two is simpler. You get one life. I&rsquo;ve spent enough time waiting to know everything before I begin. I don&rsquo;t have it 100% figured out. But I have confidence in my taste which I would like to share with the World and I&rsquo;ve decided to walk this path with faith and find out the rest as I go. If I hold out for the ideal moment when all conditions are perfect, I will end up never starting.
             </span>
           </p>
           <p style={{ marginTop: "1.4em" }}>
-            I want to be honest from the start — that&rsquo;s the only way I know how to do this.
-            <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley — these are brands I have immense respect for and they have shaped how I think about what a brand can be.
+            I want to be honest from the start, that&rsquo;s the only way I know how to do this.
+            <br />I am inspired by neatness, practicality &amp; innovation. Palace Skateboards, JJJJound, Stone Island, Stussy, KITH, Oakley, these are brands I have immense respect for and they have shaped how I think about what a brand can be.
             {/* Desktop preview now CUTS OFF mid-sentence here, at "when I ...", with Read More
                 sitting inline right after the ellipsis rather than as its own block underneath.
                 The rest of the sentence ("drew this logo at [AGE 11], I had no idea what Stone
