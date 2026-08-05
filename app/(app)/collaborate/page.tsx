@@ -379,10 +379,25 @@ export default function CollaboratePage() {
         <h1
           style={{
             fontFamily: "var(--font-barlow)", fontWeight: 900,
-            // Floor lowered from 44px: at that size "Collaborations" (one unbreakable word, 14
-            // characters) rendered wider than a phone viewport's available width, overflowing
-            // and getting clipped by this section's own overflow-hidden (the cut-off "S"/"TIONS").
-            fontSize: "clamp(30px,7.5vw,64px)", lineHeight: 0.92, letterSpacing: "-0.02em",
+            // "COLLABORATIONS" is one unbreakable 14-character word, so this heading can only fit
+            // by being sized small enough — there is no wrap to fall back on, and the section's
+            // overflow-hidden turns any excess into a visibly chopped "S".
+            //
+            // Measured against the loaded font: the word renders 11.549px wide per 1px of
+            // font-size (letter-spacing included). Available width is the viewport minus
+            // .site-px's clamp(20px,5vw,72px) on each side. Those two numbers decide everything
+            // here, so the check is: fontSize x 11.549 <= viewport - 2 x padding.
+            //
+            // The previous floor of 30px is what broke it. A FLOOR cannot shrink, so below ~390px
+            // the word stayed 346px wide while the screen kept narrowing — clipping by 11px at
+            // 375px (iPhone SE / 12 mini), 26px at 360px and 66px at 320px. Lowering the floor
+            // alone wasn't enough either: at 7.5vw a 320px screen left only ~3px of slack, close
+            // enough that font metric variance would bring the clipping straight back.
+            //
+            // 7vw with a 20px floor clears it everywhere, with 21-49px of slack from 320px up. The
+            // floor is now purely a safety net — 7vw only falls under 20px below a 286px viewport,
+            // narrower than any real device.
+            fontSize: "clamp(20px,7vw,64px)", lineHeight: 0.92, letterSpacing: "-0.02em",
             textTransform: "uppercase", marginBottom: "clamp(40px,6vw,60px)",
           }}
         >
