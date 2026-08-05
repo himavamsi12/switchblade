@@ -103,6 +103,24 @@ function detailBodyHtml(body: string[] | undefined) {
   return (body?.length ? body : LOREM).map(p => `<p>${escapeHtml(p)}</p>`).join("");
 }
 
+/**
+ * Writes a card's body copy AND returns that card to the top of its text.
+ *
+ * The scroll reset is the whole reason this exists rather than assigning innerHTML directly.
+ * .detail__body is its own scroll container (see classics-experience.css), and scrollTop is a
+ * property of the ELEMENT, not of the content inside it — replacing the HTML leaves the offset
+ * exactly where the reader had dragged it. So after scrolling down one project and moving to the
+ * next, the new card opened part-way down its own copy, often past the first paragraph entirely.
+ *
+ * Every place that swaps body copy goes through here, so a new navigation path can't reintroduce
+ * it by forgetting the reset.
+ */
+function setDetailBody(el: HTMLElement | null, body: string[] | undefined) {
+  if (!el) return;
+  el.innerHTML = detailBodyHtml(body);
+  el.scrollTop = 0;
+}
+
 const PANELS_PER_ROW = 12, ROWS = 5;
 // Most thumbnails the detail popup's strip can show before its prev/next arrows are worth having,
 // by request ("if the gallery images are less/equal to 5 don't show the arrows"). At or below this
@@ -1030,12 +1048,12 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       applyImage(detailGhostPrevImgRef.current, prevProj.img);
       if (detailGhostPrevTitleRef.current) detailGhostPrevTitleRef.current.textContent = prevProj.title.toUpperCase();
       if (detailGhostPrevBadgeRef.current) detailGhostPrevBadgeRef.current.textContent = prevProj.cat.toUpperCase();
-      if (detailGhostPrevBodyRef.current) detailGhostPrevBodyRef.current.innerHTML = detailBodyHtml(prevProj.body);
+      setDetailBody(detailGhostPrevBodyRef.current, prevProj.body);
       applyIgLink(detailGhostPrevIgRef.current, prevProj.instagram);
       applyImage(detailGhostNextImgRef.current, nextProj.img);
       if (detailGhostNextTitleRef.current) detailGhostNextTitleRef.current.textContent = nextProj.title.toUpperCase();
       if (detailGhostNextBadgeRef.current) detailGhostNextBadgeRef.current.textContent = nextProj.cat.toUpperCase();
-      if (detailGhostNextBodyRef.current) detailGhostNextBodyRef.current.innerHTML = detailBodyHtml(nextProj.body);
+      setDetailBody(detailGhostNextBodyRef.current, nextProj.body);
       applyIgLink(detailGhostNextIgRef.current, nextProj.instagram);
     }
 
@@ -1083,7 +1101,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       applyImage(img, proj.img);
       detailTitleRef.current.textContent = proj.title.toUpperCase();
       detailBadgeRef.current.textContent = proj.cat.toUpperCase();
-      detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
+      setDetailBody(detailBodyRef.current, proj.body);
       applyIgLink(detailIgRef.current, proj.instagram);
       renderThumbs(proj);
       updateGhosts();
@@ -1167,7 +1185,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         applyImage(img, proj.img);
         detailTitleRef.current!.textContent = proj.title.toUpperCase();
         detailBadgeRef.current!.textContent = proj.cat.toUpperCase();
-        detailBodyRef.current!.innerHTML = detailBodyHtml(proj.body);
+        setDetailBody(detailBodyRef.current, proj.body);
         applyIgLink(detailIgRef.current, proj.instagram);
         renderThumbs(proj);
         updateGhosts();
@@ -1252,7 +1270,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           applyImage(detailImgRef.current, proj.img);
           if (detailTitleRef.current) detailTitleRef.current.textContent = proj.title.toUpperCase();
           if (detailBadgeRef.current) detailBadgeRef.current.textContent = proj.cat.toUpperCase();
-          if (detailBodyRef.current) detailBodyRef.current.innerHTML = detailBodyHtml(proj.body);
+          setDetailBody(detailBodyRef.current, proj.body);
           applyIgLink(detailIgRef.current, proj.instagram);
           renderThumbs(proj);
           updateGhosts();
