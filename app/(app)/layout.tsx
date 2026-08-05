@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono, Averia_Serif_Libre, Inter, Archivo } from "next/font/google";
 import localFont from "next/font/local";
+import Script from "next/script";
 import "./globals.css";
 import { CustomCursor } from "@/components/shared/CustomCursor";
 
@@ -63,6 +64,12 @@ const archivo = Archivo({
   display: "swap",
 });
 
+const GA_MEASUREMENT_ID = "G-MEMB82WV7V";
+// Production only. Without this every `npm run dev` page load counts as a real visit from your
+// own location, and a brand-new property has so little traffic that local development would be a
+// visible share of it. Flip to `true` temporarily if you need to verify the tag from localhost.
+const GA_ENABLED = process.env.NODE_ENV === "production";
+
 export const metadata: Metadata = {
   title: "SWITCHBLADE™",
   description:
@@ -85,6 +92,32 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body suppressHydrationWarning className="bg-[#F2EDE4] text-[#0D0D0D] font-[family-name:var(--font-barlow)] antialiased">
         <CustomCursor />
         <main>{children}</main>
+
+        {/* Google Analytics (GA4). Lives in THIS layout, not a shared root, so it covers the
+            public site only — the Payload admin is a separate route group, and counting your own
+            CMS sessions as visits would skew the client's numbers from day one.
+
+            next/script rather than raw <script> tags: Next moves these out of the React tree and
+            loads them itself. strategy="afterInteractive" (the default) is the documented choice
+            for analytics — it loads early but after hydration begins, so the tag never competes
+            with the page's own JS for the first paint. beforeInteractive would block first-party
+            code for a script nobody is waiting on.
+
+            The measurement ID is deliberately inline rather than an env var: it ships in the HTML
+            to every visitor regardless, so it isn't a secret, and hardcoding keeps the site from
+            silently losing analytics if an env var is ever missing on a new deploy. */}
+        {GA_ENABLED && (
+          <>
+            <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="afterInteractive" />
+            {/* id is required on inline scripts — it's how Next dedupes them across navigations. */}
+            <Script id="ga-init" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${GA_MEASUREMENT_ID}');`}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );
