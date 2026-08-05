@@ -405,7 +405,12 @@
      freed up enough room to give the image back some of that height without reclipping the text. */
   .classics-exp .detail__media { flex: 0 0 auto; height: 200px; min-height: 0; }
   .classics-exp .detail__img { height: 100%; min-height: 0; }
-  .classics-exp .detail__title { font-size: 1.28rem; flex-shrink: 0; }
+  /* 1.28rem -> 1.12rem, and the badge row's top margin roughly halves below — by request, to buy
+     the body copy more room on a phone. Nothing sets the body's height directly: it's flex:1 1 auto
+     inside .detail__textWrap, so every pixel the title and this gap give up is claimed by the
+     paragraph area automatically. That's why the ask ("reduce the text and the space, increase the
+     paragraph height") is really one change, not three. */
+  .classics-exp .detail__title { font-size: 1.12rem; flex-shrink: 0; }
   /* The min-height:0 chain (.detail__content/.detail__textWrap), .detail__body's own
      flex/overflow-y/scrollbar rules, and .detail__ig's flex-shrink now all live on the BASE
      (unconditional) rules above — desktop got the exact same fixed-height/inner-scroll card
@@ -415,7 +420,10 @@
      actually permits body's vertical scroll gesture (only horizontal drags are grabbed by the
      card-swipe handler, and all its touch listeners are registered passive: true — see
      onCardTouch* in ClassicsExperience.tsx — so they can't preventDefault this native scroll). */
-  .classics-exp .detail__badgeRow { justify-content: center; margin: 14px 0 12px; }
+  /* Top margin 14px -> 7px closes the gap between the title and the tag; the 12px below it is kept
+     so the tag doesn't crowd the first line of copy. See the title rule above for where the
+     reclaimed height goes. */
+  .classics-exp .detail__badgeRow { justify-content: center; margin: 7px 0 12px; }
   /* text-align:left (by request — the card's own text-align:center above, meant for the
      title/badge/IG row, was also centering the paragraph body, which reads much harder centered
      across multiple wrapped lines than a left-aligned block does). */
