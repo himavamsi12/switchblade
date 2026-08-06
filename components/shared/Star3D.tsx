@@ -10,6 +10,10 @@ function StarModel({ scale = 2.2, spinRef, dampRef, shrinkRef, autoRotate = true
   const groupRef = useRef<Group>(null);
   const { scene } = useGLTF("/Compass.glb");
   const entranceStart = useRef<number | null>(null);
+  // Tracking for the entranceRef stall check in useFrame — see the note there.
+  const externalStalled = useRef(false);
+  const lastExternal = useRef(-1);
+  const lastExternalChange = useRef(0);
   // Accumulated base rotation, integrated frame-by-frame via delta rather than computed as
   // `elapsedTime * speed` — the scroll-driven extra spin (dampRef, added separately below) is
   // layered on top of this rather than folded into a variable speed here, so nothing about the
@@ -56,13 +60,34 @@ function StarModel({ scale = 2.2, spinRef, dampRef, shrinkRef, autoRotate = true
     if (entranceStart.current === null) entranceStart.current = t;
 
     const ENTRANCE_DURATION = 1.15;
+    // How long the external entrance value may sit unchanged before the local clock takes over.
+    // Comfortably past the Hero's own schedule (its ramp starts ~0.9s in and runs 1.15s), so a
+    // merely slow intro is never mistaken for a broken one.
+    const EXTERNAL_STALL_S = 2.5;
     // Entrance progress 0→1 drives the scale-grow + rotation settle + rise. When an entranceRef is
     // supplied (the homepage hero), progress is driven EXTERNALLY by that ref — animated on the
     // Hero's own GSAP intro timeline, in lockstep with the star's opacity reveal — so the visible
     // "grow in" can't finish while the star is still transparent (which is what happened when this
     // ran on its own R3F clock but the opacity reveal was delayed behind the gradient wash). With
     // no entranceRef (footer, collaborate, modal, etc.) it falls back to the self-timed clock.
-    const p = entranceRef
+    // Safety net for the externally-driven case. entranceRef starts at 0 and only the caller's GSAP
+    // timeline ever advances it — so if that timeline never runs, the model is left at the 0.05
+    // scale below: a speck in an empty box, which is exactly the "3D model didn't load, just a
+    // white container" failure. It doesn't take much to get there; the Hero's intro sits behind a
+    // dynamic import("gsap") and bails early if its refs aren't mounted yet.
+    //
+    // So: watch the ref, and if it stops changing before reaching 1, take over with the local
+    // clock. entranceStart is rewound to match however far the external value got, so the handover
+    // continues the animation instead of restarting or jumping it.
+    if (entranceRef && !externalStalled.current) {
+      const v = entranceRef.current;
+      if (v !== lastExternal.current) { lastExternal.current = v; lastExternalChange.current = t; }
+      if (v < 1 && t - lastExternalChange.current > EXTERNAL_STALL_S) {
+        externalStalled.current = true;
+        entranceStart.current = t - ENTRANCE_DURATION * Math.min(1, Math.max(0, v));
+      }
+    }
+    const p = entranceRef && !externalStalled.current
       ? Math.min(1, Math.max(0, entranceRef.current))
       : Math.min((t - entranceStart.current) / ENTRANCE_DURATION, 1);
     const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
