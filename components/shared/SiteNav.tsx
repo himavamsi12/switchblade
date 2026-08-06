@@ -162,12 +162,24 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
     ? { duration: 0.6, delay: 3.5, ease: [0.22, 1, 0.36, 1] as const }
     : { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const };
 
+  // Press feedback shared by every nav link. These only had hover states, which say "this is a
+  // link" but give nothing back at the moment of the click — the tap lands, nothing moves, and the
+  // page changes a beat later, so it reads as unresponsive. active: fires on pointer-down (and on
+  // touch), so the label dips and dims the instant it's pressed.
+  //
+  // inline-block is required: an <a> is inline by default and transforms don't apply to inline
+  // boxes, so active:scale would silently do nothing. select-none stops a quick double-tap
+  // highlighting the text, and the short duration keeps the release snappy rather than floaty.
+  // Reduced motion keeps the dim but drops the movement.
+  const linkPress =
+    "inline-block select-none transition-[color,opacity,transform] duration-150 " +
+    "active:scale-[0.94] active:opacity-70 motion-reduce:transition-none motion-reduce:active:scale-100";
   const linkColor = lightLook
-    ? "text-[#090909] hover:opacity-60 transition-opacity uppercase"
-    : "text-white/80 font-normal hover:text-white transition-colors uppercase";
+    ? `text-[#090909] hover:opacity-60 uppercase ${linkPress}`
+    : `text-white/80 font-normal hover:text-white uppercase ${linkPress}`;
   const activeLinkColor = lightLook
-    ? "text-[#0456DD] font-medium uppercase"
-    : "text-white font-medium hover:text-[#FF802B] transition-colors uppercase";
+    ? `text-[#0456DD] font-medium uppercase ${linkPress}`
+    : `text-white font-medium hover:text-[#FF802B] uppercase ${linkPress}`;
 
   return (
     <>
@@ -280,7 +292,10 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
           // 24px if either is tuned again. Both are sm:-only — below that breakpoint the label is
           // hidden entirely (see its own comment), leaving the icon alone with pl-[6px] to match
           // the button's other padding, and a gap with nothing to sit between.
-          className="flex items-center gap-2 sm:gap-[13px] rounded-lg text-white font-medium hover:opacity-85 transition-opacity pl-[6px] sm:pl-[11px] uppercase"
+          // active:scale — the same press feedback the nav links get, so the whole bar responds the
+          // same way to a tap. Slightly less travel than the text links: this is a filled button,
+          // and the shift reads more strongly on a solid block than on a word.
+          className="flex items-center gap-2 sm:gap-[13px] rounded-lg text-white font-medium select-none hover:opacity-85 transition-[opacity,transform] duration-150 active:scale-[0.97] active:opacity-90 motion-reduce:transition-none motion-reduce:active:scale-100 pl-[6px] sm:pl-[11px] uppercase"
           style={{ background: "#FF802B", fontSize: 14, paddingTop: 6, paddingRight: 6, paddingBottom: 6, cursor: light ? "pointer" : undefined }}
         >
           {/* "Collab" label hidden below sm: at phone widths, this button's full width plus the
@@ -357,7 +372,12 @@ export function SiteNav({ variant = "dark", animateIn = false }: { variant?: Sit
                       if (l.label === "Shop") triggerShopHighlight();
                     }}
                     className={
-                      "block uppercase transition-opacity hover:opacity-70" +
+                      // Same press feedback as the desktop links, but scaled from the left: these
+                      // are big left-aligned display headings, so shrinking about their centre
+                      // would slide the whole word rightward on every tap.
+                      "block uppercase select-none origin-left transition-[color,opacity,transform] duration-150 " +
+                      "hover:opacity-70 active:scale-[0.97] active:opacity-70 " +
+                      "motion-reduce:transition-none motion-reduce:active:scale-100" +
                       (isActive(l.href)
                         ? (light ? " text-[#0456DD]" : " text-[#FF802B]")
                         : (light ? " text-[#090909]" : " text-white"))

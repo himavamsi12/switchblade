@@ -48,7 +48,20 @@ export type CmsProject = Project;
 const IMG_QUALITY = 75;
 function optimizedSrc(url: string, width: number): string {
   if (!url || !url.startsWith("/")) return url;
-  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=${IMG_QUALITY}`;
+  // The query string MUST be dropped. Next 16 rejects a local url carrying one outright —
+  // `"url" parameter is not allowed`, a 400, which renders as a broken-image icon — unless the
+  // exact search value is allowlisted in images.localPatterns. That match is exact by design, to
+  // stop the optimiser being used to enumerate arbitrary urls, so our `?v=<media updatedAt>` cache
+  // buster can never be allowlisted: it differs per image and changes on every edit.
+  //
+  // Only one card carried a `?v=` when this surfaced, but the sync adds it to every url it
+  // rewrites, so each card would have broken the moment someone edited it.
+  //
+  // Losing the buster here is survivable: the optimiser keys its cache on the source url and
+  // revalidates against that file's own Cache-Control, so an edited image still comes through —
+  // see next.config's headers() for the policy, and note it decides how quickly a re-crop appears.
+  const src = url.split("?")[0];
+  return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=${IMG_QUALITY}`;
 }
 
 /** Display widths per surface, each the next configured size up from what it actually renders at. */
