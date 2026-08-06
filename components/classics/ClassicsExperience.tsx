@@ -30,6 +30,33 @@ interface Project { title: string; cat: string; img: CmsImage; gallery?: CmsImag
 export type CmsProject = Project;
 
 /**
+ * Routes a media URL through Next's image optimiser at the width it will actually be displayed.
+ *
+ * This is the single biggest lever on how long the gradient sits there. The originals are full-size
+ * camera files — measured, jabulani-1.jpg is 1.99MB and fernando-alonso-1.jpeg 1.24MB — and the
+ * page pulls dozens of them. At w=640 the optimiser re-encodes those to 58KB and 46KB of WebP: a
+ * ~30x reduction, for panels that render around 300px wide. No re-upload and no Payload change;
+ * it resizes on demand from the same source file and caches the result.
+ *
+ * Widths must come from Next's configured deviceSizes/imageSizes and quality from its allowed list,
+ * or the optimiser 400s — q=72 is rejected outright, hence 75.
+ *
+ * Same-origin paths only. Anything absolute is passed through untouched: remote hosts would need an
+ * entry in next.config's remotePatterns, and silently returning a broken optimiser URL for one is
+ * worse than serving the original.
+ */
+const IMG_QUALITY = 75;
+function optimizedSrc(url: string, width: number): string {
+  if (!url || !url.startsWith("/")) return url;
+  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=${IMG_QUALITY}`;
+}
+
+/** Display widths per surface, each the next configured size up from what it actually renders at. */
+const IMG_W_PANEL = 640;   // WebGL panels, ~300px on screen
+const IMG_W_DETAIL = 1080; // detail popup's main image
+const IMG_W_THUMB = 256;   // detail thumbnail strip, 84px
+
+/**
  * Points a DOM <img> at an image and anchors its object-fit:cover crop to that image's focal point.
  *
  * Replaces the blanket `object-position: top` that .detail__img and .detail__thumb img used to
@@ -37,10 +64,27 @@ export type CmsProject = Project;
  * subjects' heads cut off by the default centered crop, but it just traded one fixed guess for
  * another, cropping the bottom off anything where the subject sat low in the frame.
  */
-function applyImage(el: HTMLImageElement | null, image: CmsImage | undefined) {
+function applyImage(el: HTMLImageElement | null, image: CmsImage | undefined, width = IMG_W_DETAIL) {
   if (!el || !image) return;
-  el.src = image.url;
   el.style.objectPosition = `${image.focalX}% ${image.focalY}%`;
+
+  const next = optimizedSrc(image.url, width);
+  if (el.getAttribute("src") === next) return;
+
+  // Blank the element before pointing it at the new file. One <img> is reused for every card, and
+  // assigning .src does NOT clear what's on screen — the browser keeps painting the OLD picture
+  // until the new one has decoded. Opening a card, closing it and opening a different one therefore
+  // showed the previous card's image for a beat before snapping to the right one.
+  //
+  // visibility, not display or opacity: the element must keep its layout box, because openDetail
+  // measures this image's rect to drive the FLIP animation from the panel that was clicked, and
+  // closeDetail animates its opacity. Hiding it either of those other ways would break them.
+  el.removeAttribute("src");
+  el.style.visibility = "hidden";
+  const reveal = () => { el.style.visibility = ""; };
+  el.onload = reveal;
+  el.onerror = reveal;   // a broken image should not leave an invisible element behind
+  el.setAttribute("src", next);
 }
 
 // Disabled by request ("remove the images which are not part of ppt like hardcoded content and
@@ -121,6 +165,15 @@ function setDetailBody(el: HTMLElement | null, body: string[] | undefined) {
 }
 
 const PANELS_PER_ROW = 12, ROWS = 5;
+// The row the visitor is actually looking at when the gradient lifts, and the only one the reveal
+// waits for. buildPanels lays the rows out at `s * rowSpacing - (ROWS - 1) * rowSpacing / 2`, so
+// this is the index whose y works out to 0 — dead centre, level with the camera. Derived from ROWS
+// rather than hardcoded to 2 so adding or removing a row can't silently gate on an off-screen one.
+//
+// Waiting on all five meant holding the gradient for ~50 images when only about 12 are visible.
+// The rest keep loading in the background and fill in as they arrive, which nobody sees: they're
+// off screen until the carousel is scrolled.
+const BOOT_GATE_ROW = Math.round((ROWS - 1) / 2);
 // Most thumbnails the detail popup's strip can show before its prev/next arrows are worth having,
 // by request ("if the gallery images are less/equal to 5 don't show the arrows"). At or below this
 // the whole strip fits on screen, so the arrows would scroll nothing.
@@ -129,8 +182,17 @@ const PANEL_SCALE = 1.1;
 const SPIRAL_RADIUS_RATIO = 0.72;
 const SPIRAL_SCALE_DESKTOP = 1.26, SPIRAL_SCALE_MOBILE = 0.88;
 const INITIAL_BLUR = 0;
-const ENTRANCE_DURATION_MS = 760;
-const ENTRANCE_DELAY_MIN_MS = 840, ENTRANCE_DELAY_RANGE_MS = 980;
+// Each panel's own fade. Longer than it was (760ms) so neighbours overlap generously and the ring
+// reads as one continuous wash rather than a run of separate pops.
+const ENTRANCE_DURATION_MS = 900;
+// The ordered sweep that replaced the old random delays (ENTRANCE_DELAY_MIN/RANGE). Panels come in
+// one after another from the front of the ring outward: PANEL_STEP is the beat between neighbours,
+// ROW_STEP offsets each row from the centre one, BASE is the head start before any of it begins.
+// 12 panels x 62ms puts a full turn of the visible row at ~740ms, and with a 900ms fade each panel
+// is still rising as the next starts — which is what makes it read as seamless instead of stepped.
+const ENTRANCE_BASE_DELAY_MS = 120;
+const ENTRANCE_PANEL_STEP_MS = 62;
+const ENTRANCE_ROW_STEP_MS = 130;
 const BEND_H_CLAMP = 0.25, BEND_V_CLAMP = 0.15;
 const BG_COLOR = 0xffffff;
 const FLIP_MS = 480;
@@ -154,14 +216,45 @@ const BOOT_TITLE_FADE_MS = 400;
 // This dropped from 1090ms when the "Know information in ease" tag was removed; the tag's fade
 // used to be the last beat the hold had to cover.
 const BOOT_HOLD_MS = BOOT_TITLE_DELAY_MS + BOOT_TITLE_FADE_MS + 250;
+// The minimum when the loading screen's readouts are hidden and only the gradient shows. There is
+// no title fade to cover then, so this is just enough for the gradient to register as a deliberate
+// beat rather than a flash — anything longer is dead time in front of a page that's ready.
+const BOOT_BARE_HOLD_MS = 260;
+// MUST be kept in step with the `.classics-boot__ui { display: none }` override in
+// classics-experience.css — flip both together when the loading screen goes back in.
+//
+// Deliberately a constant and not a getComputedStyle() check on the element, which is what this
+// was first: read during the effect's first pass, before the stylesheet is guaranteed applied, it
+// came back "visible" and the timing below silently kept waiting on an animation nobody could see
+// — measured as ~2s of dead time after every image had already decoded.
+//
+// What it controls: with nothing on screen to read, there's no reason to hold the gradient for the
+// title fade or for the progress counter to visibly ease up to 100. The reveal then waits only on
+// the images themselves.
+const BOOT_UI_VISIBLE = false;
 const BOOT_FALL_MS = 2200;
-// Failsafe on that wait — deliberately generous, because the loading screen shows a real
-// percentage now. A visitor watching a counter climb will happily wait far longer than one staring
-// at a blank gradient, so this is set to catch a genuinely stuck load (a hung request, a dead
-// connection) rather than to bound normal waiting. Failed loads already count as settled, so one
-// broken URL can't run the clock out on its own. Past this the bar is swept to 100% and the reveal
-// proceeds with whatever is still in flight filling in behind it.
-const BOOT_MAX_WAIT_MS = 20000;
+// How long after the gradient starts falling before the panels begin fading in.
+//
+// It used to be 0 — the entrance ran the instant the fall began, which meant the whole ~1.7s
+// sequence played out BEHIND a 2.2s curtain and was never seen. The gradient would lift to reveal
+// a gallery that had already finished arriving.
+//
+// 0.62 of the fall is roughly when the panel has cleared the middle of the screen, where the ring
+// sits. Starting there means the first panels fade up into space that is already uncovered, and
+// the sweep carries on for a beat after the gradient has gone — so the two read as one continuous
+// move rather than one hiding the other. Derived from BOOT_FALL_MS so retuning the fall keeps them
+// in step.
+const BOOT_ENTRANCE_START_MS = Math.round(BOOT_FALL_MS * 0.62);
+// Failsafe on that wait. Back down from 20s, and tied to what the visitor can actually see: the
+// generous value existed only because the loading screen showed a climbing percentage, and someone
+// watching real progress waits far longer than someone staring at a blank gradient. The loader is
+// currently hidden (see .classics-boot__ui in the CSS), so this is a bare gradient again and the
+// cap has to be short enough that a slow or stuck load never strands anyone behind it.
+//
+// Raise it back to ~20s if the loading screen is restored. Failed loads already count as settled,
+// so one broken URL can't run the clock out on its own; past the cap the reveal proceeds with
+// whatever is still in flight filling in behind it.
+const BOOT_MAX_WAIT_MS = 8000;
 
 interface ViewportConfig {
   fov: number; cameraZ: number; radius: number;
@@ -266,7 +359,9 @@ void main(){
   gl_FragColor=col;
 }`;
 
-interface PanelMeta { proj: Project; tR: number; tS: number; yS: number; delay: number; done: boolean }
+/** `readyAt` is when this panel's texture actually arrived (0 = still loading). A panel must not
+ *  begin its fade before then, or it fades an empty material in and the image pops on afterwards. */
+interface PanelMeta { proj: Project; tR: number; tS: number; yS: number; delay: number; done: boolean; readyAt: number }
 type PanelMaterial = THREE.ShaderMaterial & { uniforms: {
   uTexture: THREE.IUniform<THREE.Texture | null>;
   uOpacity: THREE.IUniform<number>;
@@ -531,6 +626,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       panelGeo = geo;
       const dn = cfg.cameraZ * 0.58, df = cfg.cameraZ * 1.85;
 
+      // Texture requests are collected rather than fired inside the loop, so the row the visitor
+      // actually sees can be fetched FIRST. Order matters here: a browser only runs ~6 requests per
+      // origin at a time, and the rows are built 0..4, so issuing them in build order left the
+      // centre row's images queued behind two rows nobody is looking at. Gating the reveal on that
+      // row would then have changed almost nothing — it would still be waiting on the queue.
+      const deferredLoads: Array<{ row: number; run: () => void }> = [];
+
       for (let s = 0; s < ROWS; s++) {
         const grp = new THREE.Group();
         grp.position.y = s * cfg.rowSpacing - (ROWS - 1) * cfg.rowSpacing / 2;
@@ -554,18 +656,46 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
           grp.add(mesh);
           allMeshes.push(mesh);
-          panelMeta.push({ proj, tR, tS, yS, delay: ENTRANCE_DELAY_MIN_MS + Math.random() * ENTRANCE_DELAY_RANGE_MS, done: false });
+          // Ordered stagger, not the random delay this used to carry. Random meant panels lit up
+          // scattered around the ring, which is what reads as "not smooth" — there's no sequence to
+          // follow. Now it sweeps: the centre row first, and within each row it starts from the
+          // panel facing the camera and travels around.
+          //   angleRank — this panel's place going clockwise from the front-facing position.
+          //   rowRank   — how far this row is from the one on screen (0 = centre).
+          const angleRank = ((tR - Math.PI / 2) / (Math.PI * 2) % 1 + 1) % 1 * PANELS_PER_ROW;
+          const rowRank = Math.abs(s - BOOT_GATE_ROW);
+          const meta: PanelMeta = {
+            proj, tR, tS, yS, done: false, readyAt: 0,
+            delay: ENTRANCE_BASE_DELAY_MS + rowRank * ENTRANCE_ROW_STEP_MS + angleRank * ENTRANCE_PANEL_STEP_MS,
+          };
+          panelMeta.push(meta);
 
-          // Registered before the load starts so a texture that's already cached (and therefore
-          // calls back synchronously) is added and removed in the right order rather than being
-          // counted down before it was ever counted up.
-          if (bootCollecting && proj.img.url) bootWanted.add(proj.img.url);
-          loadPanelTexture(proj.img.url, tex => {
-            mat.uniforms.uTexture.value = tex;
-            applyCoverUv(mat, tex, cfg.panelW / cfg.panelH, proj.img);
+          // The optimiser URL, not the original — resolved once so the boot gate registers exactly
+          // the string that gets requested. Registering the raw url here would mean waiting on a
+          // load that never happens.
+          const panelSrc = optimizedSrc(proj.img.url, IMG_W_PANEL);
+          // Only the row on screen at boot feeds the gate — see BOOT_GATE_ROW. Registered before
+          // the load starts so a texture that's already cached (and therefore calls back
+          // synchronously) is added and removed in the right order rather than being counted down
+          // before it was ever counted up.
+          if (bootCollecting && s === BOOT_GATE_ROW && panelSrc) bootWanted.add(panelSrc);
+          deferredLoads.push({
+            row: s,
+            run: () => loadPanelTexture(panelSrc, tex => {
+              mat.uniforms.uTexture.value = tex;
+              applyCoverUv(mat, tex, cfg.panelW / cfg.panelH, proj.img);
+              // Stamped so the entrance can hold this panel back until its image exists — see
+              // tickEntrance. Without it a panel on schedule fades in blank and the picture
+              // appears afterwards, which is the pop the fade is meant to avoid.
+              meta.readyAt = performance.now();
+            }),
           });
         }
       }
+
+      // Visible row first, everything else after — see the note where deferredLoads is declared.
+      for (const l of deferredLoads) if (l.row === BOOT_GATE_ROW) l.run();
+      for (const l of deferredLoads) if (l.row !== BOOT_GATE_ROW) l.run();
     }
     buildPanels();
     // The gate can only be judged complete once the whole build has finished registering — during
@@ -629,12 +759,16 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     function startEntrance() { entranceT0 = performance.now(); entranceActive = true; }
     function tickEntrance(now: number) {
       if (!entranceActive) return;
-      const elapsed = now - entranceT0;
       let allDone = true;
       allMeshes.forEach((mesh, i) => {
         const d = panelMeta[i];
         if (d.done) return;
-        const t = elapsed - d.delay;
+        // Two gates, and a panel needs both: its turn in the sweep (delay), and its texture having
+        // actually arrived (readyAt). Whichever is later starts the fade — so a slow image simply
+        // joins the sequence when it's ready instead of fading an empty panel in on schedule.
+        if (!d.readyAt) { allDone = false; return; }
+        const startAt = Math.max(entranceT0 + d.delay, d.readyAt);
+        const t = now - startAt;
         if (t <= 0) { allDone = false; return; }
         const p = Math.min(1, t / ENTRANCE_DURATION_MS);
         const e = 1 - Math.pow(1 - p, 3);
@@ -813,7 +947,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           // No object-position needed on these: .pg-card__img is width:100%/height:auto, so it
           // renders at the image's natural aspect and never crops. The focal point only matters
           // where something cover-crops (the 3D panels, the detail popup, the thumb strip).
-          card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(p.img.url)}" alt="${escapeHtml(p.title)}">
+          card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(optimizedSrc(p.img.url, IMG_W_PANEL))}" alt="${escapeHtml(p.title)}">
             <span class="pg-card__cta">CLICK TO SEE</span>
             <span class="pg-card__title"${titleStyle}>/${escapeHtml(p.title.toUpperCase())}</span>`;
           const onClick = () => { if (!detailOpen) openDetail(p, card); };
@@ -838,7 +972,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         card.className = "pg-card";
         card.style.left = left + "%"; card.style.top = top + "px"; card.style.width = w + "px";
         card.style.transform = `rotate(${rot.toFixed(2)}deg)`;
-        card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(p.img.url)}" alt="${escapeHtml(p.title)}">
+        card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(optimizedSrc(p.img.url, IMG_W_PANEL))}" alt="${escapeHtml(p.title)}">
           <span class="pg-card__cta">CLICK TO SEE</span>
           <span class="pg-card__title">/${escapeHtml(p.title.toUpperCase())}</span>`;
         const onClick = () => { if (!detailOpen) openDetail(p, card); };
@@ -849,10 +983,24 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       });
       stage.style.height = maxBottom + 160 + "px";
     }
-    buildPlayground();
+    // NOT built at boot any more. The playground is a separate view behind the "Playground" toggle,
+    // but its container is only opacity:0 — still laid out, still in the viewport — so every one of
+    // its ~50 card images downloaded during the loading screen, competing with the panel textures
+    // for both the connection and the main thread. Measured: 86 image requests at boot, of which
+    // roughly half were for a view nobody had opened.
+    //
+    // loading="lazy" would not have helped: the browser defers offscreen images, and opacity:0
+    // in-viewport does not qualify. Building on first open is what actually removes them.
+    let playgroundBuilt = false;
+    const ensurePlayground = () => {
+      if (playgroundBuilt) return;
+      playgroundBuilt = true;
+      buildPlayground();
+    };
 
     function openPlayground() {
       if (playgroundOn) return;
+      ensurePlayground();
       playgroundOn = true;
       if (pgScrollRef.current) pgScrollRef.current.scrollTop = 0;
       pgRef.current?.classList.add("is-on");
@@ -1003,7 +1151,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       const img = detailImgRef.current;
       const track = detailThumbTrackRef.current;
       const next = currentGalleryImages[idx];
-      if (!img || !track || !next || img.src === next.url) return;
+      // getAttribute, not .src: the property resolves to an absolute URL while the value we set is
+      // a relative path, so comparing against .src never matched and this "already showing it"
+      // guard silently did nothing — re-running the fade every time the active thumb was clicked.
+      if (!img || !track || !next || img.getAttribute("src") === optimizedSrc(next.url, IMG_W_DETAIL)) return;
       currentThumbIndex = idx;
       img.style.transition = "opacity .15s ease";
       img.style.opacity = "0";
@@ -1080,7 +1231,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         btn.className = "detail__thumb" + (i === 0 ? " is-active" : "");
         btn.setAttribute("aria-label", `Show image ${i + 1} of ${currentGalleryImages.length}`);
         const im = document.createElement("img");
-        applyImage(im, image);
+        applyImage(im, image, IMG_W_THUMB);
         im.alt = "";
         btn.appendChild(im);
         btn.addEventListener("click", () => { selectThumb(i); startAutoplay(); });
@@ -1415,6 +1566,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     // Set by the failsafe below so the bar still animates cleanly to 100% and falls, rather than
     // the reveal cutting away mid-count.
     let bootForceComplete = false;
+    const bootUiVisible = BOOT_UI_VISIBLE;
+    // With nothing to read, the minimum exists only so the gradient registers as a deliberate
+    // beat rather than a flash. The longer hold covers the title fade and is pointless without it.
+    const bootHoldMs = bootUiVisible ? BOOT_HOLD_MS : BOOT_BARE_HOLD_MS;
 
     const fallBoot = () => {
       if (bootFallen) return;
@@ -1425,13 +1580,11 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       // the bottom of the screen with the panel.
       bootLoaderRef.current?.classList.add("is-revealing");
       bootLayerRef.current?.classList.add("is-falling");
-      // Reveal + start the scene's own entrance right as the fall begins, NOT after it finishes:
-      // the panel takes BOOT_FALL_MS to clear, so the content needs to already be live behind it
-      // to be progressively uncovered. Revealing afterwards would show a blank page for the whole
-      // fall and then pop the content in.
+      // The canvas goes live immediately so the falling gradient uncovers a real scene rather than
+      // a blank page. The panels' own entrance is held back though — see BOOT_ENTRANCE_START_MS.
       canvas.classList.add("is-revealed");
       dockRef.current?.classList.add("is-revealed");
-      startEntrance();
+      bootTimers.push(window.setTimeout(startEntrance, BOOT_ENTRANCE_START_MS));
       // Once the panel is clear, stop it intercepting pointer events.
       bootTimers.push(window.setTimeout(() => {
         bootLoaderRef.current?.classList.add("is-done");
@@ -1445,12 +1598,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     // bar's own easing always needs a few frames to actually arrive at 100.
     tryBootFall = () => {
       if (!bootMinHoldDone || !bootTexturesReady) return;
-      // Normally waits for the bar to visibly reach 100 before revealing. But that value only
-      // advances on rAF, which browsers PAUSE entirely in a hidden tab — so a visitor who opens
-      // this page and immediately switches away would come back to a gradient still sitting at
-      // whatever percent it froze on. Nobody is watching the sweep in that case, so don't hold the
-      // reveal hostage to it.
-      if (bootShown >= 1 || document.visibilityState === "hidden") fallBoot();
+      // The eased counter only matters if someone can see it. With the readouts hidden, waiting for
+      // it to reach 100 was costing ~2s of pure animation after the images were already decoded —
+      // measured, the reveal fired at 3.85s when every image had landed by 1.74s.
+      //
+      // Also skipped in a hidden tab: rAF is PAUSED there, so a visitor who opens this page and
+      // switches away would return to a gradient frozen at whatever percent it stopped on.
+      if (!bootUiVisible || bootShown >= 1 || document.visibilityState === "hidden") fallBoot();
     };
 
     // Drives the percentage, the bar fill and the star knob from the real fraction of panel
@@ -1477,10 +1631,14 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       bootRaf = requestAnimationFrame(updateBootUi);
     };
     // Nudges the loop awake when a texture lands, in case it already stopped at a completed frame.
-    onBootProgress = () => { if (!bootFallen && !bootRaf) bootRaf = requestAnimationFrame(updateBootUi); };
-    bootRaf = requestAnimationFrame(updateBootUi);
+    // Only run the counter's animation loop when something displays it. Hidden, it would burn a
+    // frame's work every tick alongside the 3D scene setting itself up, for a value nobody reads.
+    if (bootUiVisible) {
+      onBootProgress = () => { if (!bootFallen && !bootRaf) bootRaf = requestAnimationFrame(updateBootUi); };
+      bootRaf = requestAnimationFrame(updateBootUi);
+    }
 
-    bootTimers.push(window.setTimeout(() => { bootMinHoldDone = true; tryBootFall(); }, BOOT_HOLD_MS));
+    bootTimers.push(window.setTimeout(() => { bootMinHoldDone = true; tryBootFall(); }, bootHoldMs));
     // Failsafe — see BOOT_MAX_WAIT_MS. Rather than cutting the reveal in mid-count, it declares the
     // load complete so the bar sweeps up to 100% and falls through the normal path.
     bootTimers.push(window.setTimeout(() => {

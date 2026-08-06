@@ -63,6 +63,16 @@
    dragged off the bottom of the screen with the panel. */
 .classics-boot__ui { position: absolute; inset: 0; opacity: 1; transition: opacity .35s ease; }
 .classics-boot.is-revealing .classics-boot__ui { opacity: 0; }
+/* TEMPORARY, by request — hides the entire loading screen (ring, CLASSICS, percentage), leaving
+   just the gradient falling away as it did before any of it existed. One rule rather than removing
+   the markup: the elements, their styling and the progress wiring all stay intact and inert, so
+   bringing the loader back is deleting this line.
+   PAIRED WITH `BOOT_UI_VISIBLE` in ClassicsExperience.tsx — flip both together. That constant is
+   what drops the staged hold and the progress animation while there's nothing to look at; leaving
+   it true with this rule active means holding a blank gradient for beats nobody can see.
+   The gate itself still runs either way, so the gradient keeps waiting for the visible row's
+   images — that's what stops the gallery being uncovered mid-load. */
+.classics-boot__ui { display: none; }
 
 /* Centred block. left:50%/top:50% + translate rather than flex centring so the bottom readout
    below can be absolutely positioned in the same layer without the two fighting over layout. */
