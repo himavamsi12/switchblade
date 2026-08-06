@@ -9,7 +9,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 // useGLTF (Star3D, JourneyStar3D) wires it automatically; these raw GLTFLoaders do not.
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { SparkleMark } from "@/components/shared/SparkleMark";
 import "./classics-experience.css";
 
 /**
@@ -147,15 +146,14 @@ const FLIP_MS = 480;
 // the reveal reads as a deliberate entrance rather than something that was always there.
 const BOOT_TITLE_DELAY_MS = 90;
 const BOOT_TITLE_FADE_MS = 400;
-// The "Know information in ease" tag fades in only once the title has finished, so the two read as
-// a sequence rather than arriving together.
-const BOOT_EYEBROW_DELAY_MS = BOOT_TITLE_DELAY_MS + BOOT_TITLE_FADE_MS;
-const BOOT_EYEBROW_FADE_MS = 400;
-// Long enough for that whole sequence — title wipe, then tag fade — plus a moment to actually read
-// the result. Derived rather than hardcoded: a shorter hold lets a warm cache reveal the gallery
-// mid-sequence, so the word never resolves and the tag never appears. A partial word fading out
-// reads as a glitch, not an intro.
-const BOOT_HOLD_MS = BOOT_EYEBROW_DELAY_MS + BOOT_EYEBROW_FADE_MS + 200;
+// Long enough for the title to finish fading in, plus a beat where the ring is visibly filling
+// before anything can pull the screen away. Derived rather than hardcoded: on a warm cache a
+// shorter hold reveals the gallery mid-fade, so the word never fully resolves — a half-faded title
+// disappearing reads as a glitch rather than an intro.
+//
+// This dropped from 1090ms when the "Know information in ease" tag was removed; the tag's fade
+// used to be the last beat the hold had to cover.
+const BOOT_HOLD_MS = BOOT_TITLE_DELAY_MS + BOOT_TITLE_FADE_MS + 250;
 const BOOT_FALL_MS = 2200;
 // Failsafe on that wait — deliberately generous, because the loading screen shows a real
 // percentage now. A visitor watching a counter climb will happily wait far longer than one staring
@@ -317,8 +315,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
   // the gradient is up, and re-rendering the whole experience tree at 60fps for a percentage
   // counter would be wasteful and could stutter the 3D scene setting up behind it.
   const bootPctRef     = useRef<HTMLSpanElement>(null);
-  const bootFillRef    = useRef<HTMLDivElement>(null);
-  const bootKnobRef    = useRef<HTMLDivElement>(null);
+  const bootRingRef    = useRef<SVGCircleElement>(null);
 
   const cursorRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1472,10 +1469,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       if (target - bootShown < 0.004) bootShown = target;
       const pct = Math.min(100, Math.round(bootShown * 100));
       if (bootPctRef.current) bootPctRef.current.textContent = `${String(pct).padStart(2, "0")}%`;
-      // scaleX on a full-width bar rather than animating `width` — a transform is composited, and
-      // this runs every frame alongside the 3D scene building itself behind the gradient.
-      if (bootFillRef.current) bootFillRef.current.style.transform = `scaleX(${bootShown})`;
-      if (bootKnobRef.current) bootKnobRef.current.style.left = `${bootShown * 100}%`;
+      // The ring's circumference is normalised to 100 units by pathLength, so the drawn dash is
+      // literally the percentage — no 2*pi*r, and nothing to update if the radius ever changes.
+      // (dashoffset is left to the CSS, which uses it to start the arc at 12 o'clock.)
+      if (bootRingRef.current) bootRingRef.current.style.strokeDasharray = `${bootShown * 100} 100`;
       if (bootShown >= 1) { tryBootFall(); return; }   // arrived: stop the loop
       bootRaf = requestAnimationFrame(updateBootUi);
     };
@@ -1646,26 +1643,52 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       <div className="classics-boot__cover" ref={bootLayerRef} />
       <div className="classics-boot__ui">
         <div className="classics-boot__center">
-          {/* Fades in after the title has finished wiping in — the delay is driven from the sweep's
-              own timing (see BOOT_EYEBROW_DELAY_MS) rather than a number duplicated in the
-              stylesheet, so retuning the sweep can't leave the two out of step. */}
-          <span
-            className="classics-boot__eyebrow"
-            style={{ animationDelay: `${BOOT_EYEBROW_DELAY_MS}ms`, animationDuration: `${BOOT_EYEBROW_FADE_MS}ms` }}
-          >
-            Know information in ease
-          </span>
-          {/* Plain fade, matching the tag below it — by request, replacing the gradient wipe this
-              used to share with the site's scroll-triggered headings. Two things improved with it:
-              the whole intro got shorter, and the title no longer depends on rAF to become
-              visible. SweepText renders fully transparent at rest and only resolves as its wipe
-              runs, so a browser that throttles rAF (any hidden/background tab) could leave the
-              word invisible; a CSS animation with fill-mode:both cannot. */}
-          <div
-            className="classics-boot__title"
-            style={{ animationDelay: `${BOOT_TITLE_DELAY_MS}ms`, animationDuration: `${BOOT_TITLE_FADE_MS}ms` }}
-          >
-            Classics
+          {/* The "Know information in ease" tag was removed by request — the ring and the title are
+              the whole loading screen now.
+
+              The title fades in (rather than the gradient wipe it once shared with the site's
+              scroll-triggered headings): besides being shorter, it means the word never depends on
+              rAF to become visible. SweepText renders fully transparent at rest and only resolves
+              as its wipe runs, so a browser throttling rAF — any hidden tab — could leave it
+              invisible. A CSS animation with fill-mode:both cannot. */}
+          {/* The progress ring encircling the title, replacing the bar that used to run along the
+              bottom. Both the ring's diameter and the title's font-size come from one --ring
+              custom property (see the CSS): "CLASSICS" measures 6.542px wide per 1px of font-size
+              in this face, so the type is sized at a fixed fraction of the diameter. Tie them
+              together and the word can't outgrow its circle at some viewport nobody checked.
+
+              pathLength="100" re-maps the circle's own circumference to 100 units, so progress can
+              be written straight into strokeDashoffset as (100 - percent) with no 2*pi*r arithmetic
+              and nothing to recompute if the radius ever changes. */}
+          <div className="classics-boot__ringWrap">
+            <svg className="classics-boot__ring" viewBox="0 0 100 100" aria-hidden="true">
+              {/* The ring is stroked with the INVERSE of the backdrop — white at the top, blue at
+                  the bottom — because a single flat colour can't stay legible across this gradient.
+                  A white ring vanished into the pale lower half; a blue one would vanish into the
+                  dark upper half. Running it the other way keeps contrast at both ends. */}
+              {/* gradientTransform cancels the circles' own rotate(-90) below. An SVG <circle>
+                  path begins at 3 o'clock, so the geometry has to be turned a quarter-turn for
+                  progress to start at the top — but that rotation carries the stroke's gradient
+                  with it, tipping the white/blue axis onto its side. Rotating the gradient back by
+                  the same amount leaves it upright while the arc still starts at 12 o'clock.
+                  (Offsetting the dash pattern instead avoids the rotation but does not place the
+                  arc's start where you'd expect — measured, not assumed.) */}
+              <defs>
+                <linearGradient id="classicsBootRing" x1="0" y1="0" x2="0" y2="1" gradientTransform="rotate(90 0.5 0.5)">
+                  <stop offset="0" stopColor="#FFFFFF" />
+                  <stop offset="0.55" stopColor="#8FA8E4" />
+                  <stop offset="1" stopColor="#1130A2" />
+                </linearGradient>
+              </defs>
+              <circle className="classics-boot__ringTrack" cx="50" cy="50" r="46" pathLength="100" transform="rotate(-90 50 50)" />
+              <circle className="classics-boot__ringFill" cx="50" cy="50" r="46" pathLength="100" transform="rotate(-90 50 50)" ref={bootRingRef} />
+            </svg>
+            <div
+              className="classics-boot__title"
+              style={{ animationDelay: `${BOOT_TITLE_DELAY_MS}ms`, animationDuration: `${BOOT_TITLE_FADE_MS}ms` }}
+            >
+              Classics
+            </div>
           </div>
         </div>
         <div className="classics-boot__bottom">
@@ -1679,12 +1702,9 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
                 so the correction is gone and the glyph is left as the type designer drew it. */}
             <span className="classics-boot__pct" ref={bootPctRef}>00%</span>
           </div>
-          <div className="classics-boot__track">
-            <div className="classics-boot__fill" ref={bootFillRef} />
-            <div className="classics-boot__knob" ref={bootKnobRef}>
-              <SparkleMark className="classics-boot__knobMark" />
-            </div>
-          </div>
+          {/* The horizontal track, its fill and the star knob that rode it were all removed by
+              request — the ring around the title is the progress indicator now, and a second bar
+              showing the same number would just be repeating itself. */}
         </div>
       </div>
     </div>
