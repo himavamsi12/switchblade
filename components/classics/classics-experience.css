@@ -91,7 +91,9 @@
    the rotate(-90) on the circles themselves (see the markup for why the gradient is counter-
    rotated rather than the dash pattern being offset). */
 .classics-boot__ringFill { stroke-dasharray: 0 100; transition: stroke-dasharray .12s linear; }
-.classics-boot__title { animation: classicsBootFadeIn 400ms ease both; color: #fff; font-family: var(--font-barlow), sans-serif; font-size: calc(var(--ring) * .1145); letter-spacing: -.005em; line-height: .95; position: relative; text-transform: uppercase; }
+/* Black, by request — the word sits over the pale middle of the gradient where it reads far more
+   solidly than the white it started as. */
+.classics-boot__title { animation: classicsBootFadeIn 400ms ease both; color: #0D0D0D; font-family: var(--font-barlow), sans-serif; font-size: calc(var(--ring) * .1145); letter-spacing: -.005em; line-height: .95; position: relative; text-transform: uppercase; }
 @media (prefers-reduced-motion: reduce) {
   .classics-boot__title { animation: none; }
 }
@@ -106,19 +108,17 @@
    stay intact: bringing it back is removing this one rule, with nothing to reinstate and nothing to
    rot in the meantime. */
 .classics-boot__caption { display: none; }
-/* Sits INSIDE the circle, low down — inset from the wrapper's bottom edge by a fraction of the
-   diameter so it clears the arc rather than straddling or hanging below it. Absolutely positioned
-   against the ring wrapper rather than placed in the flow, so it stays pinned near the bottom no
-   matter how the title and caption above it change height. Only the X translate is needed; the
-   inset does the vertical work.
-
-   The +.06em in the X translate is an OPTICAL correction, not a fix for a layout error — measured,
-   the number's box already centres on the circle to 0.00px, and its ink extent sits 0.93px RIGHT
-   of that box centre. What the eye reads instead is weight distribution: "99%" puts two dense
-   round digits on the left and the much airier % on the right, so the mass looks left-of-centre
-   even though the geometry is exact. Nudging right balances what's actually seen. In em so it
-   scales with the number rather than drifting as --ring changes. */
-.classics-boot__pct { bottom: calc(var(--ring) * .085); color: #0D0D0D; font-family: var(--font-barlow), sans-serif; font-size: calc(var(--ring) * .07); left: 50%; letter-spacing: -.01em; line-height: 1; position: absolute; transform: translateX(calc(-50% + .06em));
+/* Absolutely positioned, hung below the title — and that is what keeps the TITLE properly centred
+   in the circle. In the flow, the column centres the title and the number as a pair, so the title
+   itself ends up sitting above the circle's centre by half the number's height. Out of flow, the
+   title is the only thing being centred and the number simply follows it: top:100% puts it at the
+   title's baseline edge, and the margin adds the gap.
+   translateX carries an OPTICAL correction of .06em, not a fix for a layout error: measured, the
+   number's box centres on the circle to 0.00px and its ink extent sits 0.93px RIGHT of that box
+   centre. What the eye reads instead is weight distribution — "06%" puts dense round digits on the
+   left and the much airier % on the right, so the mass looks left-of-centre while the geometry is
+   exact. In em so it scales with the number rather than drifting as --ring changes. */
+.classics-boot__pct { color: #0D0D0D; font-family: var(--font-barlow), sans-serif; font-size: calc(var(--ring) * .07); left: 50%; letter-spacing: -.01em; line-height: 1; margin-top: calc(var(--ring) * .05); position: absolute; top: 100%; transform: translateX(calc(-50% + .06em));
   /* tabular figures — without them the counter's width jitters as digits change, nudging the whole
      centred number sideways on nearly every tick. */
   font-variant-numeric: tabular-nums; }

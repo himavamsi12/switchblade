@@ -1695,19 +1695,18 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
                 Classics
               </div>
               <p className="classics-boot__caption">Curating list of<br />archives for you</p>
-            </div>
-            {/* The percentage sits outside the stacked group but INSIDE the circle, low down near
-                the bottom arc — by request. Absolutely positioned against the ring wrapper rather
-                than placed in the flow, so it stays pinned there no matter how the title and
-                caption above it change height.
+              {/* Back in the flow directly under the title, by request — it was previously pinned
+                  low against the bottom arc. In-flow means the gap to the title is a plain margin,
+                  so the two stay together if either is resized.
 
-                Starts at 00% rather than blank so the reveal never flashes an empty slot on a warm
-                cache, where the first paint can already be most of the way through the load.
-                The "%" used to be a separate, shrunken span: the TBJ *Demo* font drew it at 1.715x
-                its own digit height, so inline it towered over the number. The licensed release
-                draws it at 1.103x with a proper descender — i.e. designed to sit with the figures —
-                so the correction is gone and the glyph is left as the type designer drew it. */}
-            <span className="classics-boot__pct" ref={bootPctRef}>00%</span>
+                  Starts at 00% rather than blank so the reveal never flashes an empty slot on a
+                  warm cache, where the first paint can already be most of the way through the load.
+                  The "%" used to be a separate, shrunken span: the TBJ *Demo* font drew it at
+                  1.715x its own digit height, so inline it towered over the number. The licensed
+                  release draws it at 1.103x with a proper descender — designed to sit with the
+                  figures — so that correction is gone and the glyph is left as drawn. */}
+              <span className="classics-boot__pct" ref={bootPctRef}>00%</span>
+            </div>
           </div>
         </div>
         {/* The bottom strip that held the caption, the percentage, the horizontal track, its fill
