@@ -1683,18 +1683,25 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               <circle className="classics-boot__ringTrack" cx="50" cy="50" r="46" pathLength="100" transform="rotate(-90 50 50)" />
               <circle className="classics-boot__ringFill" cx="50" cy="50" r="46" pathLength="100" transform="rotate(-90 50 50)" ref={bootRingRef} />
             </svg>
-            <div
-              className="classics-boot__title"
-              style={{ animationDelay: `${BOOT_TITLE_DELAY_MS}ms`, animationDuration: `${BOOT_TITLE_FADE_MS}ms` }}
-            >
-              Classics
+            {/* Title, caption and percentage now sit together INSIDE the ring, stacked and centred
+                — by request, moved in from the bottom of the screen. Both readouts are sized from
+                --ring like the title is, so the whole group scales with the circle instead of
+                drifting out of proportion at some viewport. */}
+            <div className="classics-boot__inner">
+              <div
+                className="classics-boot__title"
+                style={{ animationDelay: `${BOOT_TITLE_DELAY_MS}ms`, animationDuration: `${BOOT_TITLE_FADE_MS}ms` }}
+              >
+                Classics
+              </div>
+              <p className="classics-boot__caption">Curating list of<br />archives for you</p>
             </div>
-          </div>
-        </div>
-        <div className="classics-boot__bottom">
-          <div className="classics-boot__row">
-            <p className="classics-boot__caption">Curating list of<br />archives for you</p>
-            {/* Starts at 00% rather than blank so the reveal never flashes an empty slot on a warm
+            {/* The percentage sits outside the stacked group but INSIDE the circle, low down near
+                the bottom arc — by request. Absolutely positioned against the ring wrapper rather
+                than placed in the flow, so it stays pinned there no matter how the title and
+                caption above it change height.
+
+                Starts at 00% rather than blank so the reveal never flashes an empty slot on a warm
                 cache, where the first paint can already be most of the way through the load.
                 The "%" used to be a separate, shrunken span: the TBJ *Demo* font drew it at 1.715x
                 its own digit height, so inline it towered over the number. The licensed release
@@ -1702,10 +1709,10 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
                 so the correction is gone and the glyph is left as the type designer drew it. */}
             <span className="classics-boot__pct" ref={bootPctRef}>00%</span>
           </div>
-          {/* The horizontal track, its fill and the star knob that rode it were all removed by
-              request — the ring around the title is the progress indicator now, and a second bar
-              showing the same number would just be repeating itself. */}
         </div>
+        {/* The bottom strip that held the caption, the percentage, the horizontal track, its fill
+            and the star knob is gone entirely — all of it either moved inside the ring or was
+            removed by request. */}
       </div>
     </div>
 
