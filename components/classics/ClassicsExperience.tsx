@@ -597,6 +597,18 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     let bootTexturesReady = false;
     let tryBootFall: () => void = () => {};
     let onBootProgress: (() => void) | null = null;
+    // Texture loads for the four rows that are NOT on screen at boot, parked until the gradient has
+    // lifted. They used to be issued in the same tick as the gate row's: 50 requests at once, of
+    // which only 12 decide when the visitor sees anything. A browser runs ~6 per origin at a time
+    // over HTTP/1.1, so the 38 nobody was looking at sat in the same queue as the 12 the reveal was
+    // waiting on — measured on a local production build, the 12th gate image landed at 3.8s while
+    // the full set ran to 10.9s. Held back, the gate row has the connection to itself.
+    let offscreenLoads: Array<() => void> = [];
+    const flushOffscreenLoads = () => {
+      const runners = offscreenLoads;
+      offscreenLoads = [];
+      for (const run of runners) run();
+    };
     const noteBootTexture = (url: string) => {
       // Ignores urls this gate isn't waiting on (resize rebuilds) and repeat callbacks for one
       // already counted, either of which would otherwise push the fraction past 100%.
@@ -722,7 +734,12 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
 
       // Visible row first, everything else after — see the note where deferredLoads is declared.
       for (const l of deferredLoads) if (l.row === BOOT_GATE_ROW) l.run();
-      for (const l of deferredLoads) if (l.row !== BOOT_GATE_ROW) l.run();
+      const rest = deferredLoads.filter(l => l.row !== BOOT_GATE_ROW).map(l => l.run);
+      // Only the boot build parks the off-screen rows (see offscreenLoads). A resize rebuild has no
+      // gradient to wait for and nothing to flush it afterwards, so it must issue them right away
+      // or the other four rows would stay untextured until the next reload.
+      if (bootCollecting) offscreenLoads.push(...rest);
+      else for (const run of rest) run();
     }
     buildPanels();
     // The gate can only be judged complete once the whole build has finished registering — during
@@ -1607,6 +1624,13 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       // the bottom of the screen with the panel.
       bootLoaderRef.current?.classList.add("is-revealing");
       bootLayerRef.current?.classList.add("is-falling");
+      // The other four rows start downloading only now, with the reveal already committed. They're
+      // off screen until the carousel is scrolled, so they have the whole fall animation and then
+      // some to arrive in — and until they do they were only ever stealing bandwidth from the row
+      // the visitor is actually waiting on. Safe to hang this off fallBoot specifically: the
+      // BOOT_MAX_WAIT_MS failsafe forces it, so there is no path where the reveal never happens and
+      // these are dropped.
+      flushOffscreenLoads();
       // The canvas goes live immediately so the falling gradient uncovers a real scene rather than
       // a blank page. The panels' own entrance is held back though — see BOOT_ENTRANCE_START_MS.
       canvas.classList.add("is-revealed");
