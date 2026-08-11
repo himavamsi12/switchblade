@@ -646,14 +646,28 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
       // row would then have changed almost nothing — it would still be waiting on the queue.
       const deferredLoads: Array<{ row: number; run: () => void }> = [];
 
+      // ONE deck dealt across every row, rather than a fresh shuffle per row whose first
+      // PANELS_PER_ROW entries were taken. That older approach gave each card only a
+      // PANELS_PER_ROW/allProjects chance of landing in any given row, so with 50 cards and 12
+      // slots per row roughly a quarter of them (0.76^5) never appeared on the ring at all — the
+      // playground shows every card, so the two views disagreed about what the archive contains.
+      // Dealing consecutively guarantees every card takes a slot before any card takes a second
+      // one, and only re-shuffles to fill the remainder once the deck runs out.
+      const dealt: Project[] = [];
+      if (allProjects.length) {
+        for (let pass = 0; dealt.length < ROWS * PANELS_PER_ROW; pass++) {
+          dealt.push(...seededShuffle(allProjects, rowSeeds[pass % ROWS] + pass));
+        }
+      }
+
       for (let s = 0; s < ROWS; s++) {
         const grp = new THREE.Group();
         grp.position.y = s * cfg.rowSpacing - (ROWS - 1) * cfg.rowSpacing / 2;
         scene.add(grp); groups.push(grp);
 
-        const deck = seededShuffle(allProjects, rowSeeds[s]);
         for (let h = 0; h < PANELS_PER_ROW; h++) {
-          const proj = deck[h % deck.length];
+          const proj = dealt[s * PANELS_PER_ROW + h];
+          if (!proj) break;
           const tR = (h + s * 0.5) / PANELS_PER_ROW * Math.PI * 2;
           const tS = h / PANELS_PER_ROW * Math.PI * 2;
           const yS = (h / PANELS_PER_ROW - 0.5) * cfg.rowSpacing;
