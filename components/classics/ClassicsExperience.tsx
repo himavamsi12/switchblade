@@ -96,7 +96,17 @@ function applyImage(el: HTMLImageElement | null, image: CmsImage | undefined, wi
   el.style.visibility = "hidden";
   const reveal = () => { el.style.visibility = ""; };
   el.onload = reveal;
-  el.onerror = reveal;   // a broken image should not leave an invisible element behind
+  // One retry against the un-resized original if the optimiser 500s (see loadPanelTexture's own
+  // note on this) — same fallback, DOM side. Falls back to just revealing whatever's there (broken
+  // icon included) rather than an invisible element if even that fails.
+  el.onerror = () => {
+    if (el.getAttribute("src") !== image.url) {
+      el.onerror = reveal;
+      el.setAttribute("src", image.url);
+    } else {
+      reveal();
+    }
+  };
   el.setAttribute("src", next);
 }
 
@@ -622,9 +632,12 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
     };
 
     const textureCache = new Map<string, THREE.Texture>();
-    function loadPanelTexture(url: string, onReady: (tex: THREE.Texture) => void) {
+    // `bootKey` is the url registered with the boot gate (see buildPanels' bootWanted.add) — kept
+    // separate from `url` so the fallback below can swap what's actually being fetched without
+    // losing track of which boot-gate slot this load is settling.
+    function loadPanelTexture(url: string, onReady: (tex: THREE.Texture) => void, rawUrl?: string, bootKey: string = url) {
       const cached = textureCache.get(url);
-      if (cached) { onReady(cached); noteBootTexture(url); return; }
+      if (cached) { onReady(cached); noteBootTexture(bootKey); return; }
       texLoader.load(
         url,
         tex => {
@@ -632,12 +645,19 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           tex.minFilter = THREE.LinearFilter;
           textureCache.set(url, tex);
           onReady(tex);
-          noteBootTexture(url);
+          noteBootTexture(bootKey);
         },
         undefined,
-        // Settled-but-failed still counts, or one dead image URL would hold the gradient up until
-        // BOOT_MAX_WAIT_MS every single load. The panel simply stays untextured, as it did before.
-        () => noteBootTexture(url),
+        // The optimiser (`/_next/image`) is a separate serverless function from the one serving
+        // this page — it has 500'd in production before (a build-artifact bug unrelated to any
+        // image's own health) and taken every panel on the ring down with it, since every panel
+        // routes through the same route. One retry against the original, un-resized file — same
+        // origin, already immutably cached (see next.config's headers()) — means an optimiser
+        // outage degrades to heavier images instead of a page that never renders.
+        () => {
+          if (rawUrl && rawUrl !== url) loadPanelTexture(rawUrl, onReady, undefined, bootKey);
+          else noteBootTexture(bootKey);
+        },
       );
     }
 
@@ -727,7 +747,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
               // tickEntrance. Without it a panel on schedule fades in blank and the picture
               // appears afterwards, which is the pop the fade is meant to avoid.
               meta.readyAt = performance.now();
-            }),
+            }, proj.img.url),
           });
         }
       }
@@ -991,7 +1011,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
           // No object-position needed on these: .pg-card__img is width:100%/height:auto, so it
           // renders at the image's natural aspect and never crops. The focal point only matters
           // where something cover-crops (the 3D panels, the detail popup, the thumb strip).
-          card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(optimizedSrc(p.img.url, IMG_W_PANEL))}" alt="${escapeHtml(p.title)}">
+          card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(optimizedSrc(p.img.url, IMG_W_PANEL))}" onerror="this.onerror=null;this.src='${escapeHtml(p.img.url)}'" alt="${escapeHtml(p.title)}">
             <span class="pg-card__cta">CLICK TO SEE</span>
             <span class="pg-card__title"${titleStyle}>/${escapeHtml(p.title.toUpperCase())}</span>`;
           const onClick = () => { if (!detailOpen) openDetail(p, card); };
@@ -1016,7 +1036,7 @@ export const ClassicsExperience = forwardRef<ClassicsExperienceHandle, ClassicsE
         card.className = "pg-card";
         card.style.left = left + "%"; card.style.top = top + "px"; card.style.width = w + "px";
         card.style.transform = `rotate(${rot.toFixed(2)}deg)`;
-        card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(optimizedSrc(p.img.url, IMG_W_PANEL))}" alt="${escapeHtml(p.title)}">
+        card.innerHTML = `<img class="pg-card__img" src="${escapeHtml(optimizedSrc(p.img.url, IMG_W_PANEL))}" onerror="this.onerror=null;this.src='${escapeHtml(p.img.url)}'" alt="${escapeHtml(p.title)}">
           <span class="pg-card__cta">CLICK TO SEE</span>
           <span class="pg-card__title">/${escapeHtml(p.title.toUpperCase())}</span>`;
         const onClick = () => { if (!detailOpen) openDetail(p, card); };
