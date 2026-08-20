@@ -1,0 +1,25 @@
+# SWITCHBLADE™
+
+> SWITCHBLADE™ is a brand philosophy — strength, compassion, and intent distilled into a mark
+> for builders who refuse to be boxed in. The site tells the story of that mark (Cosmos → Classic
+> → Evolution) and the archive of real-world references — in football, motorsport, music, fashion,
+> film, and design — that shaped it.
+
+## Pages
+
+- [Home](https://switchblade.in/): The brand's origin story and the three-phase journey of the
+  SWITCHBLADE star (Cosmos, Classic, Evolution).
+- [Classics](https://switchblade.in/classics): An interactive archive of the people, objects, and
+  moments that inspired the mark — one card per reference, spanning football, motorsport, music,
+  fashion, screen icons, and more. New cards are added on an ongoing basis.
+- [Collaborate](https://switchblade.in/collaborate): How SWITCHBLADE™ partners with other brands
+  and creators — the principles it collaborates under (craft first, mutual elevation, cultural
+  fit, built to last) and the kinds of collaborations it takes on (sound & art capsules, single
+  considered objects, apparel).
+
+## Notes
+
+- The Classics archive is content-managed and grows continuously; treat it as a living page
+  rather than a fixed snapshot.
+- SWITCHBLADE™ is a brand and creative studio, not a SaaS product or documentation site — there
+  is no API or developer surface to describe here.
