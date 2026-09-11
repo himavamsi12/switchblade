@@ -785,7 +785,11 @@ export function RadiatesSection({
 
             <div
               ref={softHeartRef}
-              className="absolute right-0 -bottom-6 md:bottom-auto md:top-[calc(100%+clamp(10px,1.4vw,24px))]"
+              // Moved up twice, by request ("make the soft heart little up", then "even more
+              // up") — mobile -bottom-6 (24px) → -bottom-4 → -bottom-1 (4px), desktop gap
+              // clamp(10px,1.4vw,24px) → clamp(6px,0.9vw,16px) → clamp(0px,0.2vw,4px). Both
+              // just tighten the space below the wordmark.
+              className="absolute right-0 -bottom-1 md:bottom-auto md:top-[calc(100%+clamp(0px,0.2vw,4px))]"
               style={{ ...ANNO, color: "#0A1AFF" }}
             >
               [SOFT HEART]
