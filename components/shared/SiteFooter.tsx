@@ -219,7 +219,7 @@ export function SiteFooter() {
             Reach out / Let&rsquo;s collaborate
           </p>
           <a
-            href="mailto:hello@switchbladeworld.com"
+            href="mailto:hello@switchblade.in"
             style={{
               fontFamily:     "var(--font-archivo)",
               fontWeight:     700,
@@ -233,7 +233,7 @@ export function SiteFooter() {
             onMouseEnter={e => ((e.currentTarget as HTMLElement).style.opacity = "0.7")}
             onMouseLeave={e => ((e.currentTarget as HTMLElement).style.opacity = "1")}
           >
-            HELLO@SWITCHBLADEWORLD.COM
+            HELLO@SWITCHBLADE.IN
           </a>
         </div>
       </div>
