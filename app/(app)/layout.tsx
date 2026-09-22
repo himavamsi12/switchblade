@@ -71,9 +71,24 @@ const GA_MEASUREMENT_ID = "G-MEMB82WV7V";
 const GA_ENABLED = process.env.NODE_ENV === "production";
 
 export const metadata: Metadata = {
+  // Needed so the relative image path below resolves to an absolute URL — link-preview crawlers
+  // (WhatsApp, iMessage, Slack, X…) ignore relative og:image URLs.
+  metadataBase: new URL("https://switchblade.in"),
   title: "SWITCHBLADE™",
   description:
     "SWITCHBLADE™ — a philosophy applied to whatever it touches. Strength, compassion, and intent, distilled into a mark for builders who refuse to be boxed in.",
+  // Share thumbnail for every page. No openGraph/twitter title or description on purpose: child
+  // pages only override `title`/`description`, and crawlers fall back to those, so each page still
+  // previews with its own title while inheriting this image.
+  openGraph: {
+    type: "website",
+    siteName: "SWITCHBLADE™",
+    images: [{ url: "/thumbnail.jpeg", width: 1600, height: 1600, alt: "SWITCHBLADE™" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/thumbnail.jpeg"],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
