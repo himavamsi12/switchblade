@@ -46,6 +46,7 @@ export type CmsProject = Project;
  * worse than serving the original.
  */
 const IMG_QUALITY = 75;
+const MEDIA_PREFIX = "/api/media/file/";
 function optimizedSrc(url: string, width: number): string {
   if (!url || !url.startsWith("/")) return url;
   // The query string MUST be dropped. Next 16 rejects a local url carrying one outright —
@@ -60,7 +61,16 @@ function optimizedSrc(url: string, width: number): string {
   // Losing the buster here is survivable: the optimiser keys its cache on the source url and
   // revalidates against that file's own Cache-Control, so an edited image still comes through —
   // see next.config's headers() for the policy, and note it decides how quickly a re-crop appears.
-  const src = url.split("?")[0];
+  //
+  // Media urls that carry a version are rewritten to /media/v/<v>/<file> instead (see rewrites()
+  // in next.config), which keeps the version without a query string — the optimiser can then
+  // cache them for a year rather than its 4h default.
+  const [path, query = ""] = url.split("?");
+  const version = new URLSearchParams(query).get("v");
+  const src =
+    version && /^\d+$/.test(version) && path.startsWith(MEDIA_PREFIX)
+      ? `/media/v/${version}/${path.slice(MEDIA_PREFIX.length)}`
+      : path;
   return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=${IMG_QUALITY}`;
 }
 

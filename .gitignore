@@ -39,3 +39,4 @@ next-env.d.ts
 # stray `git add .` would publish both. Store them somewhere private instead.
 License.pdf
 *licen[cs]e*.pdf
+.vercel

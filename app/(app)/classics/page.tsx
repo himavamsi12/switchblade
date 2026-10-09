@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ClassicsPageClient } from "@/components/classics/ClassicsPageClient";
 import type { CmsImage, CmsProject } from "@/components/classics/ClassicsExperience";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 /**
  * Normalizes one gallery entry into the { url, focalX, focalY } shape the experience renders.
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Dynamic again, but backed by Supabase instead of Payload's own local sqlite db.
+ * Data-driven again, but backed by Supabase instead of Payload's own local sqlite db.
  *
  * This used to run `payload.find({ collection: "classics-cards" })` on every request, which can't
  * work on Vercel: Payload's `sqliteAdapter` points at the local file `./payload.db`, which is
@@ -43,8 +43,17 @@ export const metadata: Metadata = {
  * composes `[...PROJECTS, ...cmsProjects]`, so the hardcoded list keeps working even if this fetch
  * returns nothing (e.g. no cards created yet, or a transient Supabase error).
  */
+/**
+ * Cached for 5 minutes rather than queried on every request. Going through the cookie-reading
+ * server client made this page dynamic, which put a Supabase round trip (measured 1.6-3.6s TTFB in
+ * production) in front of every visit. The cards are public and identical for everyone, so the
+ * cookie-free client lets the page be prerendered, and the Payload sync hooks call
+ * revalidatePath("/classics") so an edit shows up immediately instead of after the window.
+ */
+export const revalidate = 300;
+
 export default async function ClassicsPage() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("classics_cards")
     .select("heading, category, image_url, image_focal_x, image_focal_y, gallery, body, instagram_url")

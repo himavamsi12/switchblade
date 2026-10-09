@@ -45,6 +45,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Version-in-the-path alias for the optimiser, see rewrites() below. Same immutable policy
+        // as ?v= urls, and it's what lets each optimised image stay cached for a year.
+        source: "/media/v/:v/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         source: "/api/media/file/:path*",
         has: [{ type: "query", key: "v" }],
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
@@ -55,6 +61,16 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "public, max-age=300, stale-while-revalidate=86400" }],
       },
     ];
+  },
+  // /media/v/<updatedAt>/<file> -> Payload's media route. Exists for the image optimiser, which
+  // can't take our ?v= buster (see optimizedSrc in components/classics/ClassicsExperience.tsx).
+  // With the buster stripped the optimiser saw the max-age=300 policy above, so it kept each
+  // optimised image only for its 4h default; on a quiet site that expired between visits and
+  // every visitor paid for a re-fetch through Payload + Supabase Storage and a re-encode
+  // (measured up to 14s for one panel). Carrying the version in the PATH keeps the url
+  // version-addressed, so it gets the immutable policy and a re-crop still yields a new url.
+  async rewrites() {
+    return [{ source: "/media/v/:v/:path*", destination: "/api/media/file/:path*" }];
   },
 };
 

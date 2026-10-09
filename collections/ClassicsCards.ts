@@ -1,6 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncClassicsCardToSupabase } from "@/lib/payload/syncClassicsCard";
+import { revalidateClassicsPage, syncClassicsCardToSupabase } from "@/lib/payload/syncClassicsCard";
 
 export const ClassicsCards: CollectionConfig = {
   slug: "classics-cards",
@@ -39,6 +39,7 @@ export const ClassicsCards: CollectionConfig = {
           const supabase = createAdminClient();
           const { error } = await supabase.from("classics_cards").delete().eq("payload_id", doc.id);
           if (error) throw error;
+          revalidateClassicsPage();
         } catch (err) {
           req.payload.logger.error({ err, docId: doc.id }, "Failed to delete synced classics card from Supabase");
         }

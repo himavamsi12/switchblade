@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import type { Payload } from "payload";
 import type { ClassicsCard, Media } from "@/payload-types";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -76,6 +77,20 @@ export async function syncClassicsCardToSupabase(doc: ClassicsCard, payload: Pay
     { onConflict: "payload_id" },
   );
   if (error) throw error;
+  revalidateClassicsPage();
+}
+
+/**
+ * Drops the cached /classics render so an edit is live on the next visit rather than after the
+ * page's revalidate window. Swallows the error revalidatePath throws outside a Next.js request
+ * (e.g. scripts/import-classics.ts running under plain Node) — the window covers that case.
+ */
+export function revalidateClassicsPage(): void {
+  try {
+    revalidatePath("/classics");
+  } catch {
+    // not inside a Next.js request, see above
+  }
 }
 
 /**
