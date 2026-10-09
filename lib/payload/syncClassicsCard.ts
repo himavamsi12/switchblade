@@ -1,6 +1,7 @@
-import { revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import type { Payload } from "payload";
 import type { ClassicsCard, Media } from "@/payload-types";
+import { CLASSICS_CARDS_TAG } from "@/lib/classicsCache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 interface SyncedImage {
@@ -81,13 +82,13 @@ export async function syncClassicsCardToSupabase(doc: ClassicsCard, payload: Pay
 }
 
 /**
- * Drops the cached /classics render so an edit is live on the next visit rather than after the
- * page's revalidate window. Swallows the error revalidatePath throws outside a Next.js request
+ * Expires the /classics page's cached card query so an edit is live on the next visit rather than
+ * after the cache window. Swallows the error revalidateTag throws outside a Next.js request
  * (e.g. scripts/import-classics.ts running under plain Node) — the window covers that case.
  */
 export function revalidateClassicsPage(): void {
   try {
-    revalidatePath("/classics");
+    revalidateTag(CLASSICS_CARDS_TAG, { expire: 0 });
   } catch {
     // not inside a Next.js request, see above
   }

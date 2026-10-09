@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
+import { connection } from "next/server";
 import { ClassicsPageClient } from "@/components/classics/ClassicsPageClient";
 import type { CmsImage, CmsProject } from "@/components/classics/ClassicsExperience";
+import { CLASSICS_CARDS_TAG } from "@/lib/classicsCache";
 import { createPublicClient } from "@/lib/supabase/public";
 
 /**
@@ -44,37 +47,53 @@ export const metadata: Metadata = {
  * returns nothing (e.g. no cards created yet, or a transient Supabase error).
  */
 /**
- * Cached for 5 minutes rather than queried on every request. Going through the cookie-reading
- * server client made this page dynamic, which put a Supabase round trip (measured 1.6-3.6s TTFB in
- * production) in front of every visit. The cards are public and identical for everyone, so the
- * cookie-free client lets the page be prerendered, and the Payload sync hooks call
- * revalidatePath("/classics") so an edit shows up immediately instead of after the window.
+ * Rendered per request, but the Supabase query is cached for 5 minutes. Going through the
+ * cookie-reading server client made every visit wait on a Supabase round trip (measured 1.6-3.6s
+ * TTFB in production). The cards are public and identical for everyone, so the result is shared
+ * across requests via the data cache, and the Payload sync hooks expire CLASSICS_CARDS_TAG so an
+ * edit shows up immediately instead of after the window.
+ *
+ * Not prerendered (`connection()` below): the Supabase env vars aren't available during the Vercel
+ * build, so a static prerender failed the deploy with "supabaseUrl is required".
+ *
+ * Errors throw inside the cached function so a failed query is never cached; the page falls back
+ * to the hardcoded projects for that request instead.
  */
-export const revalidate = 300;
+const getCmsProjects = unstable_cache(
+  async (): Promise<CmsProject[]> => {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("classics_cards")
+      .select("heading, category, image_url, image_focal_x, image_focal_y, gallery, body, instagram_url")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    return (data ?? []).map((row) => ({
+      title: row.heading,
+      cat: row.category,
+      img: {
+        url: row.image_url,
+        focalX: row.image_focal_x ?? 50,
+        focalY: row.image_focal_y ?? 50,
+      },
+      gallery: (row.gallery as unknown[] | null)?.map((g) => toCmsImage(g)) ?? undefined,
+      body: (row.body as string[] | null) ?? undefined,
+      instagram: row.instagram_url ?? undefined,
+    }));
+  },
+  ["classics-cards"],
+  { revalidate: 300, tags: [CLASSICS_CARDS_TAG] },
+);
 
 export default async function ClassicsPage() {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from("classics_cards")
-    .select("heading, category, image_url, image_focal_x, image_focal_y, gallery, body, instagram_url")
-    .order("created_at", { ascending: false });
+  await connection();
 
-  if (error) {
-    console.error("Failed to fetch classics_cards from Supabase:", error.message);
+  let cmsProjects: CmsProject[] = [];
+  try {
+    cmsProjects = await getCmsProjects();
+  } catch (err) {
+    console.error("Failed to fetch classics_cards from Supabase:", err instanceof Error ? err.message : err);
   }
-
-  const cmsProjects: CmsProject[] = (data ?? []).map((row) => ({
-    title: row.heading,
-    cat: row.category,
-    img: {
-      url: row.image_url,
-      focalX: row.image_focal_x ?? 50,
-      focalY: row.image_focal_y ?? 50,
-    },
-    gallery: (row.gallery as unknown[] | null)?.map((g) => toCmsImage(g)) ?? undefined,
-    body: (row.body as string[] | null) ?? undefined,
-    instagram: row.instagram_url ?? undefined,
-  }));
 
   return <ClassicsPageClient cmsProjects={cmsProjects} />;
 }
