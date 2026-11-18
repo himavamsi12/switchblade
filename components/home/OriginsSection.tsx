@@ -33,7 +33,7 @@ const STORY_PARAGRAPHS = [
   "Who are just as sharp as they are kind and know those are not opposites.",
   "The builders, thinkers & doers who value depth & attention to detail.",
   "Who choose the edge not because it\u2019s cool, but because something in them simply cannot settle for less.",
-  "And if anything about this gives you the courage to begin something you love, something you\u2019ve been carrying too long without acting on, that would be the highest thing this brand could ever achieve.",
+  "And if anything about this gives you the courage to begin something you love, something you\u2019ve been carrying too long without acting on, that would be the highest thing Switchblade could ever achieve.",
   "More than any product. More than any collaboration. More than anything.",
   "This journey begins now, not fully formed, but fully committed.",
   "The vision will take shape across three phases: Cosmos, Classic, and Evolution.",
